@@ -1,0 +1,70 @@
+// Structures stored in the LevelDB database for finding trigrams. The
+// way finding a search works is like this.
+//
+// Suppose you search for the string "index". We generate the following
+// trigrams:
+//  * ind
+//  * nde
+//  * dex
+//
+// For each trigram, we look in the "ngrams" leveldb database keyed by
+// values of type NGramKey and holding values of type NGramValue. The
+// NGramValue key holds the list of Name ids, in sorted order, usint a
+// delta encoding.
+//
+// We then take the intersection of the position_ids. These are
+// candidate matches. We then look up the corresponding rows in the
+// "positions" LevelDB database, which is keyed by PositionKey and has
+// values of type PositionValue. For each position there may be a
+// match on our example query "index". For instance, both of the
+// following lines would have matched at this point:
+//
+//     file_index = 1;       // valid match!
+//     indes_codex = "bar";  // invalid match!
+//
+// To complete the test, we check against the line stored in the
+// PositionValue. The PositionValue holds the file_id and the offset
+// into that file, which indicates where the line would start.
+//
+// To get the surrounding file text, information about the language
+// that was matched, etc. the file data can be looked up using the
+// "files" LevelDB database in the manner that you would expect.
+
+package cs.index;
+
+message IndexConfig {
+  optional string db_directory = 1 [default = "/tmp/index"];
+  optional uint32 ngram_size = 2 [default = 3];
+}
+
+message FileKey {
+  required uint64 file_id = 1;
+}
+
+message FileValue {
+  required string filename = 1;
+
+  enum Language {
+    CLOJURE = 1;
+  }
+  optional Language lang = 2;
+}
+
+message NGramKey {
+  required string ngram = 1;
+}
+
+message NGramValue {
+  repeated uint64 position_ids = 1 [packed=true];
+}
+
+message PositionKey {
+  required uint64 position_id = 1;
+}
+
+message PositionValue {
+  required uint64 file_id = 1;
+  required uint64 file_offset = 2;
+  required uint64 file_line = 3;
+  required string line = 4;
+}

@@ -1,0 +1,7 @@
+#!/bin/bash
+function rungyp {
+  gyp --toplevel-dir=. --depth=src --generator-output=build index.gyp
+}
+
+rungyp 2>/dev/null
+rungyp
