@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
-      ("replace,r", "replace the directory contents")
+      ("replace", "replace the directory contents")
       ("ngram-size", po::value<int>()->default_value(3), "ngram size")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ("src-dir,s",
@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
+  std::ios_base::sync_with_stdio(false);
 
   if (vm.count("help")) {
     std::cout << desc << std::endl;
@@ -39,8 +40,8 @@ int main(int argc, char **argv) {
   boost::filesystem::create_directories(db_path);
 
   std::size_t ngram_size = static_cast<std::size_t>(vm["ngram-size"].as<int>());
-  std::unique_ptr<cs::index::IndexWriter> writer(
-      new cs::index::IndexWriter(db_path_str, ngram_size));
+  std::unique_ptr<codesearch::IndexWriter> writer(
+      new codesearch::IndexWriter(db_path_str, ngram_size));
   if (!writer->Initialize()) {
     std::cerr << "Failed to initialize database writer! Check that \"" <<
         vm["db-path"].as<std::string>() << "\" exists and is empty." <<
@@ -48,7 +49,7 @@ int main(int argc, char **argv) {
     return 1;
   };
 
-  re2::RE2 interesting_file_re(".*(\\.h|\\.cc|\\.c)$");
+  re2::RE2 interesting_file_re(".*(\\.h|\\.cc|\\.c|\\.clj)$");
   if (!interesting_file_re.ok()) {
     std::cerr << "Failed to initialize re2!" << std::endl;
     return 1;

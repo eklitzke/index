@@ -6,17 +6,35 @@
 #include "./util.h"
 
 #include <leveldb/options.h>
+
+#include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <set>
 
-namespace cs {
-namespace index {
+namespace codesearch {
+bool IndexReader::Verify() {
+  IndexConfig config;
+  std::string config_path = JoinPath(index_directory_, "config");
+  std::ifstream infile(config_path.c_str(),
+                       std::ifstream::binary | std::ifstream::in);
+  config.ParseFromIstream(&infile);
+  infile.close();
+
+  ngram_size_ = config.ngram_size();
+  database_parallelism_ = config.db_parallelism();
+  return (config.state() == IndexConfig_DatabaseState_COMPLETE);
+}
+
 bool IndexReader::Initialize() {
+  if (!Verify()) {
+    return false;
+  }
+
   leveldb::Status status;
-  leveldb::Options options;
+  leveldb::Options options = DefaultOptions();
   options.create_if_missing = false;
   options.error_if_exists = false;
-  options.compression = leveldb::kSnappyCompression;
 
   std::string files_db_path = JoinPath(index_directory_, "files");
   status = leveldb::DB::Open(
@@ -41,54 +59,41 @@ bool IndexReader::Initialize() {
   return true;
 }
 
-std::vector<SearchResult> IndexReader::Search(const std::string &query) {
-  std::vector<SearchResult> rslt;
+bool IndexReader::Search(const std::string &query,
+                         SearchResults *results) {
+  results->Reset();
   if (query.size() < ngram_size_) {
-    return rslt;
+    return true;
   }
   std::string value;
-  std::set<std::uint64_t> candidate_positions;
-  {
-    std::string ngram = query.substr(0, 3);
-    leveldb::Status s = ngrams_db_->Get(leveldb::ReadOptions(), ngram, &value);
-    if (s.IsNotFound() or !s.ok()){
-      return rslt;
-    }
-    NGramValue ngram_val;
-    ngram_val.ParseFromString(value);
-    std::uint64_t posting_val = 0;
-    for (int i = 0; i < ngram_val.position_ids_size(); i++) {
-      posting_val += ngram_val.position_ids(i);
-      candidate_positions.insert(candidate_positions.end(), posting_val);
-    }
-  }
-  for (std::string::size_type i = 0;
-       i < query.length() - ngram_size_ && !candidate_positions.empty(); i++) {
-    std::string ngram = query.substr(i, 3);
-    leveldb::Status s = ngrams_db_->Get(leveldb::ReadOptions(), ngram, &value);
-    if (s.IsNotFound() or !s.ok()){
-      return rslt;
-    }
-    NGramValue ngram_val;
-    ngram_val.ParseFromString(value);
-    std::uint64_t posting_val = 0;
-
-    std::set<std::uint64_t> candidates;
-    for (int i = 0; i < ngram_val.position_ids_size(); i++) {
-      posting_val += ngram_val.position_ids(i);
-      candidates.insert(candidates.end(), posting_val);
-    }
-
-    // now take the set difference and remove the missing values
-    for (auto it = candidate_positions.begin();
-         it != candidate_positions.end(); ++it) {
-      if (candidates.find(*it) == candidates.end()) {
-        candidate_positions.erase(it);
-      }
-    }
+  std::vector<std::uint64_t> candidates;
+  std::vector<std::uint64_t> intersection;
+  if (!GetCandidates(query.substr(0, ngram_size_), &candidates)) {
+    return false;
   }
 
-  for (const auto &p : candidate_positions) {
+  for (std::string::size_type i = 1;
+       i <= query.length() - ngram_size_ && !candidates.empty(); i++) {
+    std::vector<std::uint64_t> new_candidates;
+    if (!GetCandidates(query.substr(i, ngram_size_), &new_candidates)) {
+      return false;
+    }
+
+    intersection.clear();
+    intersection.reserve(std::min(candidates.size(), new_candidates.size()));
+    auto it = std::set_intersection(
+        candidates.begin(), candidates.end(),
+        new_candidates.begin(), new_candidates.end(),
+        intersection.begin());
+#if 0
+    candidates.swap(intersection);
+#endif
+    candidates.clear();
+    candidates.reserve(it - intersection.begin());
+    candidates.insert(candidates.begin(), intersection.begin(), it);
+  }
+
+  for (const auto &p : candidates) {
     PositionKey key;
     key.set_position_id(p);
     std::string search_key;
@@ -113,20 +118,43 @@ std::vector<SearchResult> IndexReader::Search(const std::string &query) {
       FileValue fileval;
       fileval.ParseFromString(value);
 
-      SearchResult r;
-      r.filename = fileval.filename();
-      r.line_num = pos.file_line();
-      r.line_text = pos_line;
-      rslt.push_back(r);
+      results->AddResult(fileval.filename(), pos.file_line(), pos_line);
     }
   }
-  return rslt;
+  return true;
+}
+
+bool IndexReader::GetCandidates(const std::string &ngram,
+                                std::vector<std::uint64_t> *candidates) {
+  assert(candidates->empty());
+  std::string key_slice, val_slice, db_read;
+  NGramKey key;
+  key.set_ngram(ngram);
+  key.SerializeToString(&key_slice);
+  leveldb::Status s = ngrams_db_->Get(
+      leveldb::ReadOptions(), key_slice, &db_read);
+  if (!s.ok() && !s.IsNotFound()) {
+    return false;
+  }
+
+  NGramValue ngram_val;
+  ngram_val.ParseFromString(db_read);
+  std::uint64_t posting_val = 0;
+  for (int i = 0; i < ngram_val.position_ids_size(); i++) {
+    std::uint64_t delta = ngram_val.position_ids(i);
+    if (delta != 0) {
+      posting_val += delta;
+       candidates->push_back(posting_val);
+    } else {
+      std::cerr << "warning, 0 seen in posting list" << std::endl;
+    }
+  }
+  return true;
 }
 
 IndexReader::~IndexReader() {
   delete files_db_;
   delete ngrams_db_;
   delete positions_db_;
-}
 }
 }

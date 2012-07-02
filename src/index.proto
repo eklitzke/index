@@ -30,19 +30,28 @@
 // that was matched, etc. the file data can be looked up using the
 // "files" LevelDB database in the manner that you would expect.
 
-package cs.index;
+package codesearch;
 
 message IndexConfig {
   optional string db_directory = 1 [default = "/tmp/index"];
   optional uint32 ngram_size = 2 [default = 3];
+  optional uint32 db_parallelism = 3 [default = 8];
+
+  enum DatabaseState {
+    EMPTY = 0;
+    BUILDING = 1;
+    COMPLETE = 2;
+  }
+  optional DatabaseState state = 4 [default = EMPTY];
 }
+
 
 message FileKey {
   required uint64 file_id = 1;
 }
 
 message FileValue {
-  required string filename = 1;
+  required bytes filename = 1;
 
   enum Language {
     CLOJURE = 1;
@@ -51,7 +60,7 @@ message FileValue {
 }
 
 message NGramKey {
-  required string ngram = 1;
+  required bytes ngram = 1;
 }
 
 message NGramValue {
@@ -66,5 +75,5 @@ message PositionValue {
   required uint64 file_id = 1;
   required uint64 file_offset = 2;
   required uint64 file_line = 3;
-  required string line = 4;
+  required bytes line = 4;
 }

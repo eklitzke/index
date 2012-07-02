@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
-      ("ngram-size", po::value<int>()->default_value(3), "ngram size")
+      ("no-print", "suppress printing")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ("query,q", po::value<std::string>())
       ;
@@ -30,15 +30,29 @@ int main(int argc, char **argv) {
   }
 
   std::string db_path_str = vm["db-path"].as<std::string>();
-  std::size_t ngram_size = static_cast<std::size_t>(vm["ngram-size"].as<int>());
-  cs::index::IndexReader reader(db_path_str, ngram_size);
+  codesearch::IndexReader reader(db_path_str);
   if (!reader.Initialize()) {
     std::cerr << "Failed to initialize database reader!" << std::endl;
     return 1;
   };
-  for (const auto &val : reader.Search(vm["query"].as<std::string>())) {
-    std::cout << val.filename << ":" << val.line_num << ":" << val.line_text <<
-        std::endl;
+
+  std::ios_base::sync_with_stdio(false);
+  char buffer[1024];
+  std::cout.rdbuf()->pubsetbuf(buffer, 1024);
+
+  codesearch::SearchResults results;
+  std::string query = vm["query"].as<std::string>();
+  if (!reader.Search(query, &results)) {
+    std::cerr << "Failed to execute query!" << std::endl;
+    return 1;
+  }
+  if (!vm.count("no-print")) {
+    for (const auto &val : results.results()) {
+      std::cout << val.filename() << ":" << val.line_num() <<
+          ":" << val.line_text() << std::endl;
+    }
+  } else {
+    std::cout << results.results().size() << " search results" << std::endl;
   }
   return 0;
 }

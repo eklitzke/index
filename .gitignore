@@ -2,3 +2,4 @@
 *.pb.h
 *.a
 build/
+gmon.out

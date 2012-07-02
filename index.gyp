@@ -1,7 +1,7 @@
 # -*- python -*-
 {
   'target_defaults': {
-    'cflags': ['-pedantic', '-Wall', '-std=c++11',
+    'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O3',
                '-I$${HOME}/code/leveldb/include',
                '-I$${HOME}/code/re2',
     ],
@@ -19,16 +19,17 @@
         'src/index_reader.cc',
         'src/index_writer.cc',
         'src/index.pb.cc',
+        'src/posting_list.cc',
         'src/util.cc',
     ],
   },
   'targets': [
     {
       'type': 'executable',
-      'target_name': 'create_index',
+      'target_name': 'cindex',
       'cflags': ['-g'],
       'sources': [
-        'src/create_index.cc',
+        'src/cindex.cc',
       ],
     },
     {

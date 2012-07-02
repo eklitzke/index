@@ -8,7 +8,9 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <set>
 
+#include <leveldb/cache.h>
 #include <leveldb/options.h>
 
 namespace {
@@ -22,17 +24,21 @@ void AddToDatabase(leveldb::DB *db,
   leveldb::Status s = db->Put(leveldb::WriteOptions(), key_string, val_string);
   assert(s.ok());
 }
+
 }
 
-namespace cs {
-namespace index {
-
+namespace codesearch {
 bool IndexWriter::Initialize() {
+  WriteStatus(IndexConfig_DatabaseState_EMPTY);
+
   leveldb::Status status;
   leveldb::Options options;
   options.create_if_missing = true;
   options.error_if_exists = true;
   options.compression = leveldb::kSnappyCompression;
+  options.write_buffer_size = 100 << 20;
+  options.block_size = 1 << 20;
+  options.block_cache = leveldb::NewLRUCache(100 << 20);  // 100MB cache
 
   std::string files_db_path = JoinPath(index_directory_, "files");
   status = leveldb::DB::Open(
@@ -54,6 +60,8 @@ bool IndexWriter::Initialize() {
   if (!status.ok()) {
     return false;
   }
+
+  WriteStatus(IndexConfig_DatabaseState_BUILDING);
   return true;
 }
 
@@ -92,65 +100,63 @@ void IndexWriter::AddFile(const std::string &filename) {
   // ngram -> [position_id]
   std::map<std::string, std::vector<std::uint64_t> > ngrams_map;
   for (const auto &item : positions_map) {
-    const uint64_t &position_id = item.first;
+    const uint64_t position_id = item.first;
     const std::string &line = item.second;
     if (line.size() < ngram_size_) {
       continue;
     }
-    for (std::string::size_type i = 0; i < line.size() - ngram_size_; i++) {
+    std::set<std::string> seen_ngrams;
+    for (std::string::size_type i = 0; i <= line.size() - ngram_size_; i++) {
       std::string ngram = line.substr(i, ngram_size_);
-      const auto &map_item = ngrams_map.lower_bound(ngram);
-      if (map_item == ngrams_map.end() || map_item->first != ngram) {
-        std::vector<std::uint64_t> positions;
-        positions.push_back(position_id);
-        ngrams_map.insert(map_item, std::make_pair(ngram, positions));
-      } else {
-        map_item->second.push_back(position_id);
-      }
+      auto pos = seen_ngrams.lower_bound(ngram);
+      if (pos == seen_ngrams.end() || *pos != ngram) {
+        const auto &map_item = ngrams_map.lower_bound(ngram);
+        if (map_item == ngrams_map.end() || map_item->first != ngram) {
+          std::vector<std::uint64_t> positions;
+          positions.push_back(position_id);
+          ngrams_map.insert(map_item, std::make_pair(ngram, positions));
+        } else {
+          map_item->second.push_back(position_id);
+        }
+        seen_ngrams.insert(pos, ngram);
+     }
     }
   }
 
   // We go through the database and for each ngram we have, get the
   // row from the LevelDB database, merge the position ids, and then
   // save the row back.
-  leveldb::Status s;
   for (const auto &it : ngrams_map) {
-    std::string value;
-    NGramValue ngram_val;
-    s = ngrams_db_->Get(leveldb::ReadOptions(), it.first, &value);
-    if (s.ok()) {
-      s = ngrams_db_->Delete(leveldb::WriteOptions(), it.first);
-      assert(s.ok());
-      ngram_val.ParseFromString(value);
-    } else if (s.IsNotFound()) {
-      ; // nothing
-    } else {
-      assert(false);
-    }
-    MergePostingList(&ngram_val, it.second);
-    ngram_val.SerializeToString(&value);
-    s = ngrams_db_->Put(leveldb::WriteOptions(), it.first, value);
-    assert(s.ok());
+    ngrams_.UpdateNGram(it.first, it.second);
   }
 }
 
 IndexWriter::~IndexWriter() {
   FinalizeDb(files_db_);
-  FinalizeDb(ngrams_db_);
   FinalizeDb(positions_db_);
+
+  ngrams_.Serialize(ngrams_db_);
+  FinalizeDb(ngrams_db_);
+
+  WriteStatus(IndexConfig_DatabaseState_COMPLETE);
 }
 
-void IndexWriter::MergePostingList(
-    NGramValue *existing_val, const std::vector<std::uint64_t> &positions) {
-  std::uint64_t last_value = 0;
-  for (int i = 0; i < existing_val->position_ids_size(); i++) {
-    last_value += existing_val->position_ids(i);
-  }
-  for (const auto &p : positions) {
-    assert(p >= last_value);
-    existing_val->add_position_ids(p - last_value);
-    last_value = p;
-  }
+void IndexWriter::WriteStatus(IndexConfig_DatabaseState new_state) {
+  state_ = new_state;
+
+  IndexConfig config;
+  config.set_db_directory(index_directory_);
+  config.set_ngram_size(ngram_size_);
+  config.set_db_parallelism(database_parallelism_);
+  config.set_state(state_);
+
+  std::string config_path = JoinPath(index_directory_, "config");
+  std::ofstream out(config_path.c_str(),
+                    std::ofstream::binary |
+                    std::ofstream::out |
+                    std::ofstream::trunc);
+  assert(config.SerializeToOstream(&out));
+  out.close();
 }
 
 void IndexWriter::FinalizeDb(leveldb::DB* db) {
@@ -159,7 +165,4 @@ void IndexWriter::FinalizeDb(leveldb::DB* db) {
     delete db;
   }
 }
-
-
 }  // index
-}  // cs

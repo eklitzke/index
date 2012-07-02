@@ -8,36 +8,39 @@
 #include <leveldb/db.h>
 #include <string>
 
-namespace cs {
-namespace index {
+#include "./search_results.h"
 
-struct SearchResult {
-  std::string filename;
-  std::size_t line_num;
-  std::string line_text;
-};
-
+namespace codesearch {
 class IndexReader {
  public:
-  IndexReader(const std::string &index_directory, std::size_t ngram_size)
-      :index_directory_(index_directory), ngram_size_(ngram_size),
+  explicit IndexReader(const std::string &index_directory)
+      :index_directory_(index_directory),
        files_db_(nullptr), ngrams_db_(nullptr), positions_db_(nullptr) {}
 
+  // Verify the contents of the database -- note that Initialize()
+  // will call this for you.
+  bool Verify();
+
+  // Initialize the database for reading
   bool Initialize();
 
-  std::vector<SearchResult> Search(const std::string &query);
+  // Returns true on success, false on failure.
+  bool Search(const std::string &query, SearchResults *results);
 
   ~IndexReader();
 
  private:
   const std::string index_directory_;
-  const std::size_t ngram_size_;
+  std::uint32_t ngram_size_;
+  std::uint32_t database_parallelism_;
 
   leveldb::DB* files_db_;
   leveldb::DB* ngrams_db_;
   leveldb::DB* positions_db_;
+
+  bool GetCandidates(const std::string &ngram,
+                     std::vector<std::uint64_t> *candidates);
 };
-}
 }
 
 #endif  // SRC_INDEX_READER_H_
