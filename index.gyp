@@ -7,7 +7,6 @@
     ],
     'libraries': [
       '-pthread',
-      '-lboost_filesystem',
       '-lboost_system',
       '-lboost_program_options',
       '-lprotobuf',
@@ -20,6 +19,8 @@
         'src/index_writer.cc',
         'src/index.pb.cc',
         'src/posting_list.cc',
+        'src/shard_reader.cc',
+        'src/shard_writer.cc',
         'src/util.cc',
     ],
   },
@@ -28,6 +29,9 @@
       'type': 'executable',
       'target_name': 'cindex',
       'cflags': ['-g'],
+      'libraries': [
+        '-lboost_filesystem',
+      ],
       'sources': [
         'src/cindex.cc',
       ],

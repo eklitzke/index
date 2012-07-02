@@ -1,13 +1,16 @@
 #include "./util.h"
 
-#include <boost/filesystem.hpp>
 #include <leveldb/cache.h>
+#include <sstream>
 
 namespace codesearch {
-std::string JoinPath(const std::string &lhs, const std::string &rhs) {
-  boost::filesystem::path p(lhs + "/" + rhs);
-  //return boost::filesystem::canonical(p).string();
-  return p.string();
+
+std::string ConstructShardPath(const std::string &index_directory,
+                               const std::string &name,
+                               std::uint32_t shard_num) {
+  std::stringstream ss (std::stringstream::in | std::stringstream::out);
+  ss << index_directory << "/" << name << "_" << shard_num;
+  return ss.str();
 }
 
 leveldb::Options DefaultOptions() {

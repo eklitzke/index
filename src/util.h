@@ -8,7 +8,9 @@
 #include <leveldb/options.h>
 
 namespace codesearch {
-std::string JoinPath(const std::string &lhs, const std::string &rhs);
+std::string ConstructShardPath(const std::string &index_directory,
+                               const std::string &name,
+                               std::uint32_t shard_num);
 leveldb::Options DefaultOptions();
 }
 

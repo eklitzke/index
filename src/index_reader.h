@@ -9,19 +9,19 @@
 #include <string>
 
 #include "./search_results.h"
+#include "./shard_reader.h"
 
 namespace codesearch {
 class IndexReader {
  public:
   explicit IndexReader(const std::string &index_directory)
-      :index_directory_(index_directory),
-       files_db_(nullptr), ngrams_db_(nullptr), positions_db_(nullptr) {}
+      :index_directory_(index_directory) {}
 
-  // Verify the contents of the database -- note that Initialize()
+  // Verify the contents of the index -- note that Initialize()
   // will call this for you.
   bool Verify();
 
-  // Initialize the database for reading
+  // Initialize the index for reading
   bool Initialize();
 
   // Returns true on success, false on failure.
@@ -33,13 +33,7 @@ class IndexReader {
   const std::string index_directory_;
   std::uint32_t ngram_size_;
   std::uint32_t database_parallelism_;
-
-  leveldb::DB* files_db_;
-  leveldb::DB* ngrams_db_;
-  leveldb::DB* positions_db_;
-
-  bool GetCandidates(const std::string &ngram,
-                     std::vector<std::uint64_t> *candidates);
+  std::vector<ShardReader*> shards_;
 };
 }
 
