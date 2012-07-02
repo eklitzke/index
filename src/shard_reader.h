@@ -27,7 +27,10 @@ class ShardReader {
   bool Initialize();
 
   // Returns true on success, false on failure.
-  bool Search(const std::string &query, SearchResults *results);
+  bool Search(const std::string &query);
+
+  // Access the search results.
+  const SearchResults& results() const { return results_; }
 
   ~ShardReader();
 
@@ -39,6 +42,8 @@ class ShardReader {
   leveldb::DB* files_db_;
   leveldb::DB* ngrams_db_;
   leveldb::DB* positions_db_;
+
+  SearchResults results_;
 
   bool GetCandidates(const std::string &ngram,
                      std::vector<std::uint64_t> *candidates);

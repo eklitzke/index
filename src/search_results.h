@@ -32,7 +32,13 @@ class SearchResults {
     SearchResult r(filename, line_num, line_text);
     results_.push_back(r);
   }
-  const std::vector<SearchResult> &results() const { return results_; };
+
+  void Extend(const SearchResults &other) {
+    const auto &other_results = other.results();
+    results_.insert(results_.end(), other_results.begin(), other_results.end());
+  }
+
+  const std::vector<SearchResult>& results() const { return results_; };
  private:
   std::vector<SearchResult> results_;
 };

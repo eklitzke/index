@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <set>
+#include <thread>
 
 namespace codesearch {
 bool IndexReader::Verify() {
@@ -44,11 +45,15 @@ bool IndexReader::Initialize() {
 bool IndexReader::Search(const std::string &query,
                          SearchResults *results) {
   results->Reset();
+  std::vector<std::thread> threads;
   for (const auto &shard : shards_) {
-    if (!shard->Search(query, results)) {
-      results->Reset();
-      return false;
-    }
+    threads.push_back(std::thread(&ShardReader::Search, shard, query));
+  }
+
+  std::size_t i = 0;
+  for (const auto & shard : shards_) {
+    threads[i++].join();
+    results->Extend(shard->results());
   }
   return true;
 }

@@ -7,12 +7,10 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
-
 #include <set>
 
 #include <leveldb/cache.h>
 #include <leveldb/options.h>
-
 
 namespace codesearch {
 
@@ -48,7 +46,8 @@ bool ShardReader::Initialize() {
   return true;
 }
 
-bool ShardReader::Search(const std::string &query, SearchResults *results) {
+bool ShardReader::Search(const std::string &query) {
+  results_.Reset();
   if (query.size() < ngram_size_) {
     return true;
   }
@@ -105,12 +104,11 @@ bool ShardReader::Search(const std::string &query, SearchResults *results) {
       FileValue fileval;
       fileval.ParseFromString(value);
 
-      results->AddResult(fileval.filename(), pos.file_line(), pos_line);
+      results_.AddResult(fileval.filename(), pos.file_line(), pos_line);
     }
   }
   return true;
 }
-
 
 bool ShardReader::GetCandidates(const std::string &ngram,
                                 std::vector<std::uint64_t> *candidates) {
