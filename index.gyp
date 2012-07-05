@@ -2,10 +2,13 @@
 {
   'target_defaults': {
     'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O3',
-               '-I$${HOME}/code/leveldb/include',
                '-I$${HOME}/code/re2',
     ],
-    'defines': ['USE_THREADS'],
+    'defines': [
+      'USE_SNAPPY',
+      'USE_THREADS',
+      'USE_MADV_RANDOM',
+    ],
     'libraries': [
       '-pthread',
       '-lboost_filesystem',

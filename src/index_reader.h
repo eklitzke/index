@@ -4,8 +4,6 @@
 #ifndef SRC_INDEX_READER_H_
 #define SRC_INDEX_READER_H_
 
-#include <google/protobuf/message.h>
-#include <leveldb/db.h>
 #include <string>
 
 #include "./search_results.h"

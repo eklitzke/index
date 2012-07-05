@@ -3,7 +3,9 @@
 
 #include "./sstable_writer.h"
 #include "./util.h"
+#ifdef USE_SNAPPY
 #include <snappy.h>
+#endif
 #include <cstring>
 
 namespace {
@@ -31,14 +33,20 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
   Uint64ToString(offset_, &offset_str);
   idx_out_.write(offset_str.c_str(), 8);
 
+#ifdef USE_SNAPPY
   std::string compress_data;
   snappy::Compress(val.c_str(), val.size(), &compress_data);
+#else
+  const std::string &compress_data = val;
+#endif
 
   std::string data_size;
   Uint64ToString(compress_data.size(), &data_size);
   data_out_.write(data_size.c_str(), 8);
   data_out_.write(compress_data.c_str(), compress_data.size());
   offset_ += compress_data.size() + 8;
+
+
 }
 
 void SSTableWriter::Add(const std::uint64_t key,

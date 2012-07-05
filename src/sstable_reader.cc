@@ -10,7 +10,9 @@
 #include <memory>
 #include <iostream>
 
+#ifdef USE_SNAPPY
 #include <snappy.h>
+#endif
 #include <sys/mman.h>
 
 namespace codesearch {
@@ -30,13 +32,14 @@ void SSTableReader::Initialize() {
   data_len_ = ToUint64(size_field);
 
   assert(file_size == 16 + index_len_ + data_len_);
-  mmap_addr_ = static_cast<const char *>(
-      mmap(nullptr, file_size, PROT_READ, MAP_SHARED,
-           fileno(index_file_), 0));
-  if (mmap_addr_ == MAP_FAILED) {
-    perror("mmap()");
-    assert(false);
-  }
+  void *mmap_addr = mmap(nullptr, file_size, PROT_READ, MAP_SHARED,
+                         fileno(index_file_), 0);
+  assert(mmap_addr != MAP_FAILED);
+  mmap_addr_ = static_cast<const char *>(mmap_addr);
+
+#ifdef USE_MADV_RANDOM
+  madvise(mmap_addr, file_size, MADV_RANDOM);
+#endif
 
   assert(index_len_ % 16 == 0);
   index_entries_ = index_len_ >> 4;
@@ -62,7 +65,11 @@ bool SSTableReader::Find(const char *needle, std::string *result) {
       std::uint64_t data_size = be64toh(*raw_size);
       const char *data_loc = mmap_addr_ + index_len_ + data_offset + 24;
 
+#ifdef USE_SNAPPY
       assert(snappy::Uncompress(data_loc, data_size, result) == true);
+#else
+      result->assign(data_loc, data_size);
+#endif
       return true;
      }
   }

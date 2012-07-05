@@ -5,8 +5,6 @@
 #include "./index.pb.h"
 #include "./util.h"
 
-#include <leveldb/options.h>
-
 #include <algorithm>
 #include <fstream>
 #include <iostream>
