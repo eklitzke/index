@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <leveldb/db.h>
+#include "./sstable_writer.h"
 
 namespace codesearch {
 class PostingList {
@@ -15,7 +15,7 @@ class PostingList {
   PostingList() {}
   void UpdateNGram(const std::string &ngram,
                    const std::vector<std::uint64_t> &ids);
-  void Serialize(leveldb::DB *db);
+  void Serialize(SSTableWriter *db);
  private:
   std::map<std::string, std::vector<std::uint64_t> > lists_;
 };

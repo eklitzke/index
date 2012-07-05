@@ -9,40 +9,24 @@
 #include <fstream>
 #include <set>
 
-#include <leveldb/cache.h>
-#include <leveldb/options.h>
-
 namespace codesearch {
 
 bool ShardReader::Initialize() {
-  leveldb::Status status;
-  leveldb::Options options = DefaultOptions();
-  options.create_if_missing = false;
-  options.error_if_exists = false;
-
   std::string files_db_path = ConstructShardPath(index_directory_,
                                                  "files", shard_num_);
-  status = leveldb::DB::Open(
-      options, files_db_path.c_str(), &files_db_);
-  if (!status.ok()) {
-    return false;
-  }
+  files_db_ = new SSTableReader(files_db_path);
+  files_db_->Initialize();
 
   std::string ngrams_db_path = ConstructShardPath(index_directory_,
                                                   "ngrams", shard_num_);
-  status = leveldb::DB::Open(
-      options, ngrams_db_path.c_str(), &ngrams_db_);
-  if (!status.ok()) {
-    return false;
-  }
+  ngrams_db_ = new SSTableReader(ngrams_db_path);
+  ngrams_db_->Initialize();
 
   std::string positions_db_path = ConstructShardPath(index_directory_,
                                                      "positions", shard_num_);
-  status = leveldb::DB::Open(
-      options, positions_db_path.c_str(), &positions_db_);
-  if (!status.ok()) {
-    return false;
-  }
+  positions_db_ = new SSTableReader(positions_db_path);
+  positions_db_->Initialize();
+
   return true;
 }
 
@@ -80,27 +64,14 @@ bool ShardReader::Search(const std::string &query) {
   }
 
   for (const auto &p : candidates) {
-    PositionKey key;
-    key.set_position_id(p);
-    std::string search_key;
-    key.SerializeToString(&search_key);
-
     PositionValue pos;
-    leveldb::Status s = positions_db_->Get(
-        leveldb::ReadOptions(), search_key, &value);
-    assert(s.ok());
+    std::string value;
+    positions_db_->Find(p, &value);
     pos.ParseFromString(value);
 
     const std::string &pos_line = pos.line();
     if (pos_line.find(query) != std::string::npos) {
-      FileKey key;
-      key.set_file_id(pos.file_id());
-      std::string search_key;
-      key.SerializeToString(&search_key);
-
-      leveldb::Status s = files_db_->Get(
-          leveldb::ReadOptions(), search_key, &value);
-      assert(s.ok());
+      files_db_->Find(pos.file_id(), &value);
       FileValue fileval;
       fileval.ParseFromString(value);
 
@@ -113,13 +84,9 @@ bool ShardReader::Search(const std::string &query) {
 bool ShardReader::GetCandidates(const std::string &ngram,
                                 std::vector<std::uint64_t> *candidates) {
   assert(candidates->empty());
-  std::string key_slice, val_slice, db_read;
-  NGramKey key;
-  key.set_ngram(ngram);
-  key.SerializeToString(&key_slice);
-  leveldb::Status s = ngrams_db_->Get(
-      leveldb::ReadOptions(), key_slice, &db_read);
-  if (!s.ok() && !s.IsNotFound()) {
+  std::string db_read;
+  bool found = ngrams_db_->Find(ngram, &db_read);
+  if (!found) {
     return false;
   }
 

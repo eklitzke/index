@@ -2,13 +2,14 @@
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
 #include "./index_writer.h"
-#include "./index.pb.h"
 #include "./util.h"
 
 #include <iostream>
 #include <fstream>
 #include <map>
 #include <set>
+
+#include "./index.pb.h"
 
 namespace codesearch {
 bool IndexWriter::Initialize() {

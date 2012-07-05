@@ -45,6 +45,7 @@ bool IndexReader::Initialize() {
 bool IndexReader::Search(const std::string &query,
                          SearchResults *results) {
   results->Reset();
+#ifdef USE_THREADS
   std::vector<std::thread> threads;
   for (const auto &shard : shards_) {
     threads.push_back(std::thread(&ShardReader::Search, shard, query));
@@ -55,6 +56,12 @@ bool IndexReader::Search(const std::string &query,
     threads[i++].join();
     results->Extend(shard->results());
   }
+#else
+  for (const auto & shard : shards_) {
+    shard->Search(query);
+    results->Extend(shard->results());
+  }
+#endif
   return true;
 }
 

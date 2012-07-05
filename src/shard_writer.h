@@ -5,11 +5,9 @@
 #define SRC_SHARD_WRITER_H_
 
 #include "./autoincrement.h"
-#include "./index.pb.h"
 #include "./posting_list.h"
+#include "./sstable_writer.h"
 
-#include <google/protobuf/message.h>
-#include <leveldb/db.h>
 #include <string>
 
 namespace codesearch {
@@ -38,17 +36,17 @@ class ShardWriter {
 
   // Data for the "files" database
   AutoIncrement<std::uint64_t> files_id_;
-  leveldb::DB* files_db_;
+  SSTableWriter *files_db_;
 
   // Data for the "ngrams" database
-  leveldb::DB* ngrams_db_;
+  SSTableWriter *ngrams_db_;
 
   // Data for the "positions" database
   AutoIncrement<std::uint64_t> positions_id_;
-  leveldb::DB* positions_db_;
+  SSTableWriter *positions_db_;
 
   std::string DatabasePath(const std::string &name);
-  void FinalizeDb(leveldb::DB* db);
+  void FinalizeDb(SSTableWriter* db);
 };
 }  // namespace index
 #endif

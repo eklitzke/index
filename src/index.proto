@@ -45,11 +45,6 @@ message IndexConfig {
   optional DatabaseState state = 4 [default = EMPTY];
 }
 
-
-message FileKey {
-  required uint64 file_id = 1;
-}
-
 message FileValue {
   required bytes filename = 1;
 
@@ -59,16 +54,8 @@ message FileValue {
   optional Language lang = 2;
 }
 
-message NGramKey {
-  required bytes ngram = 1;
-}
-
 message NGramValue {
   repeated uint64 position_ids = 1 [packed=true];
-}
-
-message PositionKey {
-  required uint64 position_id = 1;
 }
 
 message PositionValue {

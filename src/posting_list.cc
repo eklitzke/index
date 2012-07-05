@@ -14,22 +14,15 @@ void PostingList::UpdateNGram(const std::string &ngram,
                               const std::vector<std::uint64_t> &ids) {
   const auto it = lists_.lower_bound(ngram);
   if (it != lists_.end() && it->first == ngram) {
-    it->second.insert(it->second.end(), ids.begin(), ids.end());
+    std::vector<std::uint64_t> &ngram_ids = it->second;
+    ngram_ids.insert(ngram_ids.end(), ids.begin(), ids.end());
   } else {
     lists_.insert(it, std::make_pair(ngram, ids));
   }
 }
 
-void PostingList::Serialize(leveldb::DB *db) {
-  leveldb::Status s;
-  std::string key_slice;
-  std::string val_slice;
-
+void PostingList::Serialize(SSTableWriter *db) {
   for (const auto &it : lists_) {
-    NGramKey ngram_key;
-    ngram_key.set_ngram(it.first);
-    ngram_key.SerializeToString(&key_slice);
-
     NGramValue ngram_val;
     {
       std::uint32_t last_val = 0;
@@ -39,10 +32,7 @@ void PostingList::Serialize(leveldb::DB *db) {
         last_val = v;
       }
     }
-
-    ngram_val.SerializeToString(&val_slice);
-    s = db->Put(leveldb::WriteOptions(), key_slice, val_slice);
-    assert(s.ok());
+    db->Add(it.first, ngram_val);
   }
 }
 }

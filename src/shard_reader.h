@@ -6,9 +6,8 @@
 
 #include "./index.pb.h"
 #include "./search_results.h"
+#include "./sstable_reader.h"
 
-#include <google/protobuf/message.h>
-#include <leveldb/db.h>
 #include <string>
 
 namespace codesearch {
@@ -39,9 +38,9 @@ class ShardReader {
   const std::uint32_t ngram_size_;
   const std::uint32_t shard_num_;
 
-  leveldb::DB* files_db_;
-  leveldb::DB* ngrams_db_;
-  leveldb::DB* positions_db_;
+  SSTableReader *files_db_;
+  SSTableReader *ngrams_db_;
+  SSTableReader *positions_db_;
 
   SearchResults results_;
 

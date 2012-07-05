@@ -8,8 +8,8 @@
 #include "./shard_writer.h"
 
 #include <google/protobuf/message.h>
-#include <leveldb/db.h>
 #include <string>
+#include <vector>
 
 namespace codesearch {
 
@@ -45,6 +45,6 @@ class IndexWriter {
 
   void WriteStatus(IndexConfig_DatabaseState new_state);
 };
-}
+}  // namespace codesearch
 
 #endif  // SRC_INDEX_WRITER_H_

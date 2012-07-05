@@ -39,6 +39,7 @@ class SearchResults {
   }
 
   const std::vector<SearchResult>& results() const { return results_; };
+  std::size_t size() const { return results_.size(); }
  private:
   std::vector<SearchResult> results_;
 };
