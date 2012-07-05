@@ -21,6 +21,20 @@ class SSTableReader {
   bool Find(std::uint64_t needle, std::string *result);
   bool Find(const std::string &needle, std::string *result);
 
+  // When searching for multiple needles (e.g. as in a SQL "IN"
+  // query), an optimization that can be done is to search for the
+  // terms in sorted order, and for each successive term save the
+  // lower bound from the previous term. This optimization is applied
+  // in index_reader.cc, and is the motivation for the FindWithBounds
+  // methods.
+  bool FindWithBounds(const char *needle, std::string *result,
+                      std::size_t *lower_bound);
+  bool FindWithBounds(const std::string &needle, std::string *result,
+                      std::size_t *lower_bound);
+
+  std::size_t lower_bound() const { return 0; }
+  std::size_t upper_bound() const { return index_entries_; }
+
   ~SSTableReader();
 
  private:
@@ -31,6 +45,8 @@ class SSTableReader {
   std::size_t index_len_;
   std::size_t data_len_;
   std::size_t index_entries_;
+
+  void PadString(const std::string &in, std::string *out);
 };
 }
 

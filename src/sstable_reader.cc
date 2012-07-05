@@ -45,17 +45,17 @@ void SSTableReader::Initialize() {
   index_entries_ = index_len_ >> 4;
 }
 
-bool SSTableReader::Find(const char *needle, std::string *result) {
-  std::size_t lower_bound = 0;
+bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
+                                   std::size_t *lower_bound) {
   std::size_t upper_bound = index_entries_;
-  while (lower_bound <= upper_bound) {
-    std::size_t pos = (upper_bound + lower_bound) / 2;
+  while (*lower_bound <= upper_bound) {
+    std::size_t pos = (upper_bound + *lower_bound) / 2;
     const char *key = mmap_addr_ + (pos << 4) + 16;
     int cmpresult = memcmp(needle, key, 8);
     if (cmpresult < 0) {
       upper_bound = pos - 1;
     } else if (cmpresult > 0) {
-      lower_bound = pos + 1;
+      *lower_bound = pos + 1;
     } else {
       const std::uint64_t *raw_offset = reinterpret_cast<const std::uint64_t*>(
           mmap_addr_ + (pos << 4) + 24);
@@ -76,6 +76,19 @@ bool SSTableReader::Find(const char *needle, std::string *result) {
   return false;
 }
 
+bool SSTableReader::FindWithBounds(const std::string &needle,
+                                   std::string *result,
+                                   std::size_t *lower_bound) {
+  std::string padded;
+  PadString(needle, &padded);
+  return FindWithBounds(padded.c_str(), result, lower_bound);
+}
+
+bool SSTableReader::Find(const char *needle, std::string *result) {
+  std::size_t lower_bound = 0;
+  return FindWithBounds(needle, result, &lower_bound);
+}
+
 bool SSTableReader::Find(std::uint64_t needle, std::string *result) {
   std::string val;
   Uint64ToString(needle, &val);
@@ -83,9 +96,14 @@ bool SSTableReader::Find(std::uint64_t needle, std::string *result) {
 }
 
 bool SSTableReader::Find(const std::string &needle, std::string *result) {
-  assert(needle.size() <= 8);
-  const std::string padded = std::string(8 - needle.size(), '\0') + needle;
+  std::string padded;
+  PadString(needle, &padded);
   return Find(padded.c_str(), result);
+}
+
+void SSTableReader::PadString(const std::string &in, std::string *out) {
+  assert(in.size() <= 8);
+  *out = std::string(8 - in.size(), '\0') + in;
 }
 
 SSTableReader::~SSTableReader() {

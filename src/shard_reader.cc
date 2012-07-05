@@ -38,14 +38,23 @@ bool ShardReader::Search(const std::string &query) {
   std::string value;
   std::vector<std::uint64_t> candidates;
   std::vector<std::uint64_t> intersection;
-  if (!GetCandidates(query.substr(0, ngram_size_), &candidates)) {
+
+  std::set<std::string> ngrams;
+  for (std::string::size_type i = 0;
+       i <= query.length() - ngram_size_; i++) {
+    ngrams.insert(query.substr(i, ngram_size_));
+  }
+  assert(!ngrams.empty());
+
+  std::size_t lower_bound = ngrams_db_->lower_bound();
+  auto ngrams_iter = ngrams.begin();
+  if (!GetCandidates(*ngrams_iter, &candidates, &lower_bound)) {
     return false;
   }
 
-  for (std::string::size_type i = 1;
-       i <= query.length() - ngram_size_ && !candidates.empty(); i++) {
+  for (; ngrams_iter != ngrams.end() && !candidates.empty(); ++ngrams_iter) {
     std::vector<std::uint64_t> new_candidates;
-    if (!GetCandidates(query.substr(i, ngram_size_), &new_candidates)) {
+    if (!GetCandidates(*ngrams_iter, &new_candidates, &lower_bound)) {
       return false;
     }
 
@@ -82,10 +91,11 @@ bool ShardReader::Search(const std::string &query) {
 }
 
 bool ShardReader::GetCandidates(const std::string &ngram,
-                                std::vector<std::uint64_t> *candidates) {
+                                std::vector<std::uint64_t> *candidates,
+                                std::size_t *lower_bound) {
   assert(candidates->empty());
   std::string db_read;
-  bool found = ngrams_db_->Find(ngram, &db_read);
+  bool found = ngrams_db_->FindWithBounds(ngram, &db_read, lower_bound);
   if (!found) {
     return false;
   }

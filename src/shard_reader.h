@@ -45,7 +45,8 @@ class ShardReader {
   SearchResults results_;
 
   bool GetCandidates(const std::string &ngram,
-                     std::vector<std::uint64_t> *candidates);
+                     std::vector<std::uint64_t> *candidates,
+                     std::size_t *lower_bound);
 };
 }
 
