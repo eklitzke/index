@@ -33,7 +33,7 @@ class SSTableReader {
                       std::size_t *lower_bound);
 
   std::size_t lower_bound() const { return 0; }
-  std::size_t upper_bound() const { return index_entries_; }
+  std::size_t upper_bound() const { return index_len_ >> 4; }
 
   ~SSTableReader();
 
@@ -42,9 +42,8 @@ class SSTableReader {
   FILE* index_file_;
   const char *mmap_addr_;
 
-  std::size_t index_len_;
   std::size_t data_len_;
-  std::size_t index_entries_;
+  std::size_t index_len_;
 
   void PadString(const std::string &in, std::string *out);
 };

@@ -42,18 +42,17 @@ void SSTableReader::Initialize() {
 #endif
 
   assert(index_len_ % 16 == 0);
-  index_entries_ = index_len_ >> 4;
 }
 
 bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
                                    std::size_t *lower_bound) {
-  std::size_t upper_bound = index_entries_;
-  while (*lower_bound <= upper_bound) {
-    std::size_t pos = (upper_bound + *lower_bound) / 2;
+  std::size_t upper = upper_bound();
+  while (*lower_bound <= upper) {
+    std::size_t pos = (upper + *lower_bound) / 2;
     const char *key = mmap_addr_ + (pos << 4) + 16;
     int cmpresult = memcmp(needle, key, 8);
     if (cmpresult < 0) {
-      upper_bound = pos - 1;
+      upper = pos - 1;
     } else if (cmpresult > 0) {
       *lower_bound = pos + 1;
     } else {
