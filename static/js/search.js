@@ -3,7 +3,6 @@ S.currentSearch = null;
 S.lastQuery = null;
 
 $(document).ready(function () {
-
     var templates = {};
     var prefetchTemplate = (function (name) {
         var url = '/static/mustache/' + name + '?v=';
@@ -31,17 +30,28 @@ $(document).ready(function () {
     console.log('ready');
     var $search_results = $('#search_results');
     $('#search_input').keyup(function (e) {
-        if (S.currentSearch !== null) {
-            S.currentSearch.abort();
-        }
+        console.log('----------');
         var searchVal = $('#search_input').val();
         if (searchVal.length < 3) {
-            renderTemplate('empty_results.mustache', $search_results, {});
+            $('#search_status').
+                css({'visibility': 'visible'}).
+                text('please enter a query of 3+ characters');
+            $search_results.empty();
         } else if (searchVal != S.lastQuery) {
+            if (S.currentSearch !== null) {
+                console.log('aborting current search');
+                S.currentSearch.abort();
+            }
             S.lastQuery = searchVal;
             $search_results.addClass('grey');
+            $('#search_status').
+                css({'visibility': 'visible'}).
+                text('searching...');
+            console.log('dispatching request for "' + searchVal + '"');
             S.currentSearch = $.getJSON(
                 '/api/search?' + $.param({'query': searchVal}), function (r) {
+                    console.log('GOT RESPONSE ->');
+                    console.log(r);
                     S.currentSearch = null;
                     var view = {
                         'csearch_time': r.csearch_time,
@@ -53,7 +63,10 @@ $(document).ready(function () {
                     renderTemplate('search_results.mustache',
                                    $search_results, view);
                     $search_results.removeClass('grey');
+                    $('#search_status').css({'visibility': 'hidden'});
                 });
+            console.log('dispatched value was ');
+            console.log(S.currentSearch);
         }
     });
     prefetchTemplate('empty_results.mustache');

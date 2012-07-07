@@ -36,7 +36,7 @@ class SearchHandler(handler_meta.RequestHandler):
     def search_callback(self, query, results):
         self.ensure_released()
         try:
-            escaped_query = escape.xhtml_escape(query)
+            escaped_query = escape.xhtml_escape(query).encode('utf-8')
             json_results = {
                 'results': [],
                 'num_results': len(results.results),
