@@ -15,6 +15,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
+      ("limit", po::value<std::size_t>()->default_value(0))
       ("no-print", "suppress printing")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ("query,q", po::value<std::string>())
@@ -40,7 +41,8 @@ int main(int argc, char **argv) {
   char buffer[1024];
   std::cout.rdbuf()->pubsetbuf(buffer, 1024);
 
-  codesearch::SearchResults results;
+  codesearch::SearchResults results(
+      vm["limit"].as<std::size_t>());
   std::string query = vm["query"].as<std::string>();
   if (!reader.Search(query, &results)) {
     std::cerr << "Failed to execute query!" << std::endl;

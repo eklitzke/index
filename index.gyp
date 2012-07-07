@@ -1,7 +1,7 @@
 # -*- python -*-
 {
   'target_defaults': {
-    'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O3',
+    'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O0', '-g',
                '-I$${HOME}/code/re2',
     ],
     'defines': [
@@ -34,10 +34,6 @@
     {
       'type': 'executable',
       'target_name': 'cindex',
-      'cflags': ['-g'],
-      'libraries': [
-        '-lboost_filesystem',
-      ],
       'sources': [
         'src/cindex.cc',
       ],
@@ -45,9 +41,15 @@
     {
       'type': 'executable',
         'target_name': 'csearch',
-        'cflags': ['-g'],
         'sources': [
-          'src/csearch.cc',
+            'src/csearch.cc',
+        ],
+    },
+    {
+      'type': 'executable',
+        'target_name': 'rpcserver',
+        'sources': [
+            'src/rpcserver.cc',
         ],
     },
   ],

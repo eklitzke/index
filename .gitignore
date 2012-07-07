@@ -3,3 +3,5 @@
 *.a
 build/
 gmon.out
+*.py[co]
+*_pb2.py

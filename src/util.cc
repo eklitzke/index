@@ -21,15 +21,21 @@ void Uint64ToString(std::uint64_t val, std::string *out) {
   out->assign(reinterpret_cast<const char *>(&be_val), 8);
 }
 
+#define TO_UINT_EXPR (\
+  (std::get<0>(data) << 54) +\
+  (std::get<1>(data) << 48) +\
+  (std::get<2>(data) << 40) +\
+  (std::get<3>(data) << 32) +\
+  (std::get<4>(data) << 24) +\
+  (std::get<5>(data) << 16) +\
+  (std::get<6>(data) << 8) +\
+  (std::get<7>(data)))
+
 std::uint64_t ToUint64(const std::array<std::uint8_t, 8> &data) {
-  return (
-      (std::get<0>(data) << 54) +
-      (std::get<1>(data) << 48) +
-      (std::get<2>(data) << 40) +
-      (std::get<3>(data) << 32) +
-      (std::get<4>(data) << 24) +
-      (std::get<5>(data) << 16) +
-      (std::get<6>(data) << 8) +
-      (std::get<7>(data)));
+  return TO_UINT_EXPR;
+}
+
+std::uint64_t ToUint64(const std::array<char, 8> &data) {
+  return TO_UINT_EXPR;
 }
 }

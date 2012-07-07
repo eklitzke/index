@@ -52,6 +52,12 @@ message FileValue {
     CLOJURE = 1;
   }
   optional Language lang = 2;
+
+  // The unix timestamp (in seconds) of when we indexed this file.
+  optional uint64 time_indexed = 3;
+
+  // The unix timestamp (in seconds) for the file's time in the archive.
+  optional uint64 time_archive = 4;
 }
 
 message NGramValue {
@@ -63,4 +69,36 @@ message PositionValue {
   required uint64 file_offset = 2;
   required uint64 file_line = 3;
   required bytes line = 4;
+}
+
+message SearchResult {
+  required bytes filename = 1;
+  required uint64 line_num = 2;
+  required bytes line_text = 3;
+}
+
+message SearchQueryRequest {
+  required string query = 1;
+  optional uint64 limit = 2;
+}
+
+message SearchQueryResponse {
+  repeated SearchResult results = 1;
+  optional uint64 total_results = 2;
+  optional uint64 time_elapsed = 3;
+}
+
+message RPCRequest {
+  required uint64 request_num = 1;
+  optional string api_key = 2;
+  
+  // query types go here
+  optional SearchQueryRequest search_query = 3;
+}
+
+message RPCResponse {
+  required uint64 request_num = 1;
+
+  // response types go here
+  optional SearchQueryResponse search_response = 2;
 }

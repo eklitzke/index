@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd py
+exec python -m codesearch.server $@

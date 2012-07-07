@@ -12,6 +12,7 @@ std::string ConstructShardPath(const std::string &index_directory,
                                const std::string &name,
                                std::uint32_t shard_num);
 void Uint64ToString(std::uint64_t val, std::string *out);
+std::uint64_t ToUint64(const std::array<char, 8> &data);
 std::uint64_t ToUint64(const std::array<std::uint8_t, 8> &data);
 
 }

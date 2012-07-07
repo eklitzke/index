@@ -1,0 +1,17 @@
+<table>
+  <tr>
+    <th>text</th>
+    <th>filename</th>
+    <th>line</th>
+  </tr>
+  {{#search_results}}
+  <tr>
+    <td>{{&line_text}}</td>
+    <td>{{filename}}</td>
+    <td>{{line_num}}</td>
+  </tr>
+  {{/search_results}}
+</table>
+<br>
+Showing {{num_results}} of {{total_results}} results, backend returned in
+{{csearch_time}} ms.

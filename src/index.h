@@ -8,5 +8,6 @@
 #include "./index_writer.h"
 #include "./search_results.h"
 #include "./sstable_writer.h"
+#include "./util.h"
 
 #endif  // SRC_INDEX_H_
