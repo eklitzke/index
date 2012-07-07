@@ -33,7 +33,12 @@ class IndexReaderConnection {
 
   boost::asio::ip::tcp::socket* socket() { return &socket_; }
 
+  // This is public, but should only be called if Start() has not yet
+  // been called.
+  ~IndexReaderConnection();
+
  private:
+  bool started_;
   boost::asio::io_service io_service_;
   std::array<char, 8> size_buffer_;
   boost::asio::streambuf data_buffer_;
@@ -42,11 +47,13 @@ class IndexReaderConnection {
   boost::asio::ip::tcp::socket socket_;
 
   IndexReaderConnection(const std::string &db_path)
-      :reader_(db_path), socket_(io_service_) {}
+      :started_(false), reader_(db_path), socket_(io_service_) {}
 
   void Initialize();
 
   void Search(std::size_t size);
+
+  void WaitForRequest();
 
   void SizeCallback(const boost::system::error_code& error,
                     std::size_t bytes_transferred);
@@ -58,11 +65,17 @@ class IndexReaderConnection {
                      std::size_t bytes_transferred);
 
   void SelfDestruct();
-
 };
 
 void IndexReaderConnection::Initialize() {
   assert(reader_.Initialize());
+}
+
+void IndexReaderConnection::Start() {
+  assert(started_ == false);
+  started_ = true;
+  WaitForRequest();
+  io_service_.run();
 }
 
 void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
@@ -174,22 +187,27 @@ void IndexReaderConnection::WriteCallback(
     SelfDestruct();
   } {
     data_buffer_.consume(bytes_transferred);
-    Start();
+    io_service_.post(std::bind(&IndexReaderConnection::WaitForRequest, this));
   }
 }
 
-void IndexReaderConnection::Start() {
+void IndexReaderConnection::WaitForRequest() {
   std::cout << this << " waiting for request..." << std::endl;
   boost::asio::async_read(
       socket_, boost::asio::buffer(size_buffer_.data(), 8),
       std::bind(&IndexReaderConnection::SizeCallback, this,
                 std::placeholders::_1, std::placeholders::_2));
-  io_service_.run();
 }
 
 void IndexReaderConnection::SelfDestruct() {
-  std::cout << "self destructing!" << std::endl;
+  std::cout << this << " self-destructing" << std::endl;
+  started_ = false;
   delete this;
+}
+
+IndexReaderConnection::~IndexReaderConnection() {
+  assert(started_ == false);
+  io_service_.stop();
 }
 
 
@@ -221,7 +239,7 @@ void IndexReaderServer::HandleAccept(IndexReaderConnection *conn,
     std::thread t = std::thread(&IndexReaderConnection::Start, conn);
     t.detach();
   }
-  StartAccept();
+  io_service_->post(std::bind(&IndexReaderServer::StartAccept, this));
 }
 
 }

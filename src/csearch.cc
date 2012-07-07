@@ -18,14 +18,14 @@ int main(int argc, char **argv) {
       ("limit", po::value<std::size_t>()->default_value(0))
       ("no-print", "suppress printing")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
-      ("query,q", po::value<std::string>())
+      ("query,q", po::value<std::string>(), "the search query, mandatory")
       ;
 
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
 
-  if (vm.count("help")) {
+  if (vm.count("help") || !vm.count("query")) {
     std::cout << desc << std::endl;
     return 0;
   }
