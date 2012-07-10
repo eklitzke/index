@@ -36,13 +36,13 @@
       <p>
       The frontend is written in Python (using tornado), and
       communicates to the backend using a custom asynchronous RPC
-      protocol. The protcol is based around Protocol Buffers, and the
+      protocol. The protocol is based around Protocol Buffers, and the
       client uses tornado async capabilites and the backend is written
       using boost::asio. Since the entire frontend is fully async, I'm
       using tornado's async decorator and only running a single
       frontend thread/process.
       <p>
-      The search index, and the RPC protocol, both use Google's
+      The search index and the RPC protocol both use Google's
       excellent <a href="http://code.google.com/p/snappy/">Snappy</a>
       library for compression.
       <p>
