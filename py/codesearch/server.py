@@ -2,6 +2,7 @@ import optparse
 import tornado.ioloop
 from tornado import httpserver
 
+from codesearch import instance_watcher
 from codesearch import filesystem
 from codesearch import handler_meta
 from codesearch import handlers  # for side effects!
@@ -14,6 +15,8 @@ if __name__ == "__main__":
                       help='The port to bind on')
     parser.add_option('--prod', dest='debug', action='store_false',
                       default=True, help='Do not run in debug mode')
+    parser.add_option('--instances', type='int', default=8,
+                      help='How many instances to run in prod')
     opts, args = parser.parse_args()
     application = tornado.web.Application(
         handler_meta.get_handlers(),
@@ -22,13 +25,12 @@ if __name__ == "__main__":
         debug=opts.debug,
         remote=not opts.local)
 
-    if opts.debug:
-        application.listen(opts.port)
-    else:
-        server = httpserver.HTTPServer(application)
-        server.bind(opts.port)
-        server.start(0)  # Forks multiple sub-processes
     try:
-        tornado.ioloop.IOLoop.instance().start()
+        if opts.debug:
+            application.listen(opts.port)
+            tornado.ioloop.IOLoop.instance().start()
+        else:
+            watcher = instance_watcher.InstanceWatcher(application, opts.port)
+            watcher.run(opts.instances)
     except KeyboardInterrupt:
         pass
