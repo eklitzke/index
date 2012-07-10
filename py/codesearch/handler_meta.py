@@ -5,7 +5,6 @@ import pystache
 import tornado.web
 
 from codesearch import filesystem
-from codesearch import memory_cache
 
 _handlers = []
 
