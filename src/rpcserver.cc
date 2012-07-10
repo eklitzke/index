@@ -118,6 +118,7 @@ void IndexReaderConnection::Search(std::size_t size) {
 
   RPCResponse response;
   response.set_request_num(request.request_num());
+  SearchQueryResponse *resp;
 
   if (request.has_search_query()) {
     boost::posix_time::ptime start_time(
@@ -133,18 +134,15 @@ void IndexReaderConnection::Search(std::size_t size) {
     SearchResults results(search_query.limit(), search_query.offset());
     reader_.Find(search_query.query(), &results);
 
-    SearchQueryResponse resp;
+    resp = response.mutable_search_response();
     for (const auto &result : results.results()) {
-      resp.add_results()->MergeFrom(result);
+      resp->add_results()->MergeFrom(result);
     }
 
     boost::posix_time::ptime end_time(
         boost::posix_time::microsec_clock::universal_time());
     boost::posix_time::time_duration duration = end_time - start_time;
-    resp.set_time_elapsed(duration.total_milliseconds());
-
-    response.mutable_search_response()->MergeFrom(resp);
-
+    resp->set_time_elapsed(duration.total_milliseconds());
   } else {
     std::cerr << this << " don't know how to handle queries of that type" <<
         std::endl;
@@ -163,6 +161,10 @@ void IndexReaderConnection::Search(std::size_t size) {
 
   std::ostream os(&data_buffer_);
   os << size_header << compressed_response;
+  std::cout << this << " sending response of size " <<
+      compressed_response.size() << " after " << resp->time_elapsed() <<
+      " ms" << std::endl;
+
 #else
    std::string size_header;
    Uint64ToString(response.ByteSize(), &size_header);
@@ -170,10 +172,11 @@ void IndexReaderConnection::Search(std::size_t size) {
    std::ostream os(&data_buffer_);
    os << size_header;
    response.SerializeToOstream(&os);
+   std::cout << this << " sending response of size " << response.ByteSize() <<
+       " after " << resp->time_elapsed() << " ms" << std::endl;
+
 #endif
 
-  std::cout << this << " sending response of size " << response.ByteSize() <<
-      std::endl;
   boost::asio::async_write(
       socket_, data_buffer_,
       std::bind(&IndexReaderConnection::WriteCallback, this,
