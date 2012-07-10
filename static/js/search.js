@@ -57,7 +57,7 @@ $(document).ready(function () {
                         'csearch_time': r.csearch_time,
                         'search_results': r.results,
                         'num_results': r.results.length,
-                        'total_results': r.total_results
+                        'overflowed': r.overflowed
                     };
                     $search_results.empty();
                     renderTemplate('search_results.mustache',

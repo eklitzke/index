@@ -37,13 +37,15 @@ class SearchHandler(handler_meta.RequestHandler):
         self.ensure_released()
         try:
             escaped_query = escape.xhtml_escape(query).encode('utf-8')
+            search_results = results.results[:self.limit - 1]
+            overflowed = len(results.results) == self.limit
             json_results = {
                 'results': [],
-                'num_results': len(results.results),
-                'total_results': results.total_results,
+                'num_results': len(search_results),
+                'overflowed': overflowed,
                 'csearch_time': results.time_elapsed
             }
-            for result in results.results:
+            for result in search_results:
                 val = {
                     'filename': _filename_re.sub('', result.filename),
                     'line_num': result.line_num,
@@ -71,6 +73,7 @@ class SearchHandler(handler_meta.RequestHandler):
     @web.asynchronous
     def get(self):
         query = self.get_argument('query', '', strip=False)
+        self.limit = self.rpc_client.limit()
         try:
             self.rpc_client.search(
                 query, functools.partial(self.search_callback, query))

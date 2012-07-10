@@ -10,8 +10,9 @@
 #include <boost/filesystem.hpp>
 #include <re2/re2.h>
 
-#include "./index.h"
+#include "./ngram_index_reader.h"
 #include "./index.pb.h"
+#include "./util.h"
 
 #include <string>
 #include <thread>
@@ -24,7 +25,6 @@ class IndexReaderConnection {
   // on the heap (as they must run in their own thread).
   static IndexReaderConnection *New(const std::string &db_path) {
     IndexReaderConnection *conn = new IndexReaderConnection(db_path);
-    conn->Initialize();
     return conn;
   }
 
@@ -43,13 +43,11 @@ class IndexReaderConnection {
   std::array<char, 8> size_buffer_;
   boost::asio::streambuf data_buffer_;
 
-  IndexReader reader_;
+  NGramIndexReader reader_;
   boost::asio::ip::tcp::socket socket_;
 
   IndexReaderConnection(const std::string &db_path)
-      :started_(false), reader_(db_path), socket_(io_service_) {}
-
-  void Initialize();
+      :started_(false), reader_(db_path, 3), socket_(io_service_) {}
 
   void Search(std::size_t size);
 
@@ -67,10 +65,6 @@ class IndexReaderConnection {
   void SelfDestruct();
 };
 
-void IndexReaderConnection::Initialize() {
-  assert(reader_.Initialize());
-}
-
 void IndexReaderConnection::Start() {
   assert(started_ == false);
   started_ = true;
@@ -82,9 +76,8 @@ void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
                                          std::size_t bytes_transferred) {
   if (error) {
     if (error == boost::asio::error::eof) {
-      std::cout << "size header, connection reset by peer" << std::endl;
     } else {
-      std::cout << "got error " << error << " after reading " <<
+      std::cerr << "got error " << error << " after reading " <<
           bytes_transferred << " bytes while waiting for size header" <<
           std::endl;
     }
@@ -93,9 +86,6 @@ void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
     assert(bytes_transferred == 8);
 
     std::uint64_t size = ToUint64(size_buffer_);
-    std::cout << this << " got a query of size " << size << ", reading" <<
-        std::endl;
-
     boost::asio::streambuf::mutable_buffers_type bufs = data_buffer_.prepare(
         size);
 
@@ -108,10 +98,8 @@ void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
 
 void IndexReaderConnection::DataCallback(const boost::system::error_code& error,
                                          std::size_t bytes_transferred) {
-  std::cout << "in data callback, bytes_transferred = " <<
-      bytes_transferred << std::endl;
   if (error) {
-    std::cout << "got error " << error << "while waiting for data" <<
+    std::cerr << "got error " << error << "while waiting for data" <<
         std::endl;
     SelfDestruct();
   } else {
@@ -139,17 +127,12 @@ void IndexReaderConnection::Search(std::size_t size) {
         search_query.query() << "\"" << std::endl;
 
     SearchResults results(search_query.limit());
-    if (!reader_.Search(search_query.query(), &results)) {
-      std::cerr << "Failed to execute query!" << std::endl;
-      SelfDestruct();
-      return;
-    }
+    reader_.Find(search_query.query(), &results);
 
     SearchQueryResponse resp;
     for (const auto &result : results.results()) {
       resp.add_results()->MergeFrom(result);
     }
-    resp.set_total_results(results.attempted());
 
     boost::posix_time::ptime end_time(
         boost::posix_time::microsec_clock::universal_time());
@@ -172,7 +155,7 @@ void IndexReaderConnection::Search(std::size_t size) {
   os << size_header;
   response.SerializeToOstream(&os);
 
-  std::cout << "sending response of size " << response.ByteSize() <<
+  std::cout << this << " sending response of size " << response.ByteSize() <<
       std::endl;
   boost::asio::async_write(
       socket_, data_buffer_,
@@ -192,7 +175,6 @@ void IndexReaderConnection::WriteCallback(
 }
 
 void IndexReaderConnection::WaitForRequest() {
-  std::cout << this << " waiting for request..." << std::endl;
   boost::asio::async_read(
       socket_, boost::asio::buffer(size_buffer_.data(), 8),
       std::bind(&IndexReaderConnection::SizeCallback, this,
@@ -221,7 +203,6 @@ void IndexReaderServer::Start() {
 
 void IndexReaderServer::StartAccept() {
   IndexReaderConnection *conn = IndexReaderConnection::New(db_path_);
-  std::cout << "in accept loop..." << std::endl;
   acceptor_.async_accept(
       *conn->socket(),
       std::bind(&IndexReaderServer::HandleAccept, this, conn,

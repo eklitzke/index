@@ -13,5 +13,11 @@
   {{/search_results}}
 </table>
 <br>
-Showing {{num_results}} of {{total_results}} results, backend returned in
-{{csearch_time}} ms.
+{{#overflowed}}
+Result set too large, limiting results to first {{num_results}} matches.
+{{/overflowed}}
+{{^overflowed}}
+Showing all {{num_results}} matches.
+{{/overflowed}}
+
+{{search_text}} Backend returned in {{csearch_time}} ms. <a href="/about">about<a>

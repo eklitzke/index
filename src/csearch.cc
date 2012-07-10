@@ -4,7 +4,8 @@
 #include <boost/filesystem.hpp>
 #include <re2/re2.h>
 
-#include "./index.h"
+#include "./context.h"
+#include "./ngram_index_reader.h"
 
 #include <string>
 
@@ -15,7 +16,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
-      ("limit", po::value<std::size_t>()->default_value(0))
+      ("limit", po::value<std::size_t>()->default_value(100))
       ("no-print", "suppress printing")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ("query,q", po::value<std::string>(), "the search query, mandatory")
@@ -30,24 +31,19 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  codesearch::Context ctx;
+
   std::string db_path_str = vm["db-path"].as<std::string>();
-  codesearch::IndexReader reader(db_path_str);
-  if (!reader.Initialize()) {
-    std::cerr << "Failed to initialize database reader!" << std::endl;
-    return 1;
-  };
+  codesearch::NGramIndexReader reader(db_path_str, 3);
 
   std::ios_base::sync_with_stdio(false);
   char buffer[1024];
   std::cout.rdbuf()->pubsetbuf(buffer, 1024);
 
-  codesearch::SearchResults results(
-      vm["limit"].as<std::size_t>());
+  std::size_t limit = vm["limit"].as<std::size_t>();
+  codesearch::SearchResults results(limit);
   std::string query = vm["query"].as<std::string>();
-  if (!reader.Search(query, &results)) {
-    std::cerr << "Failed to execute query!" << std::endl;
-    return 1;
-  }
+  reader.Find(query, &results);
   if (!vm.count("no-print")) {
     for (const auto &val : results.results()) {
       std::cout << val.filename() << ":" << val.line_num() <<

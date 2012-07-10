@@ -9,4 +9,12 @@ class HomeHandler(handler_meta.RequestHandler):
         self.env['search_js_url'] = self.static_path('js/search.js')
         self.render('search.html')
 
+class AboutHanlder(handler_meta.RequestHandler):
+
+    path = '/about'
+
+    def get(self):
+        self.env['title'] = 'about'
+        self.render('about.html')
+
 from codesearch import search  # for side-effects

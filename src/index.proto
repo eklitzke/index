@@ -33,16 +33,36 @@
 package codesearch;
 
 message IndexConfig {
-  optional string db_directory = 1 [default = "/tmp/index"];
-  optional uint32 ngram_size = 2 [default = 3];
-  optional uint32 db_parallelism = 3 [default = 8];
+  required uint64 shard_size = 1;
+  required uint64 num_shards = 2;
 
   enum DatabaseState {
     EMPTY = 0;
     BUILDING = 1;
     COMPLETE = 2;
   }
-  optional DatabaseState state = 4 [default = EMPTY];
+  optional DatabaseState state = 3 [default = EMPTY];
+}
+
+// The format of the SSTable is like this:
+//  - 8-bytes, SSTableHeader size (big-endian)
+//  - SSTableHeader
+//  - padding bytes, to make things word-aligned
+//  - index
+//  - data
+//
+// The pad-size is implicit, it's whatever value 8-byte aligns the
+// SSTableHeader. To make sure that the SSTable is "valid",
+// i.e. completely written, you check that the size of the file is 8 +
+// sizeof(SStableHeader) + pad_size + index_size + data_size
+
+message SSTableHeader {
+  required uint64 index_size = 1;
+  required uint64 data_size = 2;
+  required bytes min_value = 3;
+  required bytes max_value = 4;
+  required uint64 key_size = 5;
+  required uint64 num_keys = 6;
 }
 
 message FileValue {
@@ -84,8 +104,7 @@ message SearchQueryRequest {
 
 message SearchQueryResponse {
   repeated SearchResult results = 1;
-  optional uint64 total_results = 2;
-  optional uint64 time_elapsed = 3;
+  optional uint64 time_elapsed = 2;
 }
 
 message RPCRequest {

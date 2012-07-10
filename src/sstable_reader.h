@@ -4,22 +4,20 @@
 #ifndef SRC_SSTABLE_READER_H_
 #define SRC_SSTABLE_READER_H_
 
-#include <string>
+#include "./index.pb.h"
 
+#include <string>
 
 static_assert(sizeof(std::uint64_t) == 8, "Something's whack with uint64_t");
 
 namespace codesearch {
 class SSTableReader {
  public:
-  explicit SSTableReader(const std::string &name)
-      :name_(name), mmap_addr_(nullptr) {}
+  explicit SSTableReader(const std::string &name);
 
-  void Initialize();
-
-  bool Find(const char *needle, std::string *result);
-  bool Find(std::uint64_t needle, std::string *result);
-  bool Find(const std::string &needle, std::string *result);
+  bool Find(const char *needle, std::string *result) const;
+  bool Find(std::uint64_t needle, std::string *result) const;
+  bool Find(const std::string &needle, std::string *result) const;
 
   // When searching for multiple needles (e.g. as in a SQL "IN"
   // query), an optimization that can be done is to search for the
@@ -28,24 +26,22 @@ class SSTableReader {
   // in index_reader.cc, and is the motivation for the FindWithBounds
   // methods.
   bool FindWithBounds(const char *needle, std::string *result,
-                      std::size_t *lower_bound);
+                      std::size_t *lower_bound) const;
   bool FindWithBounds(const std::string &needle, std::string *result,
-                      std::size_t *lower_bound);
+                      std::size_t *lower_bound) const;
 
   std::size_t lower_bound() const { return 0; }
-  std::size_t upper_bound() const { return index_len_ >> 4; }
-
-  ~SSTableReader();
+  std::size_t upper_bound() const { return hdr_.num_keys(); }
 
  private:
-  std::string name_;
-  FILE* index_file_;
+  // this address points to the start of the mmaped index
   const char *mmap_addr_;
 
-  std::size_t data_len_;
-  std::size_t index_len_;
+  // the header read from the index
+  SSTableHeader hdr_;
 
-  void PadString(const std::string &in, std::string *out);
+  // pad a search key
+  void PadNeedle(const std::string &in, std::string *out) const;
 };
 }
 

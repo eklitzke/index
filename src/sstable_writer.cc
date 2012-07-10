@@ -3,15 +3,26 @@
 
 #include "./sstable_writer.h"
 #include "./util.h"
+#include "./index.pb.h"
+
 #ifdef USE_SNAPPY
 #include <snappy.h>
 #endif
 #include <cstring>
 
-namespace {
+namespace codesearch {
+SSTableWriter::SSTableWriter(const std::string &name,
+                             std::size_t key_size)
+    :name_(name), state_(UNINITIALIZED), index_size_(0), data_size_(0),
+     num_keys_(0) {
+  std::size_t sizediff = key_size % sizeof(std::size_t);
+  if (sizediff != 0) {
+    key_size += sizeof(std::size_t) - sizediff;
+  }
+  key_size_ = key_size;
+  last_key_ = std::string(key_size, '\0');
 }
 
-namespace codesearch {
 void SSTableWriter::Initialize() {
   assert(state_ == UNINITIALIZED);
   idx_out_.open(name_ + ".idx",std::ofstream::binary | std::ofstream::trunc |
@@ -23,15 +34,25 @@ void SSTableWriter::Initialize() {
 
 void SSTableWriter::Add(const std::string &key, const std::string &val) {
   assert(state_ == INITIALIZED);
-  std::string padded_key = std::string(8 - key.size(), '\0') + key;
+  assert(key.size() <= key_size_);
+  num_keys_++;
 
-  assert(memcmp(last_key_.c_str(), padded_key.c_str(), 8) <= 0);
+  std::string padded_key = std::string(key_size_ - key.size(), '\0') + key;
+
+  if (index_size_ == 0) {
+    min_key_ = padded_key;
+  }
+
+  assert(memcmp(last_key_.c_str(), padded_key.c_str(), key_size_) <= 0);
   last_key_ = padded_key;
-  idx_out_.write(padded_key.c_str(), 8);
+  idx_out_.write(padded_key.c_str(), key_size_);
+  assert(!idx_out_.fail() && !idx_out_.eof());
 
   std::string offset_str;
-  Uint64ToString(offset_, &offset_str);
-  idx_out_.write(offset_str.c_str(), 8);
+  Uint64ToString(data_size_, &offset_str);
+  idx_out_.write(offset_str.c_str(), sizeof(std::uint64_t));
+  assert(!idx_out_.fail() && !idx_out_.eof());
+  index_size_ += key_size_ + sizeof(std::uint64_t);
 
 #ifdef USE_SNAPPY
   std::string compress_data;
@@ -42,11 +63,18 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
 
   std::string data_size;
   Uint64ToString(compress_data.size(), &data_size);
-  data_out_.write(data_size.c_str(), 8);
+  data_out_.write(data_size.c_str(), sizeof(std::uint64_t));
+  assert(!data_out_.fail() && !data_out_.eof());
   data_out_.write(compress_data.c_str(), compress_data.size());
-  offset_ += compress_data.size() + 8;
-
-
+  assert(!data_out_.fail() && !data_out_.eof());
+  std::string padding = GetWordPadding(compress_data.size());
+  if (padding.empty()) {
+    data_size_ += sizeof(std::uint64_t) + compress_data.size();
+  } else {
+    data_out_.write(padding.c_str(), padding.size());
+    assert(!data_out_.fail() && !data_out_.eof());
+    data_size_ += sizeof(std::uint64_t) + compress_data.size() + padding.size();
+  }
 }
 
 void SSTableWriter::Add(const std::uint64_t key,
@@ -85,21 +113,36 @@ void SSTableWriter::Merge() {
   std::ofstream out(name_ + ".sst", std::ofstream::binary |
                     std::ofstream::trunc | std::ofstream::out);
 
-  WriteMergeSize(&idx, &out);
-  WriteMergeSize(&data, &out);
+  assert(index_size_ == FileSize(&idx, &out));
+  assert(data_size_ == FileSize(&data, &out));
+
+  SSTableHeader header;
+  header.set_index_size(index_size_);
+  header.set_data_size(data_size_);
+  header.set_min_value(min_key_);
+  header.set_max_value(last_key_);
+  header.set_key_size(key_size_);
+  header.set_num_keys(num_keys_);
+
+  std::uint64_t header_size = header.ByteSize();
+  std::string header_size_str;
+  Uint64ToString(header_size, &header_size_str);
+  out.write(header_size_str.c_str(), header_size_str.size());
+  header.SerializeToOstream(&out);
+  std::string padding = GetWordPadding(header_size);
+  out.write(padding.c_str(), padding.size());
+
   WriteMergeContents(&idx, &out);
   WriteMergeContents(&data, &out);
   assert(boost::filesystem::remove(name_ + ".idx"));
   assert(boost::filesystem::remove(name_ + ".data"));
 }
 
-void SSTableWriter::WriteMergeSize(std::ifstream *is, std::ofstream *os) {
+std::uint64_t SSTableWriter::FileSize(std::ifstream *is, std::ofstream *os) {
   is->seekg(0, std::ifstream::end);
   std::uint64_t file_size = static_cast<std::uint64_t>(is->tellg());
   is->seekg(0, std::ifstream::beg);
-  std::string fs;
-  Uint64ToString(file_size, &fs);
-  os->write(fs.c_str(), 8);
+  return file_size;
 }
 
 void SSTableWriter::WriteMergeContents(std::ifstream *is, std::ofstream *os) {

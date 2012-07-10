@@ -4,6 +4,8 @@
 #include "./index_writer.h"
 #include "./util.h"
 
+#include <boost/lexical_cast.hpp>
+
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -13,40 +15,61 @@
 
 namespace codesearch {
 bool IndexWriter::Initialize() {
+  boost::filesystem::path p(GetPathName(""));
+  assert(!boost::filesystem::is_directory(p));
+  boost::filesystem::create_directories(p);
+
   WriteStatus(IndexConfig_DatabaseState_EMPTY);
-  shards_.reserve(database_parallelism_);
-  for (std::uint32_t i = 0; i < database_parallelism_; i++) {
-    ShardWriter *shard = new ShardWriter(index_directory_, ngram_size_, i);
-    if (!shard->Initialize()) {
-      return false;
-    }
-    shards_.push_back(shard);
-  }
+
   return true;
 }
 
-void IndexWriter::AddFile(const std::string &filename) {
-  shards_[next_shard_]->AddFile(filename);
-  next_shard_ = (next_shard_ + 1) % database_parallelism_;
-}
-
 IndexWriter::~IndexWriter() {
-  for (auto &shard : shards_) {
-    delete shard;
+  if (sstable_ != nullptr) {
+    sstable_->Merge();
+    delete sstable_;
   }
   WriteStatus(IndexConfig_DatabaseState_COMPLETE);
+}
+
+std::string IndexWriter::GetPathName(const std::string &name) {
+  if (!name.empty()) {
+    return index_directory_ + "/" + name_ + "/" + name;
+  } else {
+    return index_directory_ + "/" + name_;
+  }
+}
+
+void IndexWriter::EnsureSSTable() {
+  if (sstable_ == nullptr) {
+    std::string name = GetPathName(
+        "shard_" + boost::lexical_cast<std::string>(shard_num_));
+    sstable_ = new SSTableWriter(name, key_size_);
+    sstable_->Initialize();
+  }
+}
+
+void IndexWriter::Rotate() {
+  assert(sstable_ != nullptr);
+  sstable_->Merge();
+  delete sstable_;
+  sstable_ = nullptr;
+  shard_num_++;
 }
 
 void IndexWriter::WriteStatus(IndexConfig_DatabaseState new_state) {
   state_ = new_state;
 
   IndexConfig config;
-  config.set_db_directory(index_directory_);
-  config.set_ngram_size(ngram_size_);
-  config.set_db_parallelism(database_parallelism_);
+  config.set_shard_size(shard_size_);
+  std::uint64_t num_shards = shard_num_ + 1;
+  if (sstable_ == nullptr) {
+    num_shards--;
+  }
+  config.set_num_shards(num_shards);
   config.set_state(state_);
 
-  std::string config_path = index_directory_ + "/config";
+  std::string config_path = GetPathName("config");
   std::ofstream out(config_path.c_str(),
                     std::ofstream::binary |
                     std::ofstream::out |
@@ -54,5 +77,6 @@ void IndexWriter::WriteStatus(IndexConfig_DatabaseState new_state) {
   assert(config.SerializeToOstream(&out));
   out.close();
 }
+
 
 }  // index

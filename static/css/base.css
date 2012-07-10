@@ -6,3 +6,6 @@ em { font-decoration: none; font-style: normal; font-weight: bold; }
 .black { color: default; }
 .grey { color: grey; }
 td { padding-left: 1em; }
+
+.about { max-width: 900px; }
+p { margin-top: 1em; }

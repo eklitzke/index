@@ -2,14 +2,16 @@
 {
     'variables': {
         'reader_sources': [
-            'src/index_reader.cc',
-            'src/shard_reader.cc',
+            'src/context.cc',
+            'src/integer_index_reader.cc',
+            'src/mmap.cc',
+            'src/ngram_index_reader.cc',
+            'src/search_results.cc',
             'src/sstable_reader.cc',
         ],
         'writer_sources': [
             'src/index_writer.cc',
-            'src/posting_list.cc',
-            'src/shard_writer.cc',
+            'src/ngram_index_writer.cc',
             'src/sstable_writer.cc',
         ],
         'rpc_sources': [
@@ -43,6 +45,15 @@
     'targets': [
         {
             'type': 'executable',
+            'target_name': 'inspect_shard',
+                    'sources': [
+                        'src/index.pb.cc',
+                        'src/util.cc',
+                        'src/inspect_shard.cc',
+                    ],
+        },
+        {
+            'type': 'executable',
             'target_name': 'cindex',
             'sources': [
                 '<@(writer_sources)',
@@ -59,7 +70,7 @@
         },
         {
             'type': 'executable',
-            'target_name': 'crpcserver',
+            'target_name': 'rpcserver',
             'sources': [
                 '<@(reader_sources)',
                 '<@(rpc_sources)',
