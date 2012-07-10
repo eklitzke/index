@@ -11,6 +11,7 @@
         ],
         'writer_sources': [
             'src/index_writer.cc',
+            'src/ngram_counter.cc',
             'src/ngram_index_writer.cc',
             'src/sstable_writer.cc',
         ],

@@ -2,6 +2,7 @@
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
 #include "./ngram_index_writer.h"
+#include "./ngram_counter.h"
 
 #include <set>
 
@@ -97,16 +98,20 @@ std::size_t NGramIndexWriter::EstimateSize() {
 
 void NGramIndexWriter::MaybeRotate(bool force) {
   if (force || EstimateSize() >= index_writer_.shard_size()) {
+    NGramCounter *counter = NGramCounter::Instance();
     for (const auto &it : lists_) {
       NGramValue ngram_val;
+      std::size_t val_count = 0;
       {
         std::uint64_t last_val = 0;
         for (const auto v : it.second) {
           assert(!last_val || v > last_val);
           ngram_val.add_position_ids(v - last_val);
           last_val = v;
+          val_count++;
         }
       }
+      counter->UpdateCount(it.first, val_count);
       index_writer_.Add(it.first, ngram_val);
     }
     index_writer_.Rotate();

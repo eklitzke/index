@@ -84,6 +84,15 @@ message NGramValue {
   repeated uint64 position_ids = 1 [packed=true];
 }
 
+message NGramCount {
+  required bytes ngram = 1;
+  required uint64 count = 2;
+}
+
+message NGramCounts {
+  repeated NGramCount ngram_counts = 1;
+}
+
 message PositionValue {
   required uint64 file_id = 1;
   required uint64 file_offset = 2;

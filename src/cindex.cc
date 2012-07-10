@@ -5,8 +5,11 @@
 #include <re2/re2.h>
 
 #include "./ngram_index_writer.h"
+#include "./ngram_counter.h"
+#include "./index.pb.h"
 
 #include <string>
+#include <fstream>
 
 namespace po = boost::program_options;
 
@@ -69,6 +72,13 @@ int main(int argc, char **argv) {
     }
     std::cout << "finishing database..." << std::endl;
   }
+  std::cout << "writing counts..." << std::endl;
+  std::ofstream ngram_counts(db_path_str + "/ngram_counts",
+                std::ofstream::binary | std::ofstream::trunc |
+                std::ofstream::out);
+  codesearch::NGramCounter *counter = codesearch::NGramCounter::Instance();
+  codesearch::NGramCounts counts = counter->ReverseSortedCounts();
+  counts.SerializeToOstream(&ngram_counts);
   std::cout << "done indexing" << std::endl;
   return 0;
 }
