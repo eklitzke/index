@@ -99,7 +99,8 @@ message SearchResult {
 
 message SearchQueryRequest {
   required string query = 1;
-  optional uint64 limit = 2;
+  optional uint64 limit = 2 [default = 100];
+  optional uint64 offset = 3 [default = 0];
 }
 
 message SearchQueryResponse {

@@ -25,22 +25,23 @@ class SearchHandler(handler_meta.RequestHandler):
             self.rpc_client = None
             self.rpc_client_released = True
 
-    @staticmethod
-    def format_string(s, escaped_query):
+    def format_string(self, s):
         s = escape.xhtml_escape(s)
-        s = s.replace(escaped_query, '<em>' + escaped_query + '</em>')
+        s = s.replace(self.escaped_query, '<em>' + self.escaped_query + '</em>')
         s = s.replace(' ', '&nbsp;')
         s = s.replace('\t', '&nbsp;' * 8)
         return s
 
-    def search_callback(self, query, results):
+    def search_callback(self, results):
         self.ensure_released()
+        self.escaped_query = escape.xhtml_escape(self.query)
         try:
-            escaped_query = escape.xhtml_escape(query).encode('utf-8')
-            search_results = results.results[:self.limit - 1]
-            overflowed = len(results.results) == self.limit
+            search_results = results.results[:self.limit]
+            overflowed = len(results.results) > self.limit
             json_results = {
-                'results': [],
+                'offset': self.offset,
+                'escaped_query': self.escaped_query,
+                'search_results': [],
                 'num_results': len(search_results),
                 'overflowed': overflowed,
                 'csearch_time': results.time_elapsed
@@ -49,10 +50,10 @@ class SearchHandler(handler_meta.RequestHandler):
                 val = {
                     'filename': _filename_re.sub('', result.filename),
                     'line_num': result.line_num,
-                    'line_text': self.format_string(
-                        result.line_text, escaped_query)
+                    'raw_text': result.line_text,
+                    'html_text': self.format_string(result.line_text),
                 }
-                json_results['results'].append(val)
+                json_results['search_results'].append(val)
             self.render_json(json_results)
             self.finish()
         except IOError:
@@ -72,11 +73,17 @@ class SearchHandler(handler_meta.RequestHandler):
 
     @web.asynchronous
     def get(self):
-        query = self.get_argument('query', '', strip=False)
-        self.limit = self.rpc_client.limit()
+        self.query = self.get_argument('query', '', strip=False).encode('utf-8')
+        limit = int(self.get_argument('limit', 40))
+        limit = max(limit, 20) # at least 20 results, please
+        if limit > 400:
+            raise web.HTTPError(403)
+            return
+        self.limit = limit
+        self.offset = int(self.get_argument('offset', 0))
         try:
             self.rpc_client.search(
-                query, functools.partial(self.search_callback, query))
+                self.query, self.search_callback, self.limit + 1, self.offset)
         except IOError:
             if self.rpc_client is not None:
                 self.rpc_client.close()

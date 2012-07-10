@@ -124,9 +124,11 @@ void IndexReaderConnection::Search(std::size_t size) {
     const SearchQueryRequest &search_query = request.search_query();
     std::cout << this << " doing search query, request_num = " <<
         request.request_num() << ", query = \"" <<
-        search_query.query() << "\"" << std::endl;
+        search_query.query() << "\", offset = " <<
+        search_query.offset() << ", limit = " <<
+        search_query.limit() << std::endl;
 
-    SearchResults results(search_query.limit());
+    SearchResults results(search_query.limit(), search_query.offset());
     reader_.Find(search_query.query(), &results);
 
     SearchQueryResponse resp;

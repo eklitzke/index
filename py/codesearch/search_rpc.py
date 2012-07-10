@@ -16,13 +16,11 @@ class SearchRpcClient(rpc.RpcClient):
             cls._instance = cls(host, port)
             return cls._instance
 
-    def limit(self):
-        return 41
-
-    def search(self, query, cb, limit=None):
+    def search(self, query, cb, limit=40, offset=0):
         request = index_pb2.SearchQueryRequest()
         request.query = query
-        request.limit = limit or self.limit()
+        request.limit = limit
+        request.offset = offset
         self.send(request)
         self.recv(cb)
 

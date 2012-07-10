@@ -1,74 +1,89 @@
 var S = {};
 S.currentSearch = null;
 S.lastQuery = null;
+S.nextOffset = 0;
+S.search = (function (searchVal, limit) {
+    limit = parseInt(limit || 40);
+    console.log('search, val = ' + searchVal + ', limit = ' + limit);
+    var $searchResults = $('#search_results');
+    if (searchVal.length < 3) {
+        $('#search_status').
+            css({'visibility': 'visible'}).
+            text('please enter a query of 3+ characters');
+        $searchResults.empty();
+    } else if (limit || searchVal != S.lastQuery) {
+        console.log('really doing stuff');
+        if (S.currentSearch !== null) {
+            console.log('aborting current search');
+            S.currentSearch.abort();
+        }
+        S.lastQuery = searchVal;
+        $searchResults.addClass('grey');
+        $('#search_status').
+            css({'visibility': 'visible'}).
+            text('searching...');
+        console.log('dispatching request for "' + searchVal + '"');
+        var params = {'query': searchVal};
+        if (limit) {
+            params['limit'] = limit;
+        }
+        S.currentSearch = $.getJSON(
+            '/api/search?' + $.param(params), function (r) {
+                S.currentSearch = null;
+                S.nextOffset = r.next_offset;
+                $searchResults.empty();
+                r['show_more'] = (limit < 400);
+                S.renderTemplate('search_results.mustache',
+                                 $searchResults, r, function () {
+                                     $('#more_link').click(function (e) {
+                                         e.preventDefault();
+                                         S.search(searchVal, limit + 40)
+                                         console.log('lol');
+                                     })});
+                $searchResults.removeClass('grey');
+                $('#search_status').css({'visibility': 'hidden'});
+            });
+    }
+});
 
-$(document).ready(function () {
-    var templates = {};
-    var prefetchTemplate = (function (name) {
+S.templates = {};
+S.prefetchTemplate = (function (name) {
+    var url = '/static/mustache/' + name + '?v=';
+    url += (new Date()).valueOf();
+    $.get(url, function (d) {
+        S.templates[name] = d;
+    })
+});
+
+S.renderToElement = (function (template, element, view, after) {
+    console.info('in render to element');
+    console.log(element);
+    console.log(view);
+    element.html(Mustache.render(template, view));
+    if (after != undefined) {
+        after();
+    }
+});
+
+S.renderTemplate = (function (name, element, view, after) {
+    if (S.templates[name] !== undefined) {
+        S.renderToElement(S.templates[name], element, view, after);
+    } else {
         var url = '/static/mustache/' + name + '?v=';
         url += (new Date()).valueOf();
         $.get(url, function (d) {
-            templates[name] = d;
+            S.templates[name] = d;
+            S.renderToElement(d, element, view, after);
         })
-    });
-    var renderToElement = (function (template, element, view) {
-        element.html(Mustache.render(template, view));
-    });
-    var renderTemplate = (function (name, element, view) {
-        if (templates[name] !== undefined) {
-            renderToElement(templates[name], element, view);
-        } else {
-            var url = '/static/mustache/' + name + '?v=';
-            url += (new Date()).valueOf();
-            $.get(url, function (d) {
-                templates[name] = d;
-                renderToElement(d, element, view);
-            })
-        }
-    });
+    }
+});
 
+$(document).ready(function () {
     console.log('ready');
-    var $search_results = $('#search_results');
     $('#search_input').keyup(function (e) {
         console.log('----------');
         var searchVal = $('#search_input').val();
-        if (searchVal.length < 3) {
-            $('#search_status').
-                css({'visibility': 'visible'}).
-                text('please enter a query of 3+ characters');
-            $search_results.empty();
-        } else if (searchVal != S.lastQuery) {
-            if (S.currentSearch !== null) {
-                console.log('aborting current search');
-                S.currentSearch.abort();
-            }
-            S.lastQuery = searchVal;
-            $search_results.addClass('grey');
-            $('#search_status').
-                css({'visibility': 'visible'}).
-                text('searching...');
-            console.log('dispatching request for "' + searchVal + '"');
-            S.currentSearch = $.getJSON(
-                '/api/search?' + $.param({'query': searchVal}), function (r) {
-                    console.log('GOT RESPONSE ->');
-                    console.log(r);
-                    S.currentSearch = null;
-                    var view = {
-                        'csearch_time': r.csearch_time,
-                        'search_results': r.results,
-                        'num_results': r.results.length,
-                        'overflowed': r.overflowed
-                    };
-                    $search_results.empty();
-                    renderTemplate('search_results.mustache',
-                                   $search_results, view);
-                    $search_results.removeClass('grey');
-                    $('#search_status').css({'visibility': 'hidden'});
-                });
-            console.log('dispatched value was ');
-            console.log(S.currentSearch);
-        }
+        S.search(searchVal);
     });
-    prefetchTemplate('empty_results.mustache');
-    prefetchTemplate('search_results.mustache');
+    S.prefetchTemplate('search_results.mustache');
 });

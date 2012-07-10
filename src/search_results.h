@@ -14,13 +14,14 @@ namespace codesearch {
 
 class SearchResults {
  public:
-  SearchResults() :capacity_(0) {}
+  SearchResults(std::size_t capacity, std::size_t offset)
+      :capacity_(capacity), offset_(offset), cur_offset_(0) {}
   explicit SearchResults(std::size_t capacity)
-      :capacity_(capacity) {}
+      :SearchResults(capacity, 0) {}
+  SearchResults()
+      :SearchResults(0, 0) {}
 
   void Reset();
-
-  void SetCapacity(std::size_t capacity);
 
   bool IsFull();
 
@@ -28,8 +29,6 @@ class SearchResults {
   // container was full (and hence the result was not added).
   bool AddResult(const std::string &filename, std::size_t line_num,
                  const std::string &line_text);
-
-  void Extend(SearchResults *other);
 
   std::size_t size() {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -44,7 +43,9 @@ class SearchResults {
   std::mutex mutex_;
 
  private:
-  std::size_t capacity_;
+  const std::size_t capacity_;
+  const std::size_t offset_;
+  std::size_t cur_offset_;
   std::vector<SearchResult> results_;
 };
 }
