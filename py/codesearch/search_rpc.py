@@ -6,12 +6,12 @@ class SearchRpcClient(rpc.RpcClient):
 
     _instance = None
 
-    def __init__(self, host='127.0.0.1', port=9001, io_loop=None):
+    def __init__(self, host='127.0.0.1', port=9900, io_loop=None):
         super(SearchRpcClient, self).__init__(host, port, io_loop)
         self.pending_callbacks = {}
 
     @classmethod
-    def instance(cls, host='127.0.0.1', port=9001):
+    def instance(cls, host='127.0.0.1', port=9900):
         if cls._instance is None:
             cls._instance = cls(host, port)
             return cls._instance

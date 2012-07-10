@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
-      ("port,p", po::value<int>()->default_value(9001))
+      ("port,p", po::value<int>()->default_value(9900))
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ;
 
