@@ -27,6 +27,10 @@ class NGramIndexReader {
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
   std::vector<SSTableReader*> shards_;
+  std::vector<std::string> sorted_ngrams_;
+
+  // Find an ngram smaller than the ngram_size_
+  void FindSmall(const std::string &query, SearchResults *results);
 
   void FindShard(const std::string &query,
                  const std::set<std::string> &ngrams,

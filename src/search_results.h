@@ -21,8 +21,6 @@ class SearchResults {
   SearchResults()
       :SearchResults(0, 0) {}
 
-  void Reset();
-
   bool IsFull();
 
   // Add a result; returns true if the result was added, false if the

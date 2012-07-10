@@ -18,6 +18,7 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config(config_name.c_str(),
                        std::ifstream::binary | std::ifstream::in);
+  assert(!config.fail());
   IndexConfig index_config;
   index_config.ParseFromIstream(&config);
   for (std::size_t i = 0; i < index_config.num_shards(); i++) {
@@ -25,6 +26,16 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
                               boost::lexical_cast<std::string>(i) + ".sst");
     SSTableReader *shard = new SSTableReader(shard_name);
     shards_.push_back(shard);
+  }
+
+  std::string ngram_counts_name = index_directory + "/ngram_counts";
+  std::ifstream ngram_counts(ngram_counts_name.c_str(),
+                             std::ifstream::binary | std::ifstream::in);
+  assert(!ngram_counts.fail());
+  NGramCounts ngram_counts_proto;
+  ngram_counts_proto.ParseFromIstream(&ngram_counts);
+  for (const auto &ngram : ngram_counts_proto.ngram_counts()) {
+    sorted_ngrams_.push_back(ngram.ngram());
   }
 }
 
@@ -36,7 +47,10 @@ NGramIndexReader::~NGramIndexReader() {
 
 void NGramIndexReader::Find(const std::string &query,
                             SearchResults *results) {
-  results->Reset();
+  if (query.size() < ngram_size_) {
+    FindSmall(query, results);
+    return;
+  }
 
   // split the query into its constituent ngrams
   std::set<std::string> ngrams;
@@ -68,6 +82,18 @@ void NGramIndexReader::Find(const std::string &query,
       break;
     }
     threads.clear();
+  }
+}
+
+void NGramIndexReader::FindSmall(const std::string &query,
+                                 SearchResults *results) {
+  for (const auto &n : sorted_ngrams_) {
+    if (n.find(query) != std::string::npos) {
+      Find(n, results);
+      if (results->IsFull()) {
+        break;
+      }
+    }
   }
 }
 

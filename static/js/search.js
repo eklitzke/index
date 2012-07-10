@@ -6,10 +6,8 @@ S.search = (function (searchVal, limit) {
     limit = parseInt(limit || 40);
     console.log('search, val = ' + searchVal + ', limit = ' + limit);
     var $searchResults = $('#search_results');
-    if (searchVal.length < 3) {
-        $('#search_status').
-            css({'visibility': 'visible'}).
-            text('please enter a query of 3+ characters');
+    if (searchVal.length <= 0) {
+        //$('#search_status').css({'visibility': 'visible'});
         $searchResults.empty();
     } else if (limit || searchVal != S.lastQuery) {
         console.log('really doing stuff');

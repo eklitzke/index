@@ -4,11 +4,6 @@
 #include "./search_results.h"
 
 namespace codesearch {
-void SearchResults::Reset() {
-  std::lock_guard<std::mutex> guard(mutex_);
-  results_.clear();
-}
-
 bool SearchResults::IsFull() {
   std::lock_guard<std::mutex> guard(mutex_);
   return capacity_ && results_.size() >= capacity_;
