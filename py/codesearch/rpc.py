@@ -1,3 +1,4 @@
+import snappy
 import socket
 import struct
 import tornado.ioloop
@@ -45,6 +46,7 @@ class RpcClient(object):
 
     def recv(self, callback):
         def unpack_callback(data):
+            data = snappy.uncompress(data)
             container_msg = index_pb2.RPCResponse()
             container_msg.MergeFromString(data)
             if container_msg.HasField("search_response"):

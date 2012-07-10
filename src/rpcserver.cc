@@ -6,9 +6,11 @@
 #include <boost/program_options.hpp>
 #include <boost/date_time/microsec_time_clock.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
 #include <boost/filesystem.hpp>
 #include <re2/re2.h>
+#ifdef USE_SNAPPY
+#include <snappy.h>
+#endif  // USE_SNAPPY
 
 #include "./ngram_index_reader.h"
 #include "./index.pb.h"
@@ -150,12 +152,25 @@ void IndexReaderConnection::Search(std::size_t size) {
     return;
   }
 
+#ifdef USE_SNAPPY
+  std::string uncompressed_response, compressed_response;
+  response.SerializeToString(&uncompressed_response);
+  snappy::Compress(uncompressed_response.data(), uncompressed_response.size(),
+                   &compressed_response);
+
   std::string size_header;
-  Uint64ToString(response.ByteSize(), &size_header);
+  Uint64ToString(compressed_response.size(), &size_header);
 
   std::ostream os(&data_buffer_);
-  os << size_header;
-  response.SerializeToOstream(&os);
+  os << size_header << compressed_response;
+#else
+   std::string size_header;
+   Uint64ToString(response.ByteSize(), &size_header);
+
+   std::ostream os(&data_buffer_);
+   os << size_header;
+   response.SerializeToOstream(&os);
+#endif
 
   std::cout << this << " sending response of size " << response.ByteSize() <<
       std::endl;
