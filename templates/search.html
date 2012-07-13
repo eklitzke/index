@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}
+codesear.ch
+{% end %}
+
+{% block extra_js %}
+<script type="text/javascript"
+        src="{{static_url('js/search.js')}}"></script>
+{% end %}
+
+{% block body %}
+<input name="name" size="25" type="text" id="search_input"
+       placeholder="e.g. mmap, printk, sbrk"/>
+<span id="search_status"></span>
+<div id="search_results"></div>
+{% end %}

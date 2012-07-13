@@ -13,7 +13,7 @@ def get_static_path(name):
     return os.path.join(get_static_dir(), name)
 
 def get_template_dir():
-    return os.path.join(get_static_dir(), 'mustache')
+    return os.path.join(get_root(), 'templates')
 
 def get_template_path(name):
     return os.path.join(get_template_dir(), name)

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{title}}</title>
+    {% if js %}
+    <script type="text/javascript"
+    src="{{static_url('js/zepto.min.js')}}"></script>
+    <script type="text/javascript"
+    src="{{static_url('js/mustache.js')}}"></script> {% end %} {%
+    block extra_js %}{% end %}
+    <link rel="stylesheet" href="{{static_url('css/reset.css')}}">
+    {% if prod %}
+    <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono"
+          rel="stylesheet" type="text/css">
+    {% end %}
+    <link rel="stylesheet" href="{{static_url('css/base.css')}}" type="text/css">
+    {% block extra_css %}{% end %}
+    {% if prod %}
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-33294830-1']);
+      _gaq.push(['_trackPageview']);
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+    {% end %}
+  </head>
+  <body>
+    <h1>{{title}}</h1>
+    {% block body %}
+    {% end %}
+  </body>
+</html>

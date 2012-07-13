@@ -1,8 +1,8 @@
 import hashlib
 import json
 import os
-import pystache
 import tornado.web
+from tornado import template
 
 from codesearch import filesystem
 
@@ -19,18 +19,12 @@ class RequestHandler(tornado.web.RequestHandler):
 
     __metaclass__ = RequestHandlerMeta
 
-    _hash_cache = {}
-    _template_cache = {}
-
     def initialize(self):
         super(RequestHandler, self).initialize()
         self.env = {
-            'remote': self.settings.get('remote', True),
+            'js': True,
+            'prod': self.in_prod,
             'title': 'codesear.ch',
-            'base_css_url': self.static_path('css/base.css'),
-            'zepto_url': self.static_path('js/zepto.min.js'),
-            'reset_url': self.static_path('css/reset.css'),
-            'mustache_url': self.static_path('js/mustache.js'),
         }
 
     def compute_etag(self):
@@ -45,25 +39,8 @@ class RequestHandler(tornado.web.RequestHandler):
     def in_prod(self):
         return not self.debug
 
-    def static_path(self, name):
-        try:
-            hashval = self._hash_cache[name]
-        except KeyError:
-            with open(filesystem.get_static_path(name)) as r:
-                hashval = hashlib.sha1(r.read()).hexdigest()[:6]
-            if self.in_prod:
-                self._hash_cache[name] = hashval
-        return os.path.join('static', name) + '?v=' + hashval
-
     def render(self, template_name):
-        try:
-            contents = self._template_cache[template_name]
-        except KeyError:
-            with open(filesystem.get_template_path(template_name)) as f:
-                contents = f.read()
-            if self.in_prod:
-                self._template_cache[template_name] = contents
-        self.write(pystache.render(contents, self.env))
+        super(RequestHandler, self).render(template_name, **self.env)
 
     def render_json(self, output):
         self.set_header("Content-Type", "application/json; charset=UTF-8")
