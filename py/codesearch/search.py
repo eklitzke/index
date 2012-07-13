@@ -32,7 +32,7 @@ class SearchHandler(handler_meta.RequestHandler):
         s = s.replace('\t', '&nbsp;' * 8)
         return s
 
-    def search_callback(self, results):
+    def search_callback(self, rpc_container, results):
         self.ensure_released()
         self.escaped_query = escape.xhtml_escape(self.query)
         try:
@@ -44,7 +44,7 @@ class SearchHandler(handler_meta.RequestHandler):
                 'search_results': [],
                 'num_results': len(search_results),
                 'overflowed': overflowed,
-                'csearch_time': results.time_elapsed
+                'csearch_time': rpc_container.time_elapsed
             }
             for result in search_results:
                 val = {

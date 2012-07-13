@@ -45,12 +45,16 @@ class RpcClient(object):
                           serialized_data)
 
     def recv(self, callback):
+        """Wait for data, and then run the callback. The callback will
+        get two arguments, the container RPC, and the filled in
+        response type.
+        """
         def unpack_callback(data):
             data = snappy.uncompress(data)
             container_msg = index_pb2.RPCResponse()
             container_msg.MergeFromString(data)
             if container_msg.HasField("search_response"):
-                callback(container_msg.search_response)
+                callback(container_msg, container_msg.search_response)
             else:
                 raise ValueError('Unable to parse RPC response!')
 

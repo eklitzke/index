@@ -4,8 +4,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
-#include <boost/date_time/microsec_time_clock.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
 #include <re2/re2.h>
 #ifdef USE_SNAPPY
@@ -16,6 +14,7 @@
 #include "./index.pb.h"
 #include "./util.h"
 
+#include <chrono>
 #include <string>
 #include <thread>
 
@@ -110,6 +109,9 @@ void IndexReaderConnection::DataCallback(const boost::system::error_code& error,
 }
 
 void IndexReaderConnection::Search(std::size_t size) {
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
+
   data_buffer_.commit(size);
 
   RPCRequest request;
@@ -138,17 +140,16 @@ void IndexReaderConnection::Search(std::size_t size) {
     for (const auto &result : results.results()) {
       resp->add_results()->MergeFrom(result);
     }
-
-    boost::posix_time::ptime end_time(
-        boost::posix_time::microsec_clock::universal_time());
-    boost::posix_time::time_duration duration = end_time - start_time;
-    resp->set_time_elapsed(duration.total_milliseconds());
   } else {
     std::cerr << this << " don't know how to handle queries of that type" <<
         std::endl;
     SelfDestruct();
     return;
   }
+  end = std::chrono::system_clock::now();
+  response.set_time_elapsed(
+      std::chrono::duration_cast<std::chrono::milliseconds>
+      (end - start).count());
 
 #ifdef USE_SNAPPY
   std::string uncompressed_response, compressed_response;
@@ -162,7 +163,7 @@ void IndexReaderConnection::Search(std::size_t size) {
   std::ostream os(&data_buffer_);
   os << size_header << compressed_response;
   std::cout << this << " sending response of size " <<
-      compressed_response.size() << " after " << resp->time_elapsed() <<
+      compressed_response.size() << " after " << response.time_elapsed() <<
       " ms" << std::endl;
 
 #else
