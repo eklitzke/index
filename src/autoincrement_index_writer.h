@@ -6,6 +6,7 @@
 
 #include "./index_writer.h"
 #include <string>
+#include <mutex>
 
 namespace codesearch {
 class AutoIncrementIndexWriter {
@@ -22,13 +23,15 @@ class AutoIncrementIndexWriter {
   // return the value for the key that was added.
   template<typename T>
   std::uint64_t Add(const T &val) {
+    std::lock_guard<std::mutex> guard(mut_);
     index_writer_.Add(val_, val);
     return val_++;
   }
 
  private:
-    IndexWriter index_writer_;
-    std::uint64_t val_;
+  IndexWriter index_writer_;
+  std::uint64_t val_;
+  std::mutex mut_;
 };
 }
 

@@ -5,6 +5,7 @@
 #include "./ngram_counter.h"
 
 #include <set>
+#include <thread>
 
 namespace codesearch {
 NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
@@ -14,13 +15,36 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
         index_directory, "ngrams", sizeof(std::uint64_t), shard_size, false),
      files_index_(index_directory, "files", shard_size),
      lines_index_(index_directory, "lines", shard_size),
-     ngram_size_(ngram_size), num_vals_(0) {
+     ngram_size_(ngram_size), num_vals_(0), threads_running_(0) {
   index_writer_.Initialize();
 }
 
+// Add a file, dispatching to AddFileThread to add the file in its own
+// thread. The way this works it there's a condition variable that's
+// checking if too many threads are running, and if too many are
+// running this method blocks until the condition is false.
+//
+// Because this launches a new thread for each file (and doesn't
+// re-use threads for multiple files) the indexer can potentially do a
+// lot of extra work creating short-lived threads. A future
+// optimization can be to re-use threads in a thread pool.
 void NGramIndexWriter::AddFile(const std::string &canonical_name,
                                const std::string &dir_name,
                                const std::string &file_name) {
+  {
+    std::unique_lock<std::mutex> lock(threads_running_mut_);
+    cond_.wait(lock,
+               [=]{return threads_running_ < std::thread::hardware_concurrency();});
+    threads_running_++;
+  }
+  std::thread t(&NGramIndexWriter::AddFileThread, this,
+                canonical_name, dir_name, file_name);
+  t.detach();
+}
+
+void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
+                                     const std::string &dir_name,
+                                     const std::string &file_name) {
   // Add the file to the files database
   FileValue file_val;
   file_val.set_directory(dir_name);
@@ -74,9 +98,22 @@ void NGramIndexWriter::AddFile(const std::string &canonical_name,
     }
   }
 
-  for (const auto &it : ngrams_map) {
-    Add(it.first, it.second);
+  {
+    // Atomically add the contents of this file to the ngrams posting
+    // list, and then check if we need to rotate the file. The minimum
+    // condition that we need to for a consistent ngrams index (in the
+    // sense that we don't return false negatives in searches) is that
+    // each line in a file is wholly contained in a single ngrams
+    // index. The logic here ensures instead that each file is wholly
+    // contained in a single ngrams index. This is a stronger
+    // condition, and perhaps could be broken up later.
+    std::lock_guard<std::mutex> guard(ngrams_mut_);
+    for (const auto &it : ngrams_map) {
+      Add(it.first, it.second);
+    }
+    MaybeRotate();
   }
+  Notify();
 }
 
 void NGramIndexWriter::Add(const std::string &ngram,
@@ -90,7 +127,6 @@ void NGramIndexWriter::Add(const std::string &ngram,
     lists_.insert(it, std::make_pair(ngram, vals));
   }
   num_vals_ += vals.size();
-  MaybeRotate();
 }
 
 std::size_t NGramIndexWriter::EstimateSize() {
@@ -102,10 +138,14 @@ std::size_t NGramIndexWriter::EstimateSize() {
 void NGramIndexWriter::MaybeRotate(bool force) {
   if (force || EstimateSize() >= index_writer_.shard_size()) {
     NGramCounter *counter = NGramCounter::Instance();
-    for (const auto &it : lists_) {
+    for (auto &it : lists_) {
       NGramValue ngram_val;
       std::size_t val_count = 0;
       {
+        // Because of the loose locking we have, position ids can be
+        // added out of order. We need to re-order them before we add
+        // them into the posting list.
+        std::sort(it.second.begin(), it.second.end());
         std::uint64_t last_val = 0;
         for (const auto v : it.second) {
           assert(!last_val || v > last_val);
@@ -123,7 +163,21 @@ void NGramIndexWriter::MaybeRotate(bool force) {
   }
 }
 
+// Notify the condition variable thata thread has finished.
+void NGramIndexWriter::Notify() {
+  std::lock_guard<std::mutex> guard(threads_running_mut_);
+  threads_running_--;
+  cond_.notify_one();
+}
+
+// Wait for all worker threads to terminate.
+void NGramIndexWriter::Wait() {
+  std::unique_lock<std::mutex> lock(threads_running_mut_);
+  cond_.wait(lock, [=]{return threads_running_ == 0;});
+}
+
 NGramIndexWriter::~NGramIndexWriter() {
+  Wait();
   if (num_vals_ || !lists_.empty()) {
     MaybeRotate(true);
   }

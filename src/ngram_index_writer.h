@@ -6,6 +6,9 @@
 
 #include "./autoincrement_index_writer.h"
 #include "./index_writer.h"
+
+#include <condition_variable>
+#include <mutex>
 #include <string>
 
 namespace codesearch {
@@ -30,6 +33,15 @@ class NGramIndexWriter {
   const std::size_t ngram_size_;
   std::size_t num_vals_;
 
+  std::size_t threads_running_;
+  std::condition_variable cond_;
+  std::mutex threads_running_mut_;
+  std::mutex ngrams_mut_;
+
+  void AddFileThread(const std::string &canonical_name,
+                     const std::string &dir_name,
+                     const std::string &file_name);
+
   void Add(const std::string &ngram, const std::vector<std::uint64_t> &vals);
 
   // Estimate the size of the index that will be written
@@ -37,6 +49,12 @@ class NGramIndexWriter {
 
   // Rotate the index writer, if the index is large enough
   void MaybeRotate(bool force = false);
+
+  // Used to notify the condition variable
+  void Notify();
+
+  // Wait for all threads to finish
+  void Wait();
 };
 }
 

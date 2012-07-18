@@ -12,8 +12,12 @@ std::map<std::string, std::string> file_types_;
 void DemandInitialize() {
   if (!initialized_) {
     file_types_.insert(std::make_pair("C", "c++"));
+    file_types_.insert(std::make_pair("LICENSE", "text"));
+    file_types_.insert(std::make_pair("README", "text"));
+    file_types_.insert(std::make_pair("S", "asm"));
     file_types_.insert(std::make_pair("ada", "ada"));
     file_types_.insert(std::make_pair("bash", "shell"));
+    file_types_.insert(std::make_pair("bat", "shell"));
     file_types_.insert(std::make_pair("c", "c"));
     file_types_.insert(std::make_pair("cc", "c++"));
     file_types_.insert(std::make_pair("clj", "clojure"));
@@ -39,6 +43,7 @@ void DemandInitialize() {
     file_types_.insert(std::make_pair("py", "python"));
     file_types_.insert(std::make_pair("rb", "ruby"));
     file_types_.insert(std::make_pair("sh", "shell"));
+    file_types_.insert(std::make_pair("sql", "sql"));
     file_types_.insert(std::make_pair("txt", "text"));
     file_types_.insert(std::make_pair("xhtml", "html"));
     file_types_.insert(std::make_pair("xml", "xml"));
