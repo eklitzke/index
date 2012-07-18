@@ -2,7 +2,6 @@
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-#include <re2/re2.h>
 
 #include "./context.h"
 #include "./ngram_index_reader.h"

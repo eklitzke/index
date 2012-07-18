@@ -3,9 +3,7 @@
 #include "./rpcserver.h"
 
 #include <boost/asio.hpp>
-#include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-#include <re2/re2.h>
 #ifdef USE_SNAPPY
 #include <snappy.h>
 #endif  // USE_SNAPPY
@@ -41,7 +39,7 @@ class IndexReaderConnection {
  private:
   bool started_;
   boost::asio::io_service io_service_;
-  std::array<char, 8> size_buffer_;
+  std::array<char, sizeof(std::uint64_t)> size_buffer_;
   boost::asio::streambuf data_buffer_;
 
   NGramIndexReader reader_;
@@ -73,6 +71,15 @@ void IndexReaderConnection::Start() {
   io_service_.run();
 }
 
+void IndexReaderConnection::WaitForRequest() {
+  boost::asio::async_read(socket_,
+                          boost::asio::buffer(size_buffer_.data(),
+                                              sizeof(std::uint64_t)),
+                          std::bind(&IndexReaderConnection::SizeCallback, this,
+                                    std::placeholders::_1,
+                                    std::placeholders::_2));
+}
+
 void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
                                          std::size_t bytes_transferred) {
   if (error) {
@@ -84,7 +91,7 @@ void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
     }
     SelfDestruct();
   } else {
-    assert(bytes_transferred == 8);
+    assert(bytes_transferred == sizeof(std::uint64_t));
 
     std::uint64_t size = ToUint64(size_buffer_);
     boost::asio::streambuf::mutable_buffers_type bufs = data_buffer_.prepare(
@@ -123,9 +130,6 @@ void IndexReaderConnection::Search(std::size_t size) {
   SearchQueryResponse *resp;
 
   if (request.has_search_query()) {
-    boost::posix_time::ptime start_time(
-        boost::posix_time::microsec_clock::universal_time());
-
     const SearchQueryRequest &search_query = request.search_query();
     std::cout << this << " doing search query, request_num = " <<
         request.request_num() << ", query = \"" <<
@@ -193,13 +197,6 @@ void IndexReaderConnection::WriteCallback(
     data_buffer_.consume(bytes_transferred);
     io_service_.post(std::bind(&IndexReaderConnection::WaitForRequest, this));
   }
-}
-
-void IndexReaderConnection::WaitForRequest() {
-  boost::asio::async_read(
-      socket_, boost::asio::buffer(size_buffer_.data(), 8),
-      std::bind(&IndexReaderConnection::SizeCallback, this,
-                std::placeholders::_1, std::placeholders::_2));
 }
 
 void IndexReaderConnection::SelfDestruct() {

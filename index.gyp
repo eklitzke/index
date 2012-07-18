@@ -22,7 +22,7 @@
     },
     'target_defaults': {
         'cflags': ['-pedantic', '-Wall', '-std=c++11', '-Os', '-g',
-                   '-I$${HOME}/code/re2',
+                   #'-I$${HOME}/code/re2',
                ],
         'defines': [
             'USE_SNAPPY',

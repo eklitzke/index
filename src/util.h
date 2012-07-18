@@ -15,7 +15,8 @@ std::string ConstructShardPath(const std::string &index_directory,
 void Uint64ToString(std::uint64_t val, std::string *out);
 
 template<typename int_type>
-std::uint64_t ToUint64(const std::array<int_type, 8> &data) {
+std::uint64_t ToUint64(const std::array<int_type,
+                       sizeof(std::uint64_t)> &data) {
   return (
     (static_cast<std::uint64_t>(std::get<0>(data)) << 54) +
     (static_cast<std::uint64_t>(std::get<1>(data)) << 48) +
@@ -29,6 +30,5 @@ std::uint64_t ToUint64(const std::array<int_type, 8> &data) {
 
 // Get padding to word align something of some size.
 std::string GetWordPadding(std::size_t size);
-
 }
 #endif
