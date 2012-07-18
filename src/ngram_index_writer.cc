@@ -10,12 +10,14 @@
 namespace codesearch {
 NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
                                    std::size_t ngram_size,
-                                   std::size_t shard_size)
+                                   std::size_t shard_size,
+                                   std::size_t max_threads)
     :index_writer_(
         index_directory, "ngrams", sizeof(std::uint64_t), shard_size, false),
      files_index_(index_directory, "files", shard_size),
      lines_index_(index_directory, "lines", shard_size),
-     ngram_size_(ngram_size), num_vals_(0), threads_running_(0) {
+     ngram_size_(ngram_size), num_vals_(0), max_threads_(max_threads),
+     threads_running_(0) {
   index_writer_.Initialize();
 }
 
@@ -34,7 +36,7 @@ void NGramIndexWriter::AddFile(const std::string &canonical_name,
   {
     std::unique_lock<std::mutex> lock(threads_running_mut_);
     cond_.wait(lock,
-               [=]{return threads_running_ < std::thread::hardware_concurrency();});
+               [=]{return threads_running_ < max_threads_;});
     threads_running_++;
   }
   std::thread t(&NGramIndexWriter::AddFileThread, this,

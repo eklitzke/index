@@ -16,7 +16,8 @@ class NGramIndexWriter {
  public:
   NGramIndexWriter(const std::string &index_directory,
                    std::size_t ngram_size = 3,
-                   std::size_t shard_size = 16 << 20);
+                   std::size_t shard_size = 16 << 20,
+                   std::size_t max_threads = 1);
 
   void AddFile(const std::string &canonical_name,
                const std::string &dir_name,
@@ -33,6 +34,7 @@ class NGramIndexWriter {
   const std::size_t ngram_size_;
   std::size_t num_vals_;
 
+  const std::size_t max_threads_;
   std::size_t threads_running_;
   std::condition_variable cond_;
   std::mutex threads_running_mut_;

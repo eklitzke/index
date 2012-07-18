@@ -9,6 +9,7 @@
 #include "./index.pb.h"
 
 #include <string>
+#include <thread>
 #include <fstream>
 
 namespace po = boost::program_options;
@@ -17,13 +18,16 @@ int main(int argc, char **argv) {
   // Declare the supported options.
   po::options_description desc("Allowed options");
   desc.add_options()
-      ("help", "produce help message")
+      ("help,h", "produce help message")
       ("replace,r", "replace the directory contents")
       ("ngram-size", po::value<int>()->default_value(3), "ngram size")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ("shard-size", po::value<std::size_t>()->default_value(16<<20))
       ("src-dir,s",
-       po::value<std::vector<std::string > >(), "source directories")
+       po::value<std::vector<std::string > >(),
+       "(positional) source directories")
+      ("threads,t", po::value<std::size_t>()->default_value(
+          std::thread::hardware_concurrency()))
       ;
 
   // all positional arguments are source dirs
@@ -52,9 +56,10 @@ int main(int argc, char **argv) {
   std::size_t ngram_size = static_cast<std::size_t>(vm["ngram-size"].as<int>());
 
   std::size_t shard_size = vm["shard-size"].as<std::size_t>();
+  std::size_t num_threads = vm["threads"].as<std::size_t>();
   {
     codesearch::NGramIndexWriter ngram_writer(
-        db_path_str, ngram_size, shard_size);
+        db_path_str, ngram_size, shard_size, num_threads);
 
     for (const auto &d : vm["src-dir"].as<std::vector<std::string >>()) {
       std::string dir = d.substr(0, d.find_last_not_of('/') + 1);

@@ -25,13 +25,18 @@ int main(int argc, char **argv) {
   // Declare the supported options.
   po::options_description desc("Allowed options");
   desc.add_options()
-      ("help", "produce help message")
-      ("shard,s", po::value<std::string>(), "the shard to inspect")
+      ("help,h", "produce help message")
+      ("shard,s", po::value<std::string>(), "(positional) the shard to inspect")
       ("integer,i", "interpret values as integers")
       ;
 
+  // positional argument is the shard
+  po::positional_options_description p;
+  p.add("shard", 1);
+
   po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::store(po::command_line_parser(argc, argv).
+            options(desc).positional(p).run(), vm);
   po::notify(vm);
 
   if (vm.count("help") || !vm.count("shard")) {
@@ -46,6 +51,11 @@ int main(int argc, char **argv) {
   ifs.read(hdr_size.data(), sizeof(std::uint64_t));
   assert(!ifs.eof() && !ifs.fail());
   std::uint64_t hdr_size_val = codesearch::ToUint64(hdr_size);
+  if (hdr_size_val > 8096) {
+    std::cerr << shard << " had implausible hdr_size_val " << hdr_size_val <<
+        ", cowardly aborting" << std::endl;
+    return 1;
+  }
 
   std::unique_ptr<char []> hdr_data(new char[hdr_size_val]);
   ifs.read(hdr_data.get(), hdr_size_val);

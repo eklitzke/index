@@ -14,11 +14,12 @@ int main(int argc, char **argv) {
   // Declare the supported options.
   po::options_description desc("Allowed options");
   desc.add_options()
-      ("help", "produce help message")
+      ("help,h", "produce help message")
       ("limit", po::value<std::size_t>()->default_value(100))
       ("no-print", "suppress printing")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
-      ("query,q", po::value<std::string>(), "the search query, mandatory")
+      ("query,q", po::value<std::string>(),
+       "(positional) the search query, mandatory")
       ;
 
   // all positional arguments are source dirs
