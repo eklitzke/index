@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help", "produce help message")
-      ("replace", "replace the directory contents")
+      ("replace,r", "replace the directory contents")
       ("ngram-size", po::value<int>()->default_value(3), "ngram size")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ("shard-size", po::value<std::size_t>()->default_value(16<<20))
@@ -26,9 +26,15 @@ int main(int argc, char **argv) {
        po::value<std::vector<std::string > >(), "source directories")
       ;
 
+  // all positional arguments are source dirs
+  po::positional_options_description p;
+  p.add("src-dir", -1);
+
   po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::store(po::command_line_parser(argc, argv).
+            options(desc).positional(p).run(), vm);
   po::notify(vm);
+
   std::ios_base::sync_with_stdio(false);
 
   if (vm.count("help")) {

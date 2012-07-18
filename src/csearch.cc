@@ -22,8 +22,13 @@ int main(int argc, char **argv) {
       ("query,q", po::value<std::string>(), "the search query, mandatory")
       ;
 
+  // all positional arguments are source dirs
+  po::positional_options_description p;
+  p.add("query", 1);
+
   po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::store(po::command_line_parser(argc, argv).
+            options(desc).positional(p).run(), vm);
   po::notify(vm);
 
   if (vm.count("help") || !vm.count("query")) {
