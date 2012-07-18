@@ -15,7 +15,9 @@ class NGramIndexWriter {
                    std::size_t ngram_size = 3,
                    std::size_t shard_size = 16 << 20);
 
-  void AddFile(const std::string &name);
+  void AddFile(const std::string &canonical_name,
+               const std::string &dir_name,
+               const std::string &file_name);
 
   ~NGramIndexWriter();
 

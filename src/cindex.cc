@@ -57,8 +57,9 @@ int main(int argc, char **argv) {
         db_path_str, ngram_size, shard_size);
 
     for (const auto &d : vm["src-dir"].as<std::vector<std::string >>()) {
+      std::string dir = d.substr(0, d.find_last_not_of('/') + 1);
       std::string match;
-      for (boost::filesystem::recursive_directory_iterator end, it(d);
+      for (boost::filesystem::recursive_directory_iterator end, it(dir);
            it != end; ++it) {
         if (!boost::filesystem::is_regular_file(it->path())) {
           continue;
@@ -70,11 +71,13 @@ int main(int argc, char **argv) {
         if (ec) {
           continue;
         }
+        std::string fname = filepath.substr(dir.size(), std::string::npos);
+        fname = fname.substr(fname.find_first_not_of('/'), std::string::npos);
         if (codesearch::ShouldIndex(filepath)) {
-          std::cout << "indexing " << canonical << std::endl;
-          ngram_writer.AddFile(canonical);
+          std::cout << "indexing " << fname << std::endl;
+          ngram_writer.AddFile(canonical, dir, fname);
         } else {
-          std::cout << "skipping " << canonical << std::endl;
+          std::cout << "skipping " << fname << std::endl;
         }
       }
     }

@@ -1,5 +1,4 @@
 import functools
-import re
 import subprocess
 from tornado import escape
 from tornado import web
@@ -7,7 +6,6 @@ from codesearch import handler_meta
 from codesearch import filesystem
 from codesearch import search_rpc
 
-_filename_re = re.compile('/home/evan/Downloads/')
 _rpc_pool = search_rpc.SearchRpcPool.instance()
 
 class SearchHandler(handler_meta.RequestHandler):
@@ -48,7 +46,7 @@ class SearchHandler(handler_meta.RequestHandler):
             }
             for result in search_results:
                 val = {
-                    'filename': _filename_re.sub('', result.filename),
+                    'filename': result.filename,
                     'line_num': result.line_num,
                     'raw_text': result.line_text,
                     'html_text': self.format_string(result.line_text),

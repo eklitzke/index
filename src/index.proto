@@ -66,18 +66,19 @@ message SSTableHeader {
 }
 
 message FileValue {
-  required bytes filename = 1;
+  required bytes directory = 1;
+  required bytes filename = 2;
 
   enum Language {
     CLOJURE = 1;
   }
-  optional Language lang = 2;
+  optional Language lang = 3;
 
   // The unix timestamp (in seconds) of when we indexed this file.
-  optional uint64 time_indexed = 3;
+  optional uint64 time_indexed = 4;
 
   // The unix timestamp (in seconds) for the file's time in the archive.
-  optional uint64 time_archive = 4;
+  optional uint64 time_archive = 5;
 }
 
 message NGramValue {

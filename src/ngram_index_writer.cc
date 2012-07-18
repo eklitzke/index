@@ -18,16 +18,19 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
   index_writer_.Initialize();
 }
 
-void NGramIndexWriter::AddFile(const std::string &filename) {
+void NGramIndexWriter::AddFile(const std::string &canonical_name,
+                               const std::string &dir_name,
+                               const std::string &file_name) {
   // Add the file to the files database
   FileValue file_val;
-  file_val.set_filename(filename);
+  file_val.set_directory(dir_name);
+  file_val.set_filename(file_name);
   std::uint64_t file_id = files_index_.Add(file_val);
 
   // Collect all of the lines
   std::map<uint64_t, std::string> positions_map;
   {
-    std::ifstream ifs(filename.c_str(), std::ifstream::in);
+    std::ifstream ifs(canonical_name.c_str(), std::ifstream::in);
     std::string line;
     std::size_t linenum = 0;
     while (ifs.good()) {
