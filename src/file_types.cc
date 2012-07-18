@@ -49,19 +49,23 @@ void DemandInitialize() {
 }
 
 namespace codesearch {
-std::string file_types_regex() {
-  DemandInitialize();
-  std::string regex(".*\\.(");
-  for (const auto &p : file_types_) {
-    regex += p.first + "|";
-  }
-  regex.resize(regex.size() - 1);  // take off the trailing pipe
-  regex += ")$";
-  return regex;
-}
-
 std::string FileLanguage(const std::string &filename) {
   DemandInitialize();
-  return "";
+  std::string::size_type dotpos = filename.find_last_of('.');
+  if (dotpos == std::string::npos) {
+    dotpos = 0;
+  }
+  std::string extension = filename.substr(dotpos, std::string::npos);
+
+  const auto &it = file_types_.find(extension);
+  if (it == file_types_.end()) {
+    return "";
+  } else {
+    return it->second;
+  }
+}
+
+bool ShouldIndex(const std::string &filename) {
+  return !FileLanguage(filename).empty();
 }
 }

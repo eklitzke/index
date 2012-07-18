@@ -2,7 +2,6 @@
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-#include <re2/re2.h>
 
 #include "./file_types.h"
 #include "./ngram_index_writer.h"
@@ -46,12 +45,6 @@ int main(int argc, char **argv) {
 
   std::size_t ngram_size = static_cast<std::size_t>(vm["ngram-size"].as<int>());
 
-  re2::RE2 interesting_file_re(codesearch::file_types_regex().c_str());
-  if (!interesting_file_re.ok()) {
-    std::cerr << "Failed to initialize re2!" << std::endl;
-    return 1;
-  }
-
   std::size_t shard_size = vm["shard-size"].as<std::size_t>();
   {
     codesearch::NGramIndexWriter ngram_writer(
@@ -71,7 +64,7 @@ int main(int argc, char **argv) {
         if (ec) {
           continue;
         }
-        if (RE2::FullMatch(filepath, interesting_file_re, &match)) {
+        if (codesearch::ShouldIndex(filepath)) {
           std::cout << "indexing " << canonical << std::endl;
           ngram_writer.AddFile(canonical);
         } else {

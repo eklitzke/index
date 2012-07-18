@@ -21,7 +21,7 @@
         ],
     },
     'target_defaults': {
-        'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O0', '-g',
+        'cflags': ['-pedantic', '-Wall', '-std=c++11', '-Os', '-g',
                    '-I$${HOME}/code/re2',
                ],
         'defines': [
@@ -37,7 +37,7 @@
             '-lprotobuf',
             '-lsnappy',
             '/usr/lib64/libtcmalloc.so.4',
-            '../libre2.a',
+            #'../libre2.a',
         ],
         'sources': [
             'src/index.pb.cc',
