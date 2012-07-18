@@ -61,12 +61,21 @@ int main(int argc, char **argv) {
       std::string match;
       for (boost::filesystem::recursive_directory_iterator end, it(d);
            it != end; ++it) {
+        if (!boost::filesystem::is_regular_file(it->path())) {
+          continue;
+        }
         const std::string &filepath = it->path().string();
+        boost::system::error_code ec;
+        const std::string canonical = boost::filesystem::canonical(
+            it->path(), ec).string();
+        if (ec) {
+          continue;
+        }
         if (RE2::FullMatch(filepath, interesting_file_re, &match)) {
-          const std::string canonical = boost::filesystem::canonical(
-              it->path()).string();
           std::cout << "indexing " << canonical << std::endl;
           ngram_writer.AddFile(canonical);
+        } else {
+          std::cout << "skipping " << canonical << std::endl;
         }
       }
     }
