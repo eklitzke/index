@@ -54,6 +54,8 @@ std::string FileLanguage(const std::string &filename) {
   std::string::size_type dotpos = filename.find_last_of('.');
   if (dotpos == std::string::npos) {
     dotpos = 0;
+  } else {
+    dotpos++;
   }
   std::string extension = filename.substr(dotpos, std::string::npos);
 
