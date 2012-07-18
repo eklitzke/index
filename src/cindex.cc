@@ -4,6 +4,7 @@
 #include <boost/filesystem.hpp>
 #include <re2/re2.h>
 
+#include "./file_types.h"
 #include "./ngram_index_writer.h"
 #include "./ngram_counter.h"
 #include "./index.pb.h"
@@ -45,8 +46,7 @@ int main(int argc, char **argv) {
 
   std::size_t ngram_size = static_cast<std::size_t>(vm["ngram-size"].as<int>());
 
-  re2::RE2 interesting_file_re(
-      ".*(\\.cc|\\.cpp|\\.c|\\.h|\\.hh|\\.hpp|\\.ipp)$");
+  re2::RE2 interesting_file_re(codesearch::file_types_regex().c_str());
   if (!interesting_file_re.ok()) {
     std::cerr << "Failed to initialize re2!" << std::endl;
     return 1;

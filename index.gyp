@@ -10,6 +10,7 @@
             'src/sstable_reader.cc',
         ],
         'writer_sources': [
+            'src/file_types.cc',
             'src/index_writer.cc',
             'src/ngram_counter.cc',
             'src/ngram_index_writer.cc',
