@@ -30,11 +30,16 @@ class IndexWriter {
               bool auto_rotate = true)
       :index_directory_(index_directory), name_(name), key_size_(key_size),
        shard_size_(shard_size), auto_rotate_(auto_rotate), shard_num_(0),
+       key_type_(IndexConfig_KeyType_NUMERIC),
        state_(IndexConfig_DatabaseState_EMPTY), sstable_(nullptr) {}
 
   // Initialize the Indexer object. Returns true on success, false on
   // failure.
   bool Initialize();
+
+  void SetKeyType(IndexConfig_KeyType key_type) {
+    key_type_ = key_type;
+  }
 
   template <typename U, typename V>
   void Add(const U &key, const V &value) {
@@ -60,6 +65,7 @@ class IndexWriter {
   const std::size_t shard_size_;
   const bool auto_rotate_;
   std::size_t shard_num_;
+  IndexConfig_KeyType key_type_;
   IndexConfig_DatabaseState state_;
   SSTableWriter *sstable_;
 

@@ -42,6 +42,12 @@ message IndexConfig {
     COMPLETE = 2;
   }
   optional DatabaseState state = 3 [default = EMPTY];
+
+  enum KeyType {
+    NUMERIC = 0;
+    STRING = 1;
+  }
+  optional KeyType key_type = 4 [default = NUMERIC];
 }
 
 // The format of the SSTable is like this:

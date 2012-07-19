@@ -19,6 +19,7 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
      ngram_size_(ngram_size), num_vals_(0), max_threads_(max_threads),
      threads_running_(0) {
   index_writer_.Initialize();
+  index_writer_.SetKeyType(IndexConfig_KeyType_STRING);
 }
 
 // Add a file, dispatching to AddFileThread to add the file in its own

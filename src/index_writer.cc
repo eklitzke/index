@@ -68,6 +68,7 @@ void IndexWriter::WriteStatus(IndexConfig_DatabaseState new_state) {
   }
   config.set_num_shards(num_shards);
   config.set_state(state_);
+  config.set_key_type(key_type_);
 
   std::string config_path = GetPathName("config");
   std::ofstream out(config_path.c_str(),

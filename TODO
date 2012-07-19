@@ -1,2 +1,1 @@
-* store a hint as to whether keys are ints or strings in the index header
 * use a threadpool in cindex rather than creating lots of short-lived threads

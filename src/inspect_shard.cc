@@ -27,7 +27,6 @@ int main(int argc, char **argv) {
   desc.add_options()
       ("help,h", "produce help message")
       ("shard,s", po::value<std::string>(), "(positional) the shard to inspect")
-      ("integer,i", "interpret values as integers")
       ;
 
   // positional argument is the shard
@@ -73,7 +72,24 @@ int main(int argc, char **argv) {
   std::cout << "num_keys   = " << hdr.num_keys() << std::endl;
   std::cout << "index_size = " << hdr.index_size() << std::endl;
   std::cout << "data_size  = " << hdr.data_size() << std::endl;
-  if (vm.count("integer")) {
+
+  // Now try to print the min/max value. To do this correctly we need
+  // to read the config file in the containing directory, to get a
+  // hint for the key type.
+  std::string dirname;
+  std::string::size_type slashpos = shard.find_last_of('/');
+  if (slashpos == std::string::npos) {
+    dirname = "./";
+  } else {
+    dirname = shard.substr(0, slashpos + 1);
+  }
+  assert(dirname.back() == '/');
+  std::ifstream config_ifs(dirname + "config",
+                           std::ifstream::binary | std::istream::in);
+  codesearch::IndexConfig config;
+  config.ParseFromIstream(&config_ifs);
+
+  if (config.key_type() == codesearch::IndexConfig_KeyType_NUMERIC) {
     std::array<std::uint8_t, sizeof(std::uint64_t)> min_value, max_value;
     memcpy(min_value.data(), hdr.min_value().data(), 8);
     memcpy(max_value.data(), hdr.max_value().data(), 8);
