@@ -2,6 +2,8 @@
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
 #include "./ngram_index_writer.h"
+
+#include "./file_types.h"
 #include "./ngram_counter.h"
 
 #include <set>
@@ -52,6 +54,8 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
   FileValue file_val;
   file_val.set_directory(dir_name);
   file_val.set_filename(file_name);
+  file_val.set_lang(FileLanguage(canonical_name));
+
   std::uint64_t file_id = files_index_.Add(file_val);
 
   // Collect all of the lines

@@ -75,10 +75,11 @@ message FileValue {
   required bytes directory = 1;
   required bytes filename = 2;
 
-  enum Language {
-    CLOJURE = 1;
-  }
-  optional Language lang = 3;
+  // A free-form string indicating the language for the file. At some
+  // point, when the list of languages is a bit more stable, this
+  // should be converted to an enum to save space (for now it's not a big
+  // deal though, since the files database is really, really small.)
+  optional string lang = 3;
 
   // The unix timestamp (in seconds) of when we indexed this file.
   optional uint64 time_indexed = 4;
