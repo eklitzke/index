@@ -1,10 +1,12 @@
 # -*- python -*-
 {
     'variables': {
-        'reader_sources': [
+        'common_sources': [
             'src/context.cc',
-            'src/integer_index_reader.cc',
             'src/mmap.cc',
+        ],
+        'reader_sources': [
+            'src/integer_index_reader.cc',
             'src/ngram_index_reader.cc',
             'src/search_results.cc',
             'src/sstable_reader.cc',
@@ -36,7 +38,7 @@
             '-lboost_program_options',
             '-lprotobuf',
             '-lsnappy',
-            '/usr/lib64/libtcmalloc.so.4',
+            #'/usr/lib64/libtcmalloc.so.4',
             #'../libre2.a',
         ],
         'sources': [
@@ -58,6 +60,7 @@
             'type': 'executable',
             'target_name': 'cindex',
             'sources': [
+                '<@(common_sources)',
                 '<@(writer_sources)',
                 'src/cindex.cc',
             ],
@@ -66,6 +69,7 @@
             'type': 'executable',
             'target_name': 'csearch',
             'sources': [
+                '<@(common_sources)',
                 '<@(reader_sources)',
                 'src/csearch.cc',
             ],
@@ -74,6 +78,7 @@
             'type': 'executable',
             'target_name': 'rpcserver',
             'sources': [
+                '<@(common_sources)',
                 '<@(reader_sources)',
                 '<@(rpc_sources)',
                 'src/crpcserver.cc',

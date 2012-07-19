@@ -3,6 +3,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+#include "./context.h"
 #include "./file_types.h"
 #include "./ngram_index_writer.h"
 #include "./ngram_counter.h"
@@ -57,6 +58,7 @@ int main(int argc, char **argv) {
 
   std::size_t shard_size = vm["shard-size"].as<std::size_t>();
   std::size_t num_threads = vm["threads"].as<std::size_t>();
+  codesearch::Context ctx;
   {
     codesearch::NGramIndexWriter ngram_writer(
         db_path_str, ngram_size, shard_size, num_threads);

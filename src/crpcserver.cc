@@ -1,6 +1,7 @@
 #include <boost/program_options.hpp>
 #include <boost/asio.hpp>
 
+#include "./context.h"
 #include "./rpcserver.h"
 
 namespace po = boost::program_options;
@@ -28,6 +29,8 @@ int main(int argc, char **argv) {
   boost::asio::io_service io_service;
   boost::asio::ip::tcp::endpoint endpoint(
       boost::asio::ip::address::from_string("127.0.0.1"), vm["port"].as<int>());
+
+  codesearch::Context ctx;
   codesearch::IndexReaderServer server(db_path_str, &io_service, endpoint);
   server.Start();
   io_service.run();
