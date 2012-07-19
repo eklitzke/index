@@ -41,9 +41,13 @@ int main(int argc, char **argv) {
   std::string db_path_str = vm["db-path"].as<std::string>();
   codesearch::NGramIndexReader reader(db_path_str, 3);
 
+#if 0
+  // This causes valgrind to report memory leaks (which apparently are
+  // real!), see http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27931
   std::ios_base::sync_with_stdio(false);
   char buffer[1024];
   std::cout.rdbuf()->pubsetbuf(buffer, 1024);
+#endif
 
   std::size_t limit = vm["limit"].as<std::size_t>();
   codesearch::SearchResults results(limit);

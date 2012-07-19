@@ -14,7 +14,7 @@ namespace {
 std::mutex m_;
 
 struct MapEntry {
-  int fd;
+  FILE *fp;
   const char *addr;
   std::size_t size;
 };
@@ -40,7 +40,7 @@ std::pair<std::size_t, const char*> GetMmapForFile(const std::string &name) {
 #endif
 
     MapEntry entry;
-    entry.fd = fd;
+    entry.fp = f;
     entry.addr = reinterpret_cast<const char *>(addr);
     entry.size = size;
     mapping_.insert(it, std::make_pair(name, entry));
@@ -52,7 +52,7 @@ std::pair<std::size_t, const char*> GetMmapForFile(const std::string &name) {
 void UnmapFiles() {
   std::lock_guard<std::mutex> guard(m_);
   for (const auto &p : mapping_) {
-    close(p.second.fd);
+    fclose(p.second.fp);
     munmap(reinterpret_cast<void *>(
         const_cast<char *>(p.second.addr)), p.second.size);
   }

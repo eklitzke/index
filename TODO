@@ -16,3 +16,5 @@ Performance/Correctness
 Miscellaneous
 =============
 * index github
+* add logging -- this is important for perf tuning
+* valgrind like a madman

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+valgrind -v --leak-check=full --show-reachable=yes $@
