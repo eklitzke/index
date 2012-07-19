@@ -1,1 +1,4 @@
 * use a threadpool in cindex rather than creating lots of short-lived threads
+* make search results be returned in a deterministic order
+* add syntax highlighting
+* link to github (where appropriate)
