@@ -202,12 +202,12 @@ void IndexReaderConnection::WriteCallback(
 void IndexReaderConnection::SelfDestruct() {
   std::cout << this << " self-destructing" << std::endl;
   started_ = false;
-  delete this;
+  io_service_.stop();
 }
 
 IndexReaderConnection::~IndexReaderConnection() {
   assert(started_ == false);
-  io_service_.stop();
+  std::cout << "in dtor!!" << std::endl;
 }
 
 
@@ -215,30 +215,41 @@ IndexReaderConnection::~IndexReaderConnection() {
 // INDEX READER SERVER
 /////////////////////////////
 
+namespace {
+void LaunchConnection(IndexReaderConnection *conn) {
+  conn->Start();
+  delete conn;
+  std::cout << "thread ending" << std::endl;
+}
+}
+
 void IndexReaderServer::Start() {
   StartAccept();
 }
 
 void IndexReaderServer::StartAccept() {
-  IndexReaderConnection *conn = IndexReaderConnection::New(db_path_);
+  conn_ = IndexReaderConnection::New(db_path_);
   acceptor_.async_accept(
-      *conn->socket(),
-      std::bind(&IndexReaderServer::HandleAccept, this, conn,
+      *conn_->socket(),
+      std::bind(&IndexReaderServer::HandleAccept, this,
                 std::placeholders::_1));
 }
 
-void IndexReaderServer::HandleAccept(IndexReaderConnection *conn,
-                                     const boost::system::error_code& error) {
+void IndexReaderServer::HandleAccept(const boost::system::error_code& error) {
   if (error) {
     std::cerr << "unexpectedly got error " << error << std::endl;
-    delete conn;
+    delete conn_;
   } else {
     // Let the IndexReaderConnection execute in its own thread from
     // this point on.
-    std::thread t = std::thread(&IndexReaderConnection::Start, conn);
+    std::thread t = std::thread(LaunchConnection, conn_);
     t.detach();
   }
+  conn_ = nullptr;
   io_service_->post(std::bind(&IndexReaderServer::StartAccept, this));
 }
 
+IndexReaderServer::~IndexReaderServer() {
+  delete conn_;
+}
 }

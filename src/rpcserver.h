@@ -19,20 +19,20 @@ class IndexReaderServer {
                     boost::asio::io_service* io_service,
                     const boost::asio::ip::tcp::endpoint &endpoint)
       :db_path_(db_path), io_service_(io_service),
-       acceptor_(*io_service, endpoint) {}
+       acceptor_(*io_service, endpoint), conn_(nullptr) {}
 
   void Start();
-
+  ~IndexReaderServer();
 
  private:
   std::string db_path_;
   boost::asio::io_service *io_service_;
   boost::asio::ip::tcp::acceptor acceptor_;
+  IndexReaderConnection *conn_;
 
   void StartAccept();
 
-  void HandleAccept(IndexReaderConnection *conn,
-                    const boost::system::error_code& error);
+  void HandleAccept(const boost::system::error_code& error);
 };
 
 }
