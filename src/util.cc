@@ -2,8 +2,11 @@
 
 #include <endian.h>
 #include <sstream>
+#include <iomanip>
 #include <iostream>
 #include <cstdint>
+#include <ctype.h>
+
 namespace codesearch {
 std::string ConstructShardPath(const std::string &index_directory,
                                const std::string &name,
@@ -27,4 +30,20 @@ std::string GetWordPadding(std::size_t size) {
   }
   return "";
 }
+
+std::string PrintBinaryString(const std::string &str) {
+  std::stringstream ss;
+
+  for (const auto &c : str) {
+    if (isgraph(c)) {
+      ss << static_cast<char>(c);
+    } else {
+      ss << "\\x";
+      ss << std::setfill('0') << std::setw(2) << std::hex << (
+          static_cast<int>(c) & 0xff);
+    }
+  }
+  return ss.str();
+}
+
 }

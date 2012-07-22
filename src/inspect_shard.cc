@@ -4,22 +4,10 @@
 #include <iostream>
 #include <fstream>
 
-#include <ctype.h>
-
 #include "./index.pb.h"
 #include "./util.h"
 
 namespace po = boost::program_options;
-
-void PrintBinaryString(const std::string &str) {
-  for (const auto &c : str) {
-    if (isgraph(c)) {
-      putchar(c);
-    } else {
-      printf("\\x%02x", static_cast<unsigned int>(c));
-    }
-  }
-}
 
 int main(int argc, char **argv) {
   // Declare the supported options.
@@ -96,12 +84,10 @@ int main(int argc, char **argv) {
     std::cout << "min_value  = " << codesearch::ToUint64(min_value) << "\n";
     std::cout << "max_value  = " << codesearch::ToUint64(max_value) << "\n";
   } else {
-    std::cout << "min_value = ";
-    PrintBinaryString(hdr.min_value());
-    std::cout << std::endl;
-    std::cout << "max_value = ";
-    PrintBinaryString(hdr.max_value());
-    std::cout << std::endl;
+    std::cout << "min_value  = ";
+    std::cout << codesearch::PrintBinaryString(hdr.min_value()) << std::endl;
+    std::cout << "max_value  = ";
+    std::cout << codesearch::PrintBinaryString(hdr.max_value()) << std::endl;
   }
   return 0;
 }

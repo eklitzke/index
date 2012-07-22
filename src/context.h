@@ -15,6 +15,7 @@
 #ifndef SRC_CONTEXT_H_
 #define SRC_CONTEXT_H_
 
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,10 @@ class Context {
   std::size_t ngram_size_;
   char *sorted_ngrams_;
   std::size_t sorted_ngrams_size_;
+  std::mutex mut_;
+
+
+  void InitializeSmallNGrams();
 };
 }
 

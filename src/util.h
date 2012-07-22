@@ -30,5 +30,8 @@ std::uint64_t ToUint64(const std::array<int_type,
 
 // Get padding to word align something of some size.
 std::string GetWordPadding(std::size_t size);
+
+std::string PrintBinaryString(const std::string &str);
+
 }
 #endif

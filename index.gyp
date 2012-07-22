@@ -58,6 +58,15 @@
         },
         {
             'type': 'executable',
+            'target_name': 'print_ngram_counts',
+            'sources': [
+                'src/index.pb.cc',
+                'src/util.cc',
+                'src/print_ngram_counts.cc',
+            ],
+        },
+        {
+            'type': 'executable',
             'target_name': 'cindex',
             'sources': [
                 '<@(common_sources)',
