@@ -36,10 +36,10 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  codesearch::Context ctx;
-
   std::string db_path_str = vm["db-path"].as<std::string>();
-  codesearch::NGramIndexReader reader(db_path_str, 3);
+  std::unique_ptr<codesearch::Context> ctx(
+      codesearch::Context::Acquire(db_path_str));
+  codesearch::NGramIndexReader reader(db_path_str);
 
 #if 0
   // This causes valgrind to report memory leaks (which apparently are

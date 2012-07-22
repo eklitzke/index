@@ -38,7 +38,7 @@
             '-lboost_program_options',
             '-lprotobuf',
             '-lsnappy',
-            #'/usr/lib64/libtcmalloc.so.4',
+            '/usr/lib64/libtcmalloc.so.4',
             #'../libre2.a',
         ],
         'sources': [

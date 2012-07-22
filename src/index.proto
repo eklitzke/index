@@ -48,6 +48,8 @@ message IndexConfig {
     STRING = 1;
   }
   optional KeyType key_type = 4 [default = NUMERIC];
+
+  optional uint64 ngram_size = 5 [ default = 3 ];
 }
 
 // The format of the SSTable is like this:

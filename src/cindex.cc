@@ -58,7 +58,8 @@ int main(int argc, char **argv) {
 
   std::size_t shard_size = vm["shard-size"].as<std::size_t>();
   std::size_t num_threads = vm["threads"].as<std::size_t>();
-  codesearch::Context ctx;
+  std::unique_ptr<codesearch::Context> ctx(
+      codesearch::Context::Acquire(db_path_str));
   {
     codesearch::NGramIndexWriter ngram_writer(
         db_path_str, ngram_size, shard_size, num_threads);

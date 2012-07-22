@@ -78,6 +78,9 @@ bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
 #ifdef USE_SNAPPY
       assert(snappy::Uncompress(data_loc, data_size, result) == true);
       assert(result->size() != 0);
+#if 0
+      std::cout << "uncompressed data of size " << result->size() << std::endl;
+#endif
 #else
       result->assign(data_loc, data_size);
 #endif

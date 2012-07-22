@@ -16,19 +16,24 @@
 #include <string>
 #include <thread>
 
+namespace {
+static std::set<codesearch::IndexReaderConnection *> conns;
+static std::mutex conns_mut;
+}
+
 namespace codesearch {
 
 class IndexReaderConnection {
  public:
-  // Create a new IndexReaderConnection; Connections are only allowed
-  // on the heap (as they must run in their own thread).
-  static IndexReaderConnection *New(const std::string &db_path) {
-    IndexReaderConnection *conn = new IndexReaderConnection(db_path);
-    return conn;
-  }
+  IndexReaderConnection(const std::string &db_path)
+      :started_(false), reader_(db_path), socket_(io_service_) {}
 
   // Start an IndexReaderConnection's io loop.
   void Start();
+
+  void Stop() {
+    SelfDestruct();
+  }
 
   boost::asio::ip::tcp::socket* socket() { return &socket_; }
 
@@ -44,9 +49,6 @@ class IndexReaderConnection {
 
   NGramIndexReader reader_;
   boost::asio::ip::tcp::socket socket_;
-
-  IndexReaderConnection(const std::string &db_path)
-      :started_(false), reader_(db_path, 3), socket_(io_service_) {}
 
   void Search(std::size_t size);
 
@@ -206,29 +208,58 @@ void IndexReaderConnection::SelfDestruct() {
 }
 
 IndexReaderConnection::~IndexReaderConnection() {
+  std::lock_guard<std::mutex> guard(conns_mut);
+  conns.erase(this);
   assert(started_ == false);
   std::cout << "in dtor!!" << std::endl;
 }
+}
 
+namespace {
+codesearch::IndexReaderConnection* NewConnection(const std::string &s) {
+  codesearch::IndexReaderConnection *conn;
+  conn = new codesearch::IndexReaderConnection(s);
+  std::lock_guard<std::mutex> guard(conns_mut);
+  conns.insert(conn);
+  return conn;
+}
+
+void LaunchConnection(codesearch::IndexReaderConnection *conn) {
+  conn->Start();
+  delete conn;
+  std::cout << "thread ending" << std::endl;
+}
+
+// Force all connections to stop. The main reason that we would want
+// to do this is to assist in valgrinding, if we have extra threads
+// left over when the process exits then valgrind thinks that the
+// memory allocated by those threads leaked.
+void DeleteAllConnections() {
+  std::set<codesearch::IndexReaderConnection*> conns_copy;
+  {
+    std::lock_guard<std::mutex> guards(conns_mut);
+    conns_copy = conns;
+  }
+  for (const auto &c : conns_copy) {
+    c->Stop();
+  }
+  //std::lock_guard<std::mutex> guards(conns_mut);
+  //assert(conns.size() == 0);
+}
+}
 
 //////////////////////////////////
 // INDEX READER SERVER
 /////////////////////////////
 
-namespace {
-void LaunchConnection(IndexReaderConnection *conn) {
-  conn->Start();
-  delete conn;
-  std::cout << "thread ending" << std::endl;
-}
-}
+namespace codesearch {
 
 void IndexReaderServer::Start() {
   StartAccept();
 }
 
 void IndexReaderServer::StartAccept() {
-  conn_ = IndexReaderConnection::New(db_path_);
+  conn_ = NewConnection(db_path_);
   acceptor_.async_accept(
       *conn_->socket(),
       std::bind(&IndexReaderServer::HandleAccept, this,
@@ -251,5 +282,6 @@ void IndexReaderServer::HandleAccept(const boost::system::error_code& error) {
 
 IndexReaderServer::~IndexReaderServer() {
   delete conn_;
+  DeleteAllConnections();
 }
 }

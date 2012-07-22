@@ -2,6 +2,7 @@
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
 #include "./ngram_index_reader.h"
+#include "./context.h"
 #include "./index.pb.h"
 #include "./util.h"
 
@@ -11,9 +12,9 @@
 #include <thread>
 
 namespace codesearch {
-NGramIndexReader::NGramIndexReader(const std::string &index_directory,
-                                   std::size_t ngram_size)
-    :ngram_size_(ngram_size), files_index_(index_directory, "files"),
+NGramIndexReader::NGramIndexReader(const std::string &index_directory)
+    :ctx_(Context::Acquire(index_directory)),
+     ngram_size_(ctx_->ngram_size()), files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines") {
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config(config_name.c_str(),
@@ -26,16 +27,6 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
                               boost::lexical_cast<std::string>(i) + ".sst");
     SSTableReader *shard = new SSTableReader(shard_name);
     shards_.push_back(shard);
-  }
-
-  std::string ngram_counts_name = index_directory + "/ngram_counts";
-  std::ifstream ngram_counts(ngram_counts_name.c_str(),
-                             std::ifstream::binary | std::ifstream::in);
-  assert(!ngram_counts.fail());
-  NGramCounts ngram_counts_proto;
-  ngram_counts_proto.ParseFromIstream(&ngram_counts);
-  for (const auto &ngram : ngram_counts_proto.ngram_counts()) {
-    sorted_ngrams_.push_back(ngram.ngram());
   }
 }
 
@@ -87,12 +78,15 @@ void NGramIndexReader::Find(const std::string &query,
 
 void NGramIndexReader::FindSmall(const std::string &query,
                                  SearchResults *results) {
-  for (const auto &n : sorted_ngrams_) {
-    if (n.find(query) != std::string::npos) {
-      Find(n, results);
-      if (results->IsFull()) {
+  std::size_t offset = 0;
+  while (true) {
+    std::string ngram = ctx_->FindBestNGram(query, &offset);
+    if (ngram.empty()) {
         break;
-      }
+    }
+    Find(ngram, results);
+    if (results->IsFull()) {
+      break;
     }
   }
 }

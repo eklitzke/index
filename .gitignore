@@ -5,3 +5,5 @@ build/
 gmon.out
 *.py[co]
 *_pb2.py
+massif.out.*
+ms_print.tmp.*

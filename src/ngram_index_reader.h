@@ -7,13 +7,14 @@
 #include <set>
 #include <string>
 
+#include "./context.h"
 #include "./integer_index_reader.h"
 #include "./search_results.h"
 
 namespace codesearch {
 class NGramIndexReader {
  public:
-  NGramIndexReader(const std::string &index_directory, std::size_t ngram_size);
+  NGramIndexReader(const std::string &index_directory);
 
   // Find a string in the ngram index. This should be the full query,
   // like "struct foo" or "madvise". If limit is non-zero, it is the
@@ -23,11 +24,11 @@ class NGramIndexReader {
   ~NGramIndexReader();
 
  private:
+  Context *ctx_;
   const std::size_t ngram_size_;
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
   std::vector<SSTableReader*> shards_;
-  std::vector<std::string> sorted_ngrams_;
 
   // Find an ngram smaller than the ngram_size_
   void FindSmall(const std::string &query, SearchResults *results);

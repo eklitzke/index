@@ -29,6 +29,7 @@ class IndexReaderServer {
   boost::asio::io_service *io_service_;
   boost::asio::ip::tcp::acceptor acceptor_;
   IndexReaderConnection *conn_;
+  std::size_t conn_count_;
 
   void StartAccept();
 
