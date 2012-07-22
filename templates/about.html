@@ -8,9 +8,11 @@ about codesear.ch
     <div class="about">
       This is an implementation of &ldquo;fgrep&rdquo; running on a
       single &ldquo;small&rdquo; EC2 instance. It's indexing all of
-      the C source and header files in the Linux 3.4.4 kernel (more
-      than 14,000,000 lines of code, including all drivers, auxilliary
-      code, tools, etc.).
+      the code checked in as part of
+      the <a href="http://source.android.com/">Android Open Source
+      Project</a>, more than 40,000,000 lines of code (including
+      things like the source for the Linux Kernel, WebKit, gcc, libc,
+      dalvik, etc.)
       <p>
       The basic idea for this implementation is inspired
       by <a href="http://swtch.com/~rsc/regexp/regexp4.html">http://swtch.com/~rsc/regexp/regexp4.html</a>,
@@ -30,9 +32,9 @@ about codesear.ch
       the backend to return so quickly (i.e. the multi-threading
       doesn't help on this EC2 instance, since small instances only
       have one CPU). The sharding level is fairly high (right now,
-      there are about 80 total shards), so generally the speedup on a
-      multi-core system would be about proportional to the number of
-      cores on that system. On my dual-core consumer grade laptop,
+      there are more than 100 total shards), so generally the speedup
+      on a multi-core system would be about proportional to the number
+      of cores on that system. On my dual-core consumer grade laptop,
       even pathological queries generally return in under 50
       milliseconds.
       <p>
