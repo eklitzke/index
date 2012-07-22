@@ -17,4 +17,4 @@ Miscellaneous
 =============
 * index github
 * add logging -- this is important for perf tuning
-* valgrind like a madman
+* use std::binary_search
