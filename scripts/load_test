@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+#
+# This will run a sequence of queries against a codesearch instance,
+# by reading queries from a file (or stdin) and executing them. For
+# example:
+#
+#   echo mmap | ./scripts/load_test
+#   m 2 341
+#   mm 0 204
+#   mma 0 205
+#   mmap 0 203
+#
+# This will execute the queries as a user would type them, one
+# character at a time. The first number printed after the query is the
+# time reported by the backend, the second number printed after the
+# query is the total end-to-end time as measured by this script.
+
+import fileinput
+import json
+import optparse
+import sys
+import time
+import urllib
+
+from tornado import httpclient
+
+if __name__ == '__main__':
+    parser = optparse.OptionParser()
+    parser.add_option('--host', default='http://codesear.ch',
+                      help='The host to query')
+    opts, args = parser.parse_args()
+    host = opts.host.rstrip('/')
+    http_client = httpclient.HTTPClient()
+    for line in fileinput.input():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith('#'):
+            continue
+        for x in xrange(1, len(line) + 1):
+            substr = line[:x]
+            sys.stdout.write(substr + ' ')
+            sys.stdout.flush()
+            t0 = time.time()
+            response = http_client.fetch(host + '/api/search?' +
+                                         urllib.urlencode({'query': substr}))
+            assert response.code == 200
+            elapsed = time.time() - t0
+            body = json.loads(response.body)
+            sys.stdout.write('%d %d\n' % (
+                body['csearch_time'], int(elapsed * 1000)))
+            sys.stdout.flush()

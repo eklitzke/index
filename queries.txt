@@ -1,0 +1,27 @@
+# for use with scripts/load_test; lines starting with # are comments
+mmap
+sbrk
+#munmap
+android
+linus
+fuck
+phone
+ice cream sandwich
+char *
+void *
+windows
+iframe
+html
+webkit
+memory
+#terminal
+activity
+copyright
+google
+iphone
+emacs
+java
+javascript
+c++
+ndk
+
