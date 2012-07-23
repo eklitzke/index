@@ -7,6 +7,10 @@ Front End
 * add syntax highlighting
 * link to github (where appropriate)
 
+Bugs
+====
+* Fix unicode error for "mu" in AOSP index
+
 Performance/Correctness
 =======================
 * use a threadpool in cindex rather than creating lots of short-lived threads
