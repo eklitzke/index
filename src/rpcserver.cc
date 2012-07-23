@@ -211,7 +211,6 @@ IndexReaderConnection::~IndexReaderConnection() {
   std::lock_guard<std::mutex> guard(conns_mut);
   conns.erase(this);
   assert(started_ == false);
-  std::cout << "in dtor!!" << std::endl;
 }
 }
 
@@ -267,6 +266,13 @@ void IndexReaderServer::StartAccept() {
 }
 
 void IndexReaderServer::HandleAccept(const boost::system::error_code& error) {
+  conn_count_++;
+#if 0
+  // This is a hacky way of debugging with massif
+  if (conn_count_ == 2) {
+    return;
+  }
+#endif
   if (error) {
     std::cerr << "unexpectedly got error " << error << std::endl;
     delete conn_;

@@ -19,7 +19,7 @@ class IndexReaderServer {
                     boost::asio::io_service* io_service,
                     const boost::asio::ip::tcp::endpoint &endpoint)
       :db_path_(db_path), io_service_(io_service),
-       acceptor_(*io_service, endpoint), conn_(nullptr) {}
+       acceptor_(*io_service, endpoint), conn_(nullptr), conn_count_(0) {}
 
   void Start();
   ~IndexReaderServer();

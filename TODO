@@ -18,3 +18,4 @@ Miscellaneous
 * index github
 * add logging -- this is important for perf tuning
 * use std::binary_search
+* add a way to shutdown the server process gracefully while using massif

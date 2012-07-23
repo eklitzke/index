@@ -33,12 +33,12 @@
         ],
         'libraries': [
             '-pthread',
+            '/usr/lib64/libtcmalloc.so.4',  # disable if using valgrind/massif
             '-lboost_filesystem',
             '-lboost_system',
             '-lboost_program_options',
             '-lprotobuf',
             '-lsnappy',
-            '/usr/lib64/libtcmalloc.so.4',
             #'../libre2.a',
         ],
         'sources': [

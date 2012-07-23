@@ -31,7 +31,7 @@ if __name__ == '__main__':
     opts, args = parser.parse_args()
     host = opts.host.rstrip('/')
     http_client = httpclient.HTTPClient()
-    for line in fileinput.input():
+    for line in fileinput.input(args):
         line = line.strip()
         if not line:
             continue

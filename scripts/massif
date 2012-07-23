@@ -1,2 +1,2 @@
 #!/bin/bash
-valgrind --tool=massif $@
+exec valgrind --tool=massif $@
