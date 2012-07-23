@@ -12,14 +12,7 @@
 
 namespace {
 std::mutex m_;
-
-struct MapEntry {
-  FILE *fp;
-  const char *addr;
-  std::size_t size;
-};
-
-std::map<std::string, MapEntry> mapping_;
+std::map<std::string, std::pair<std::size_t, const char*> > mapping_;
 }
 
 namespace codesearch {
@@ -38,23 +31,21 @@ std::pair<std::size_t, const char*> GetMmapForFile(const std::string &name) {
 #ifdef USE_MADV_RANDOM
     madvise(addr, size, MADV_RANDOM);
 #endif
+    fclose(f);
 
-    MapEntry entry;
-    entry.fp = f;
-    entry.addr = reinterpret_cast<const char *>(addr);
-    entry.size = size;
-    mapping_.insert(it, std::make_pair(name, entry));
-    return std::make_pair(entry.size, entry.addr);
+    const char *caddr = reinterpret_cast<const char *>(addr);
+    std::pair<std::size_t, const char *> p = std::make_pair(size, caddr);
+    mapping_.insert(it, std::make_pair(name, p));
+    return p;
   }
-  return std::make_pair(it->second.size, it->second.addr);
+  return it->second;
 }
 
 void UnmapFiles() {
   std::lock_guard<std::mutex> guard(m_);
   for (const auto &p : mapping_) {
-    fclose(p.second.fp);
     munmap(reinterpret_cast<void *>(
-        const_cast<char *>(p.second.addr)), p.second.size);
+        const_cast<char *>(p.second.second)), p.second.first);
   }
   mapping_.clear();
 }
