@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+
+import codecs
+import sys
+
+try:
+    f = codecs.open(sys.argv[1], encoding='utf-8', errors='strict')
+    for line in f:
+        pass
+    print "Valid utf-8"
+except UnicodeDecodeError:
+    print "invalid utf-8"

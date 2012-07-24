@@ -18,9 +18,9 @@ std::map<std::string, codesearch::Context *> contexts;
 
 namespace codesearch {
 
-Context::Context(const std::string &index_directory)
+Context::Context(const std::string &index_directory, std::size_t ngram_size)
     :index_directory_(index_directory), sorted_ngrams_(nullptr),
-     sorted_ngrams_size_(0) {
+     sorted_ngrams_size_(0), ngram_size_(ngram_size) {
 
   // We need to read in the sorted list of ngram counts. Storing this
   // as a std::vector of std::string objects results in a *lot* of
@@ -30,19 +30,20 @@ Context::Context(const std::string &index_directory)
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config_file(config_name.c_str(),
                             std::ifstream::binary | std::ifstream::in);
-  assert(!config_file.fail());
-  IndexConfig config;
-  config.ParseFromIstream(&config_file);
-  ngram_size_ = config.ngram_size();
+  if (!config_file.fail()) {
+    IndexConfig config;
+    config.ParseFromIstream(&config_file);
+    assert(config.ngram_size() == ngram_size);
+  }
 }
 
-Context* Context::Acquire(const std::string &db_path) {
+Context* Context::Acquire(const std::string &db_path, std::size_t ngram_size) {
 std::lock_guard<std::mutex> guard(mut);
   auto it = contexts.lower_bound(db_path);
   if (it != contexts.end() && it->first == db_path) {
     return it->second;
   }
-  Context *ctx = new Context(db_path);
+  Context *ctx = new Context(db_path, ngram_size);
   contexts.insert(it, std::make_pair(db_path, ctx));
   return ctx;
 }

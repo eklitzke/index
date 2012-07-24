@@ -5,6 +5,7 @@
 
 #include "./file_types.h"
 #include "./ngram_counter.h"
+#include "./util.h"
 
 #include <set>
 #include <thread>
@@ -66,6 +67,15 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
     std::size_t linenum = 0;
     while (ifs.good()) {
       std::getline(ifs, line);
+      if (!IsValidUtf8(line)) {
+        // Skip non-utf-8 lines. Anecdotally, these are usually in
+        // files that are mostly 7-bit ascii and have one or two lines
+        // with weird characters, so it mostly makes sense to index
+        // the whole file except for the non-utf-8 lines.
+        std::cout << "skipping invalid utf-8 line in " << canonical_name <<
+            std::endl;
+        continue;
+      }
       PositionValue val;
       val.set_file_id(file_id);
       val.set_file_offset(ifs.tellg());

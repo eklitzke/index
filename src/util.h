@@ -33,5 +33,8 @@ std::string GetWordPadding(std::size_t size);
 
 std::string PrintBinaryString(const std::string &str);
 
+// Returns true if src is valid UTF-8, false otherwise.
+bool IsValidUtf8(const std::string &src);
+
 }
 #endif

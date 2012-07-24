@@ -22,7 +22,8 @@
 namespace codesearch {
 class Context {
  public:
-  static Context* Acquire(const std::string &index_directory);
+  static Context* Acquire(const std::string &index_directory,
+                          std::size_t ngram_size = 3);
   ~Context();
 
   std::string FindBestNGram(const std::string &fragment,
@@ -31,11 +32,11 @@ class Context {
   std::size_t ngram_size() const { return ngram_size_; }
 
  private:
-  Context(const std::string &index_directory);
+  Context(const std::string &index_directory, std::size_t ngram_size);
   std::string index_directory_;
-  std::size_t ngram_size_;
   char *sorted_ngrams_;
   std::size_t sorted_ngrams_size_;
+  const std::size_t ngram_size_;
   std::mutex mut_;
 
 

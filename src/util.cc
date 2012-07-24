@@ -1,5 +1,6 @@
 #include "./util.h"
 
+#include <cassert>
 #include <endian.h>
 #include <sstream>
 #include <iomanip>
@@ -44,6 +45,36 @@ std::string PrintBinaryString(const std::string &str) {
     }
   }
   return ss.str();
+}
+
+bool IsValidUtf8(const std::string &src) {
+  int n = 0;
+  for (const char &i : src) {
+    int c = static_cast<int>(i) & 0xFF;
+    if (n) {
+      if ((c & 0xC0) != 0x80) {
+        return false;
+      }
+      n--;
+      continue;
+    }
+    if (c < 0x80) {
+      n = 0; // 0bbbbbbb
+    } else if ((c & 0xE0) == 0xC0) {
+      n = 1; // 110bbbbb
+    } else if ((c & 0xF0) == 0xE0) {
+      n = 2; // 1110bbbb
+    } else if ((c & 0xF8) == 0xF0) {
+      n = 3; // 11110bbb
+    } else if ((c & 0xFC) == 0xF8) {
+      n = 4; // 111110bb
+    } else if ((c & 0xFE) == 0xFC) {
+      n = 5; // 1111110b
+    } else {
+      return false;
+    }
+  }
+  return n == 0;
 }
 
 }

@@ -8,6 +8,7 @@
 #include "./ngram_index_writer.h"
 #include "./ngram_counter.h"
 #include "./index.pb.h"
+#include "./util.h"
 
 #include <string>
 #include <thread>
@@ -59,7 +60,7 @@ int main(int argc, char **argv) {
   std::size_t shard_size = vm["shard-size"].as<std::size_t>();
   std::size_t num_threads = vm["threads"].as<std::size_t>();
   std::unique_ptr<codesearch::Context> ctx(
-      codesearch::Context::Acquire(db_path_str));
+      codesearch::Context::Acquire(db_path_str, ngram_size));
   {
     codesearch::NGramIndexWriter ngram_writer(
         db_path_str, ngram_size, shard_size, num_threads);
@@ -77,6 +78,16 @@ int main(int argc, char **argv) {
         const std::string canonical = boost::filesystem::canonical(
             it->path(), ec).string();
         if (ec) {
+          continue;
+        }
+        if (!codesearch::IsValidUtf8(canonical)) {
+          // Normally filenames on a modern linux system are utf-8 by
+          // convention, but there's nothing that requires this (they
+          // can essentially be any sequence of non-null
+          // characters). Skip files whose names are not a valid utf-8
+          // sequence.
+          std::cout << it->path() << " is not a valid UTF-8 sequence" <<
+              std::endl;
           continue;
         }
         std::string fname = filepath.substr(dir.size(), std::string::npos);

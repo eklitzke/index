@@ -74,8 +74,8 @@ message SSTableHeader {
 }
 
 message FileValue {
-  required bytes directory = 1;
-  required bytes filename = 2;
+  required string directory = 1;
+  required string filename = 2;
 
   // A free-form string indicating the language for the file. At some
   // point, when the list of languages is a bit more stable, this
@@ -107,13 +107,13 @@ message PositionValue {
   required uint64 file_id = 1;
   required uint64 file_offset = 2;
   required uint64 file_line = 3;
-  required bytes line = 4;
+  required string line = 4;
 }
 
 message SearchResult {
   required bytes filename = 1;
   required uint64 line_num = 2;
-  required bytes line_text = 3;
+  required string line_text = 3;
 }
 
 message SearchQueryRequest {
