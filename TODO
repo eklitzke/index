@@ -9,7 +9,7 @@ Front End
 
 Bugs
 ====
-none!
+* python frontend doesn't reconnect when rpcserver dies
 
 Performance/Correctness
 =======================

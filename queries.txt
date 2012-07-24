@@ -1,7 +1,7 @@
 # for use with scripts/load_test; lines starting with # are comments
 mmap
 sbrk
-#munmap
+munmap
 android
 linus
 fuck
@@ -14,7 +14,7 @@ iframe
 html
 webkit
 memory
-#terminal
+terminal
 activity
 copyright
 google
