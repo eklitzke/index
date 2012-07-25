@@ -1,9 +1,6 @@
-import functools
-import subprocess
 from tornado import escape
 from tornado import web
 from codesearch import handler_meta
-from codesearch import filesystem
 from codesearch import search_rpc
 
 _rpc_pool = search_rpc.SearchRpcPool.instance()
@@ -86,4 +83,4 @@ class SearchHandler(handler_meta.RequestHandler):
             if self.rpc_client is not None:
                 self.rpc_client.close()
                 self.ensure_released()
-            self.finish();
+            self.finish()

@@ -1,10 +1,5 @@
-import hashlib
 import json
-import os
 import tornado.web
-from tornado import template
-
-from codesearch import filesystem
 
 _handlers = []
 

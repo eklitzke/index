@@ -30,6 +30,7 @@ class RpcClient(object):
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         self.stream = tornado.iostream.IOStream(s)
+        self.stream.set_close_callback(self.onclose)
         self.stream.connect((host, port))
 
     def send(self, protobuf):
@@ -63,6 +64,12 @@ class RpcClient(object):
             self.stream.read_bytes(size, unpack_callback)
 
         self.stream.read_bytes(8, size_callback)
+
+    def onclose(self):
+        pass
+
+    def closed(self):
+        self.stream.closed()
 
     def close(self):
         self.stream.close()

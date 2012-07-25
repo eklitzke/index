@@ -16,7 +16,6 @@ class InstanceWatcher(object):
         if pid:
             self.instances[pid] = port
         else:
-            parent = False
             try:
                 self.application.listen(port)
                 tornado.ioloop.IOLoop.instance().start()
@@ -31,10 +30,10 @@ class InstanceWatcher(object):
         try:
             while True:
                 time.sleep(1)
-                pid, status = os.wait()
+                pid, _ = os.wait()
                 port = self.instances.pop(pid)
                 self.run_child(port)
-        except Exception, e:
+        except Exception:
             raise
             for pid in self.instances:
                 os.kill(pid, signal.SIGTERM)

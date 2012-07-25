@@ -1,6 +1,5 @@
 import optparse
 import tornado.ioloop
-from tornado import httpserver
 
 from codesearch import instance_watcher
 from codesearch import filesystem
