@@ -7,12 +7,12 @@
     src="{{static_url('js/zepto.min.js')}}"></script>
     {% end %}
     {% block extra_js %}{% end %}
-    <link rel="stylesheet" href="{{static_url('css/reset.css')}}">
+    <link rel="stylesheet" href="{{static_url('css/reset.out.css')}}">
     {% if prod %}
     <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono"
           rel="stylesheet" type="text/css">
     {% end %}
-    <link rel="stylesheet" href="{{static_url('css/base.css')}}" type="text/css">
+    <link rel="stylesheet" href="{{static_url('css/base.out.css')}}" type="text/css">
     {% block extra_css %}{% end %}
     {% if prod %}
     <script type="text/javascript">
