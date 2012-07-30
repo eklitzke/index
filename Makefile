@@ -9,4 +9,4 @@ proto:
 
 .PHONY: css
 css:
-	./bin/make_css
+	./scripts/make_css

@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+
+import hashlib
+import os
+import re
+import sys
+from tornado import template
+
+css_re = re.compile(r'^(.*)\.css$')
+out_re = re.compile(r'\.out\.css$')
+
+def static_url(filename):
+    static_path = os.path.join('./static', filename)
+    with open(static_path) as f:
+        contents = f.read()
+    filehash = hashlib.md5(contents).hexdigest()
+    return '/static/%s?v=%s' % (filename, filehash[:5])
+
+def build_file(filename):
+    with open(filename) as f:
+        contents = f.read()
+    t = template.Template(contents)
+    out = t.generate(static_url=static_url)
+    m = css_re.match(filename)
+    assert m
+    basename = m.groups()[0]
+    with open(basename + '.out.css', 'w') as outf:
+        outf.write(out)
+        if not out.endswith('\n'):
+            outf.write('\n')
+
+if __name__ == '__main__':
+    for f in os.listdir('static/css'):
+        if css_re.search(f) and not out_re.search(f):
+            build_file(os.path.join('static/css', f))
