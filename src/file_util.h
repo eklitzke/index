@@ -11,8 +11,12 @@
 namespace codesearch {
 std::string FileLanguage(const std::string &filename);
 
-// Returns true if we should index this file.
-bool ShouldIndex(const std::string &filename);
+// Returns true if we should index this file. This applies some
+// heuristics to the filename, and if the file isn't blacklisted it
+// will read approximately read_size bytes and then apply some
+// heuristics on that data to see if it looks like it's mostly UTF-8
+// data.
+bool ShouldIndex(const std::string &filename, std::size_t read_size = 10000);
 
 // Get the context for a file, where context is the number of
 // surrounding lines.

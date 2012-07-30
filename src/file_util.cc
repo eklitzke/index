@@ -1,18 +1,20 @@
 #include "./file_util.h"
 
 #include "./context.h"
+#include "./util.h"
 
 #include <cassert>
+#include <set>
 #include <vector>
 
-#include <iostream>
-
 namespace {
-bool initialized_ = false;
 std::map<std::string, std::string> file_types_;
 
-void DemandInitialize() {
-  if (!initialized_) {
+std::vector<std::string> bad_dirs_;
+std::set<std::string> bad_exts_;
+
+struct Init_ {
+  Init_() {
     file_types_.insert(std::make_pair("C", "c++"));
     file_types_.insert(std::make_pair("LICENSE", "text"));
     file_types_.insert(std::make_pair("Makefile", "make"));
@@ -71,22 +73,52 @@ void DemandInitialize() {
     file_types_.insert(std::make_pair("xsd", "xml"));
     file_types_.insert(std::make_pair("yaml", "yaml"));
     file_types_.insert(std::make_pair("yml", "yaml"));
-    initialized_ = true;
-  }
-}
-}
 
-namespace codesearch {
-std::string FileLanguage(const std::string &filename) {
-  DemandInitialize();
+    // If any part of the file path contains one of these directory
+    // names, we will not index the file.
+    bad_dirs_.push_back(".git");
+    bad_dirs_.push_back(".hg");
+    bad_dirs_.push_back(".repo");
+    bad_dirs_.push_back(".svn");
+
+    // These are files that we never, ever want to index. Some of
+    // these are here just because we know they're always binary and
+    // it doesn't make sense to read a bunch of data and apply our
+    // UTF-8 heuristics; others, like pdf, are here because the
+    // heuristics sometimes mark them as text even though they are
+    // binary.
+    bad_exts_.insert("a");
+    bad_exts_.insert("jpg");
+    bad_exts_.insert("jpeg");
+    bad_exts_.insert("mo");
+    bad_exts_.insert("o");
+    bad_exts_.insert("pdf");  // looks like text sometimes
+    bad_exts_.insert("png");
+    bad_exts_.insert("so");
+    bad_exts_.insert("swp");
+  }
+};
+
+// initialize the compilation unit
+Init_ init_;
+
+// Get the extension of a file. For instance,
+//  foo.png   -> png
+//  Makefile  -> Makefile
+std::string GetExtension(const std::string &filename) {
   std::string::size_type dotpos = filename.find_last_of('.');
   if (dotpos == std::string::npos) {
     dotpos = 0;
   } else {
     dotpos++;
   }
-  std::string extension = filename.substr(dotpos, std::string::npos);
+  return filename.substr(dotpos, std::string::npos);
+}
+}
 
+namespace codesearch {
+std::string FileLanguage(const std::string &filename) {
+  std::string extension = GetExtension(filename);
   const auto &it = file_types_.find(extension);
   if (it == file_types_.end()) {
     return "";
@@ -95,8 +127,46 @@ std::string FileLanguage(const std::string &filename) {
   }
 }
 
-bool ShouldIndex(const std::string &filename) {
-  return !FileLanguage(filename).empty();
+bool ShouldIndex(const std::string &filename, std::size_t read_size) {
+  // Try to detect files in directories like .git, .hg, etc.
+  for (const auto &dirname : bad_dirs_) {
+    if (filename.find("/" + dirname + "/") != std::string::npos) {
+      return false;
+    }
+  }
+
+  // Detect bad file extensions, like .pdf
+  std::string extension = GetExtension(filename);
+  if (bad_exts_.find(extension) != bad_exts_.end()) {
+    return false;
+  }
+
+  // We're going to read the first 10kish bytes of the file (breaking
+  // on newline boundaries), and detect what % of the data looks like
+  // it's UTF-8; if we get 95% or more valid UTF-8 data, then we
+  // choose to index the file.
+  std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
+  assert(!ifs.fail());
+  std::string s;
+  std::size_t valid_data = 0;
+  std::size_t invalid_data = 0;
+  while (true) {
+    std::getline(ifs, s);
+    if (IsValidUtf8(s)) {
+      valid_data += s.size();
+    } else {
+      invalid_data += s.size();
+    }
+    if (ifs.eof() || ifs.tellg() == -1) {
+      break;
+    }
+    if (static_cast<std::size_t>(ifs.tellg()) >= read_size) {
+      break;
+    }
+    assert(!ifs.fail());
+    s.clear();  // is this necessary?
+  }
+  return valid_data > 0 && valid_data >= 20 * invalid_data;
 }
 
 std::map<std::size_t, std::string> GetFileContext(std::ifstream *ifs,

@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+#
+# "Compile" all of the static CSS files. This really just means
+# writing out static urls with hashes.
 
 import hashlib
 import os
