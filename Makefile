@@ -1,5 +1,5 @@
-.PHONY: all
-all: css
+.PHONY: cxx
+cxx:
 	make -C build
 
 .PHONY: proto
@@ -10,3 +10,8 @@ proto:
 .PHONY: css
 css:
 	./scripts/make_css
+
+# Make sure *everything* is built. Since this forces the .proto files
+# to be built, this will essentially trigger a full rebuild.
+.PHONY: full
+full: proto cxx css

@@ -5,18 +5,17 @@ Regular Expressions
 Front End
 =========
 * add syntax highlighting
-* link to github (where appropriate)
+* link to github/files
 
 Bugs
 ====
 * make search results be returned in a deterministic order
 * adjacent results in searches need to be merged
 * index data should be in a deterministic order, for rsync
-
-Performance/Correctness
-=======================
 * use a threadpool in cindex rather than creating lots of short-lived threads
 * prevent cindex from blocking threads on rotation
+* we should do UTF-8 detection, rather than a hard list of file exts
+* add a way to bundle file contents with the index
 
 Miscellaneous
 =============
