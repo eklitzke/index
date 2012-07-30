@@ -4,7 +4,7 @@
 #include <boost/filesystem.hpp>
 
 #include "./context.h"
-#include "./file_types.h"
+#include "./file_util.h"
 #include "./ngram_index_writer.h"
 #include "./ngram_counter.h"
 #include "./index.pb.h"
@@ -52,6 +52,10 @@ int main(int argc, char **argv) {
   boost::filesystem::path db_path(db_path_str);
   if (vm.count("replace")) {
     boost::filesystem::remove_all(db_path);
+  } else if (boost::filesystem::exists(db_path)) {
+    std::cerr << "database at " << db_path << " already exists, use "
+        "-r/--replace if you wish to replace it" << std::endl;
+    return 1;
   }
   boost::filesystem::create_directories(db_path);
 
@@ -59,13 +63,20 @@ int main(int argc, char **argv) {
 
   std::size_t shard_size = vm["shard-size"].as<std::size_t>();
   std::size_t num_threads = vm["threads"].as<std::size_t>();
+
+  if (vm.count("src-dir") != 1) {
+    std::cerr << "Must specify exactly one src-dir/vestibule" << std::endl;
+    return 1;
+  }
+  const std::vector<std::string> src_dirs = vm["src-dir"].as<
+    std::vector<std::string > >();
   std::unique_ptr<codesearch::Context> ctx(
-      codesearch::Context::Acquire(db_path_str, ngram_size));
+      codesearch::Context::Acquire(db_path_str, ngram_size, src_dirs[0], true));
   {
     codesearch::NGramIndexWriter ngram_writer(
         db_path_str, ngram_size, shard_size, num_threads);
 
-    for (const auto &d : vm["src-dir"].as<std::vector<std::string >>()) {
+    for (const auto &d : src_dirs) {
       std::string dir = d.substr(0, d.find_last_not_of('/') + 1);
       std::string match;
       for (boost::filesystem::recursive_directory_iterator end, it(dir);

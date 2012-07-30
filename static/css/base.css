@@ -1,4 +1,5 @@
-body { font-family: 'Droid Sans Mono', monospace; margin: 1em; }
+body { font-family: 'Droid Sans Mono', monospace; margin: 1em; max-width: 1000px; font-size: 12px;
+}
 
 h1 { font-size: 20px; }
 em { font-decoration: none; font-style: normal; font-weight: bold; }
@@ -9,3 +10,8 @@ td { padding-left: 1em; }
 
 .about { max-width: 900px; }
 p { margin-top: 1em; }
+
+.search_result { margin-bottom: 1em; }
+.search_result_lines { border: 1px solid black; background-image: url('/static/img/static.png'); color: black;}
+.highlight { font-weight: bold; color: #ef151d; }
+.search_result_filename { font-weight: bold; }

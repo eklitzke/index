@@ -17,33 +17,47 @@ std::map<std::string, codesearch::Context *> contexts;
 }
 
 namespace codesearch {
+Context* GetContext() {
+  assert(contexts.size() == 1);
+  return contexts.begin()->second;
+}
 
-Context::Context(const std::string &index_directory, std::size_t ngram_size)
-    :index_directory_(index_directory), sorted_ngrams_(nullptr),
-     sorted_ngrams_size_(0), ngram_size_(ngram_size) {
-
-  // We need to read in the sorted list of ngram counts. Storing this
-  // as a std::vector of std::string objects results in a *lot* of
-  // memory being wasted, as the strings are generally very small
-  // (typically only three bytes). To save memory, we pre-allocate a
-  // char[] big enough to hold all of the data.
-  std::string config_name = index_directory + "/ngrams/config";
-  std::ifstream config_file(config_name.c_str(),
-                            std::ifstream::binary | std::ifstream::in);
-  if (!config_file.fail()) {
-    IndexConfig config;
-    config.ParseFromIstream(&config_file);
-    assert(config.ngram_size() == ngram_size);
+Context::Context(const std::string &index_directory,
+                 std::size_t ngram_size,
+                 const std::string &vestibule_path,
+                 bool create)
+    :index_directory_(index_directory), vestibule_(vestibule_path),
+     sorted_ngrams_(nullptr), sorted_ngrams_size_(0), ngram_size_(ngram_size) {
+  std::string meta_config_path = index_directory + "/meta_config";
+  if (create) {
+    MetaIndexConfig meta_config;
+    meta_config.set_vestibule(vestibule_path);
+    meta_config.set_ngram_size(ngram_size);
+    std::ofstream of(meta_config_path.c_str(),
+                     std::ofstream::out | std::ofstream::binary |
+                     std::ofstream::trunc);
+    meta_config.SerializeToOstream(&of);
+  } else {
+    std::ifstream config_file(meta_config_path.c_str(),
+                              std::ifstream::binary | std::ifstream::in);
+    assert(!config_file.fail());
+    MetaIndexConfig meta_config;
+    meta_config.ParseFromIstream(&config_file);
+    assert(meta_config.ngram_size() == ngram_size);
+    vestibule_ = meta_config.vestibule();
   }
 }
 
-Context* Context::Acquire(const std::string &db_path, std::size_t ngram_size) {
+Context* Context::Acquire(const std::string &db_path,
+                          std::size_t ngram_size,
+                          const std::string &vestibule_path,
+                          bool create) {
 std::lock_guard<std::mutex> guard(mut);
   auto it = contexts.lower_bound(db_path);
   if (it != contexts.end() && it->first == db_path) {
     return it->second;
   }
-  Context *ctx = new Context(db_path, ngram_size);
+  Context *ctx = new Context(db_path, ngram_size, vestibule_path, create);
   contexts.insert(it, std::make_pair(db_path, ctx));
   return ctx;
 }

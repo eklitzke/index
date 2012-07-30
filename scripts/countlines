@@ -1,0 +1,2 @@
+#!/bin/bash
+for shard in /tmp/index/lines/shard_*.sst; do ./bin/inspect_shard $shard; done | awk ' /max_value/ { if ($3 > m) { m = $3 } } END { print m }

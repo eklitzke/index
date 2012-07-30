@@ -3,7 +3,7 @@
 
 #include "./ngram_index_writer.h"
 
-#include "./file_types.h"
+#include "./file_util.h"
 #include "./ngram_counter.h"
 #include "./util.h"
 
@@ -66,6 +66,7 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
     std::string line;
     std::size_t linenum = 0;
     while (ifs.good()) {
+      std::streampos file_offset = ifs.tellg();
       std::getline(ifs, line);
       if (!IsValidUtf8(line)) {
         // Skip non-utf-8 lines. Anecdotally, these are usually in
@@ -78,7 +79,7 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
       }
       PositionValue val;
       val.set_file_id(file_id);
-      val.set_file_offset(ifs.tellg());
+      val.set_file_offset(file_offset);
       val.set_file_line(++linenum);
       val.set_line(line);
 

@@ -143,7 +143,7 @@ void IndexReaderConnection::Search(std::size_t size) {
     reader_.Find(search_query.query(), &results);
 
     resp = response.mutable_search_response();
-    for (const auto &result : results.results()) {
+    for (const auto &result : results.contextual_results()) {
       resp->add_results()->MergeFrom(result);
     }
   } else {

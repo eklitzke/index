@@ -4,6 +4,7 @@
 #include <boost/filesystem.hpp>
 
 #include "./context.h"
+#include "./file_util.h"
 #include "./ngram_index_reader.h"
 
 #include <string>
@@ -54,9 +55,18 @@ int main(int argc, char **argv) {
   std::string query = vm["query"].as<std::string>();
   reader.Find(query, &results);
   if (!vm.count("no-print")) {
-    for (const auto &val : results.results()) {
-      std::cout << val.filename() << ":" << val.line_num() <<
-          ":" << val.line_text() << std::endl;
+    for (const auto &sr_ctx : results.contextual_results()) {
+      std::cout << sr_ctx.filename() << std::endl;
+      std::cout << std::string(sr_ctx.filename().length(), '-') << std::endl;
+      for (const auto &line : sr_ctx.lines()) {
+        if (line.is_matched_line()) {
+          std::cout << "* ";
+        } else {
+          std::cout << "  ";
+        }
+        std::cout << line.line_num() << ":" << line.line_text()  << std::endl;
+      }
+      std::cout << std::endl;
     }
   } else {
     std::cout << results.results().size() << " search results" << std::endl;

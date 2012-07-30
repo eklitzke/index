@@ -3,6 +3,11 @@ import tornado.web
 
 _handlers = []
 
+def whitespace_escape(s):
+    s = s.replace(' ', '&nbsp;')
+    s = s.replace('\t', '&nbsp;' * 8)
+    return s
+
 class RequestHandlerMeta(type(tornado.web.RequestHandler)):
     def __init__(cls, name, bases, cls_dict):
         ret = super(RequestHandlerMeta, cls).__init__(name, bases, cls_dict)
@@ -20,6 +25,7 @@ class RequestHandler(tornado.web.RequestHandler):
             'js': True,
             'prod': self.in_prod,
             'title': 'codesear.ch',
+            'whitespace_escape': whitespace_escape,
         }
 
     def compute_etag(self):

@@ -22,18 +22,26 @@
 namespace codesearch {
 class Context {
  public:
+  // If create is true, a meta_config file will be created
   static Context* Acquire(const std::string &index_directory,
-                          std::size_t ngram_size = 3);
+                          std::size_t ngram_size = 3,
+                          const std::string &vestibule_path = "",
+                          bool create = false);
   ~Context();
 
   std::string FindBestNGram(const std::string &fragment,
                             std::size_t *offset);
 
   std::size_t ngram_size() const { return ngram_size_; }
+  std::string vestibule() const { return vestibule_; }
 
  private:
-  Context(const std::string &index_directory, std::size_t ngram_size);
+  Context(const std::string &index_directory,
+          std::size_t ngram_size,
+          const std::string &vestibule_path,
+          bool create);
   std::string index_directory_;
+  std::string vestibule_;
   char *sorted_ngrams_;
   std::size_t sorted_ngrams_size_;
   const std::size_t ngram_size_;
@@ -42,6 +50,11 @@ class Context {
 
   void InitializeSmallNGrams();
 };
+
+// This allows getting the current context, assuming that only one has
+// been created (if zero or 2+ have been created, this will trigger an
+// assertion failure).
+Context* GetContext();
 }
 
 #endif

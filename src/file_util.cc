@@ -1,9 +1,11 @@
-// -*- C++ -*-
-// Copyright 2012, Evan Klitzke <evan@eklitzke.org>
+#include "./file_util.h"
 
-#include "./file_types.h"
+#include "./context.h"
 
-#include <map>
+#include <cassert>
+#include <vector>
+
+#include <iostream>
 
 namespace {
 bool initialized_ = false;
@@ -95,5 +97,63 @@ std::string FileLanguage(const std::string &filename) {
 
 bool ShouldIndex(const std::string &filename) {
   return !FileLanguage(filename).empty();
+}
+
+std::map<std::size_t, std::string> GetFileContext(std::ifstream *ifs,
+                                                  std::size_t line_number,
+                                                  std::uint64_t offset,
+                                                  std::size_t context) {
+  std::size_t p = offset;
+  std::size_t lines_found_reverse = 0;
+
+  // N.B. This is really inefficient, because we are re-seeking for
+  // each character encountered. The portable/fastish way to do it is
+  // do have some buffering here (e.g. read 100 characters at a time
+  // backwards), the unportable/really-fast way to do it is to use
+  // mmap(2) with memrchr(3) to search backwards for newlines.
+  while (p) {
+    p--;
+    ifs->seekg(p);
+    assert(!ifs->fail() && !ifs->eof());
+    if (ifs->peek() == '\n') {
+      if (lines_found_reverse == context) {
+        p++;
+        ifs->seekg(p);
+        assert(!ifs->fail() && !ifs->eof());
+        break;
+      } else {
+        lines_found_reverse++;
+      }
+    }
+  }
+
+  // The file is aligned to where we should start reading data, and we
+  // can figure out how many lines we are back based on
+  // lines_found_reverse.
+  assert(lines_found_reverse <= line_number);
+  std::map<std::size_t, std::string> line_map;
+  for (std::size_t line = line_number - lines_found_reverse;
+       line < line_number + context + 1; line++) {
+    std::string line_str;
+    getline(*ifs, line_str);
+    line_map.insert(std::make_pair(line, line_str));
+  }
+  return line_map;
+}
+
+// Same, but automatically opens the file for reading.
+std::map<std::size_t, std::string> GetFileContext(const std::string &file_path,
+                                                  std::size_t line_number,
+                                                  std::uint64_t offset,
+                                                  std::size_t context) {
+  std::string fp = file_path;
+  if (file_path.empty() || *file_path.begin() != '/') {
+    Context *ctx = GetContext();
+    fp = ctx->vestibule() + "/" + file_path;
+  }
+
+  std::ifstream ifs(fp, std::ifstream::binary | std::ifstream::in);
+  assert(!ifs.fail() && !ifs.eof());
+  return GetFileContext(&ifs, line_number, offset, context);
 }
 }

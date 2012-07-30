@@ -6,13 +6,14 @@
             'src/mmap.cc',
         ],
         'reader_sources': [
+            'src/file_util.cc',
             'src/integer_index_reader.cc',
             'src/ngram_index_reader.cc',
             'src/search_results.cc',
             'src/sstable_reader.cc',
         ],
         'writer_sources': [
-            'src/file_types.cc',
+            'src/file_util.cc',
             'src/index_writer.cc',
             'src/ngram_counter.cc',
             'src/ngram_index_writer.cc',

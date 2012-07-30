@@ -30,27 +30,33 @@ class SearchHandler(handler_meta.RequestHandler):
     def search_callback(self, rpc_container, results):
         self.ensure_released()
         self.escaped_query = escape.xhtml_escape(self.query)
+
+        def highlight(text):
+            text = escape.xhtml_escape(text)
+            text = text.replace(' ', '&nbsp;')
+            text = text.replace('\t', '&nbsp;' * 4)
+            text = text.replace(
+                self.escaped_query,
+                '<span class="highlight">' + self.escaped_query + '</span>')
+            return text
+
         try:
             search_results = results.results[:self.limit]
             overflowed = len(results.results) > self.limit
-            json_results = {
+            self.env.update({
+                'highlight': highlight,
                 'offset': self.offset,
                 'escaped_query': self.escaped_query,
                 'search_results': [],
                 'num_results': len(search_results),
+                'show_more': self.limit < 400,
                 'overflowed': overflowed,
                 'csearch_time': rpc_container.time_elapsed
-            }
+            })
             for result in search_results:
-                val = {
-                    'filename': result.filename,
-                    'line_num': result.line_num,
-                    'raw_text': result.line_text,
-                    'html_text': self.format_string(result.line_text),
-                }
-                json_results['search_results'].append(val)
-            self.render_json(json_results)
-            self.finish()
+                self.env['search_results'].append(result)
+            self.render('search_results.html')
+            #self.finish()
         except IOError:
             # A common reason that this might happen is that the
             # client closed its connection while waiting for our

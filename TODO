@@ -9,12 +9,13 @@ Front End
 
 Bugs
 ====
-none!
+* make search results be returned in a deterministic order
+* adjacent results in searches need to be merged
+* index data should be in a deterministic order, for rsync
 
 Performance/Correctness
 =======================
 * use a threadpool in cindex rather than creating lots of short-lived threads
-* make search results be returned in a deterministic order
 * prevent cindex from blocking threads on rotation
 
 Miscellaneous

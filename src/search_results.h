@@ -26,7 +26,7 @@ class SearchResults {
   // Add a result; returns true if the result was added, false if the
   // container was full (and hence the result was not added).
   bool AddResult(const std::string &filename, std::size_t line_num,
-                 const std::string &line_text);
+                 std::size_t line_offset, const std::string &line_text);
 
   std::size_t size() {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -36,6 +36,8 @@ class SearchResults {
 
   // None of these are locked! Exercise caution when using these.
   const std::vector<SearchResult>& results() const {return results_; };
+
+  std::vector<SearchResultContext> contextual_results();
 
   // The mutex is publicly visible.
   std::mutex mutex_;

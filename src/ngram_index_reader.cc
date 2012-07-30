@@ -143,7 +143,8 @@ void NGramIndexReader::FindShard(const std::string &query,
       files_index_.Find(pos.file_id(), &value);
       FileValue fileval;
       fileval.ParseFromString(value);
-      if (!results->AddResult(fileval.filename(), pos.file_line(), pos_line)) {
+      if (!results->AddResult(fileval.filename(), pos.file_line(),
+                              pos.file_offset(), pos_line)) {
         // the results container is full
         break;
       }

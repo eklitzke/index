@@ -5,9 +5,8 @@
     {% if js %}
     <script type="text/javascript"
     src="{{static_url('js/zepto.min.js')}}"></script>
-    <script type="text/javascript"
-    src="{{static_url('js/mustache.js')}}"></script> {% end %} {%
-    block extra_js %}{% end %}
+    {% end %}
+    {% block extra_js %}{% end %}
     <link rel="stylesheet" href="{{static_url('css/reset.css')}}">
     {% if prod %}
     <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono"

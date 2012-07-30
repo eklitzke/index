@@ -32,6 +32,11 @@
 
 package codesearch;
 
+message MetaIndexConfig {
+  required string vestibule = 1;
+  optional uint64 ngram_size = 2 [ default = 3 ];
+}
+
 message IndexConfig {
   required uint64 shard_size = 1;
   required uint64 num_shards = 2;
@@ -48,8 +53,6 @@ message IndexConfig {
     STRING = 1;
   }
   optional KeyType key_type = 4 [default = NUMERIC];
-
-  optional uint64 ngram_size = 5 [ default = 3 ];
 }
 
 // The format of the SSTable is like this:
@@ -111,9 +114,18 @@ message PositionValue {
 }
 
 message SearchResult {
-  required bytes filename = 1;
+  optional string filename = 1;
   required uint64 line_num = 2;
-  required string line_text = 3;
+  optional uint64 line_offset = 3;
+  required string line_text = 4;
+  optional bool is_matched_line = 5 [ default = false ];
+  optional string lang = 6;
+}
+
+message SearchResultContext {
+  optional string filename = 1;
+  optional string lang = 2;
+  repeated SearchResult lines = 3;
 }
 
 message SearchQueryRequest {
@@ -123,7 +135,7 @@ message SearchQueryRequest {
 }
 
 message SearchQueryResponse {
-  repeated SearchResult results = 1;
+  repeated SearchResultContext results = 1;
 }
 
 message RPCRequest {

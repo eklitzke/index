@@ -1,0 +1,32 @@
+{% for result_ctx in search_results %}
+<div class="search_result">
+  <div class="search_result_filename">
+    {{result_ctx.filename}}
+  </div>
+  <div class="search_result_lines">
+    {% for line in result_ctx.lines %}
+    <div class="search_result_line">
+      <span class="line_num">{{line.line_num}}</span>:
+      <span class="line_text">
+        {% raw highlight(line.line_text) %}</span>
+    </div>
+    {% end %}
+  </div>
+</div>
+{% end %}
+
+<br>
+{% if overflowed %}
+Result set too large, limiting results to first {{num_results}} matches.
+{% if show_more %}
+<a href="#" id="more_link">Show more?</a>
+{% else %}
+Cowardly refusing to let you search for more results.
+{% end %}
+{% else %}
+Showing all {{num_results}} matches.
+{% end %}
+
+<div id="about">
+Backend returned in {{csearch_time}} ms. <a href="/about">about<a>
+</div>

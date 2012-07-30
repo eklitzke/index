@@ -34,54 +34,14 @@ S.search = (function (searchVal, limit) {
         if (limit) {
             params['limit'] = limit;
         }
-        S.currentSearch = $.getJSON(
+        S.currentSearch = $.get(
             '/api/search?' + $.param(params), function (r) {
                 S.currentSearch = null;
-                S.nextOffset = r.next_offset;
                 $searchResults.empty();
-                r['show_more'] = (limit < 400);
-                S.renderTemplate('search_results.mustache',
-                                 $searchResults, r, function () {
-                                     $('#more_link').click(function (e) {
-                                         e.preventDefault();
-                                         S.search(searchVal, limit + 40)
-                                         console.log('lol');
-                                     })});
+                $searchResults.html(r);
                 $searchResults.removeClass('grey');
                 $('#search_status').css({'visibility': 'hidden'});
             });
-    }
-});
-
-S.templates = {};
-S.prefetchTemplate = (function (name) {
-    var url = '/static/mustache/' + name + '?v=';
-    url += (new Date()).valueOf();
-    $.get(url, function (d) {
-        S.templates[name] = d;
-    })
-});
-
-S.renderToElement = (function (template, element, view, after) {
-    console.info('in render to element');
-    console.log(element);
-    console.log(view);
-    element.html(Mustache.render(template, view));
-    if (after != undefined) {
-        after();
-    }
-});
-
-S.renderTemplate = (function (name, element, view, after) {
-    if (S.templates[name] !== undefined) {
-        S.renderToElement(S.templates[name], element, view, after);
-    } else {
-        var url = '/static/mustache/' + name + '?v=';
-        url += (new Date()).valueOf();
-        $.get(url, function (d) {
-            S.templates[name] = d;
-            S.renderToElement(d, element, view, after);
-        })
     }
 });
 
@@ -92,6 +52,5 @@ $(document).ready(function () {
         var searchVal = $('#search_input').val();
         S.search(searchVal);
     });
-    S.prefetchTemplate('search_results.mustache');
     S.decodeHash();
 });
