@@ -1,7 +1,7 @@
-body { font-family: 'Droid Sans Mono', monospace; margin: 1em; max-width: 1000px; font-size: 12px;
+body { font-family: 'Droid Sans Mono', monospace; margin: 1em; max-width: 1000px; font-size: 14px;
 }
 
-h1 { font-size: 20px; }
+h1 { font-size: 22px; }
 em { font-decoration: none; font-style: normal; font-weight: bold; }
 
 .black { color: default; }
