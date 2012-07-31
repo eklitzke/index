@@ -8,6 +8,7 @@ _rpc_pool = search_rpc.SearchRpcPool.instance()
 class SearchHandler(handler_meta.RequestHandler):
 
     path = '/api/search'
+    default_limit = 20
 
     def initialize(self, *args, **kwargs):
         super(SearchHandler, self).initialize(*args, **kwargs)
@@ -49,7 +50,7 @@ class SearchHandler(handler_meta.RequestHandler):
                 'escaped_query': self.escaped_query,
                 'search_results': [],
                 'num_results': len(search_results),
-                'show_more': self.limit < 400,
+                'show_more': self.limit < self.default_limit * 10,
                 'overflowed': overflowed,
                 'csearch_time': rpc_container.time_elapsed
             })
@@ -75,9 +76,9 @@ class SearchHandler(handler_meta.RequestHandler):
     @web.asynchronous
     def get(self):
         self.query = self.get_argument('query', '', strip=False).encode('utf-8')
-        limit = int(self.get_argument('limit', 40))
-        limit = max(limit, 20) # at least 20 results, please
-        if limit > 400:
+        limit = int(self.get_argument('limit', self.default_limit))
+        limit = max(limit, 10) # at least 10 results, please
+        if limit > self.default_limit * 10:
             raise web.HTTPError(403)
             return
         self.limit = limit
