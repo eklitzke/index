@@ -1,5 +1,8 @@
-import os
 import datetime
+import email.utils
+import os
+import time
+
 from tornado import web
 from codesearch import handler_meta
 
@@ -67,14 +70,29 @@ class CodeFileHandler(handler_meta.RequestHandler):
         self.set_header('Content-Type', 'text/plain; charset=UTF-8')
 
         # Also note, that while we set last-modified, we do *not* send
-        # an etag back (this is handled in the parent class).
-        modified = datetime.datetime.fromtimestamp(st.st_mtime)
+        # an etag back (this is handled in the parent class). We rely
+        # entirely on conditional gets. We truncate milliseconds here
+        # because they won't be sent back to the client, and if we
+        # keep them it messes up the if-modified-since calculation below.
+        modified = datetime.datetime.fromtimestamp(int(st.st_mtime))
         self.set_header('Last-Modified', modified)
-        self.set_header('Cache-Control', 'public')
+
+        # Check the If-Modified-Since, and don't send the result if the
+        # content has not been modified
+        ims_value = self.request.headers.get('If-Modified-Since')
+        if ims_value is not None:
+            date_tuple = email.utils.parsedate(ims_value)
+            if_since = datetime.datetime.fromtimestamp(time.mktime(date_tuple))
+            if if_since >= modified:
+                self.set_status(304)
+                return
 
         if include_body:
-            with open(realpath, 'rb') as f:
-                self.write(f.read())
+            try:
+                with open(realpath, 'rb') as f:
+                    self.write(f.read())
+            except IOError:
+                raise web.HTTPError(404, 'Cannot open %r' % (path,))
         else:
             assert self.request.method.upper() == 'HEAD'
             self.set_header('Content-Length', st.st_size)
