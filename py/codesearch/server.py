@@ -33,14 +33,8 @@ if __name__ == "__main__":
     meta_config = index_pb2.MetaIndexConfig()
     with open(os.path.join(opts.index_directory, 'meta_config')) as f:
         meta_config.ParseFromString(f.read())
-    vestibule = settings['vestibule'] = meta_config.vestibule
-
-    handlers = handler_meta.get_handlers()
-    handlers.append((r'/view-src/(.*)', web.StaticFileHandler,
-                     {'path': vestibule}))
-
-    application = web.Application(handlers, **settings)
-
+    settings['vestibule'] = meta_config.vestibule
+    application = web.Application(handler_meta.get_handlers(), **settings)
     try:
         if opts.debug:
             application.listen(opts.port)

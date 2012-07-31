@@ -1,7 +1,7 @@
 {% for result_ctx in search_results %}
 <div class="search_result">
   <div class="search_result_filename">
-    <a href="/view-src/{{result_ctx.filename}}">{{result_ctx.filename}}</a>
+    <a href="/!{{result_ctx.filename}}">{{result_ctx.filename}}</a>
   </div>
   <div class="search_result_lines">
     {% for line in result_ctx.lines %}
