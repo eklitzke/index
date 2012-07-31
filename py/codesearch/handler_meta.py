@@ -22,6 +22,7 @@ class RequestHandler(tornado.web.RequestHandler):
     def initialize(self):
         super(RequestHandler, self).initialize()
         self.env = {
+            'css_url': self.css_url,
             'js': True,
             'prod': self.in_prod,
             'title': 'codesear.ch',
@@ -50,6 +51,13 @@ class RequestHandler(tornado.web.RequestHandler):
     def render_raw_json(self, output):
         self.set_header("Content-Type", "application/json; charset=UTF-8")
         self.write(output)
+
+    def css_url(self, s):
+        if self.in_prod:
+            filename = 'css/%s.out.css' % (s,)
+        else:
+            filename = 'css/%s.css' % (s,)
+        return self.static_url(filename)
 
 def get_handlers():
     return _handlers
