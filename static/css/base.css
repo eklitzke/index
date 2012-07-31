@@ -17,3 +17,9 @@ p { margin-top: 1em; }
                        color: black;}
 .highlight { font-weight: bold; color: #ef151d; }
 .search_result_filename { font-weight: bold; }
+
+.search_result_filename > a { color: black; }
+.search_result_filename > a:active { color: black; text-decoration: none; }
+.search_result_filename > a:hover { color: black; text-decoration: underline; }
+.search_result_filename > a:link { color: black; text-decoration: none; }
+.search_result_filename > a:visited { color: black; text-decoration: none; }
