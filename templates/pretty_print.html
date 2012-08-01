@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{css_url('pygments')}}" type="text/css">
+{% end %}
+
+{% block title %}
+blah
+{% end %}
+
+{% block body %}
+{% raw formatted_code %}
+{% end %}

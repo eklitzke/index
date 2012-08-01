@@ -3,6 +3,10 @@ import email.utils
 import os
 import time
 
+import pygments
+from pygments import lexers
+from pygments import formatters
+
 from tornado import web
 from codesearch import handler_meta
 
@@ -21,23 +25,14 @@ class AboutHandler(handler_meta.RequestHandler):
         self.env['js'] = False
         self.render('about.html')
 
-class CodeFileHandler(handler_meta.RequestHandler):
-    """This is the handler that reads files out of the vestibule, and
-    serves the textual client back to a client.
+class FileHandlerBase(handler_meta.RequestHandler):
 
-    The convention is that a URL like /!foo/bar/baz.txt translates
-    into the file "foo/bar/baz.txt" within the vestibule.
-    """
-
-    path = '/!(.*)'
+    path = 'FIXME'
 
     # Maximum size is 5 MB
     max_size = 5 << 20
 
-    def head(self, path):
-        self.get(path, include_body=False)
-
-    def get(self, path, include_body=True):
+    def get_fullpath(self, path):
         vestibule = self.settings['vestibule']
         realpath = os.path.realpath(os.path.join(vestibule, path))
 
@@ -63,13 +58,7 @@ class CodeFileHandler(handler_meta.RequestHandler):
                 403, 'File /%s is too large (%d bytes, max_size is %d bytes)'
                 % (st.st_size, self.max_size))
 
-        # We only index textual files (i.e., we never index binary),
-        # so we always set the content-type to text/plain. Note that
-        # this differs a bit from the tornado StaticFileHandler, which
-        # will set a content-type based on the file extension.
-        self.set_header('Content-Type', 'text/plain; charset=UTF-8')
-
-        # Also note, that while we set last-modified, we do *not* send
+       # Also note, that while we set last-modified, we do *not* send
         # an etag back (this is handled in the parent class). We rely
         # entirely on conditional gets. We truncate milliseconds here
         # because they won't be sent back to the client, and if we
@@ -87,6 +76,32 @@ class CodeFileHandler(handler_meta.RequestHandler):
                 self.set_status(304)
                 return
 
+        return realpath
+
+class RawFileHandler(FileHandlerBase):
+    """This is the handler that reads files out of the vestibule, and
+    serves the textual client back to a client.
+
+    The convention is that a URL like /!foo/bar/baz.txt translates
+    into the file "foo/bar/baz.txt" within the vestibule.
+    """
+
+    path = '/!(.*)'
+
+    def head(self, path):
+        self.get(path, include_body=False)
+
+    def get(self, path, include_body=True):
+        realpath = self.get_fullpath(path)
+        if realpath is None:
+            return
+
+        # We only index textual files (i.e., we never index binary),
+        # so we always set the content-type to text/plain. Note that
+        # this differs a bit from the tornado StaticFileHandler, which
+        # will set a content-type based on the file extension.
+        self.set_header('Content-Type', 'text/plain; charset=UTF-8')
+
         if include_body:
             try:
                 with open(realpath, 'rb') as f:
@@ -96,5 +111,30 @@ class CodeFileHandler(handler_meta.RequestHandler):
         else:
             assert self.request.method.upper() == 'HEAD'
             self.set_header('Content-Length', st.st_size)
+
+class PrettyPrintHandler(FileHandlerBase):
+
+    path = '/:(.*)'
+
+    def get(self, path):
+        self.env['language'] = 'js'
+        realpath = self.get_fullpath(path)
+        if realpath is None:
+            return
+
+        try:
+            with open(realpath, 'rb') as f:
+                file_data = f.read()
+        except IOError:
+            raise web.HTTPError(404, 'Cannot open %r' % (path,))
+
+        lexer = lexers.guess_lexer_for_filename(path, file_data)
+        self.env['formatted_code'] = pygments.highlight(
+            file_data, lexer, formatters.HtmlFormatter())
+
+        self.render('pretty_print.html')
+
+
+
 
 from codesearch import search  # for side-effects
