@@ -1,7 +1,13 @@
-body { font-family: 'Droid Sans Mono', monospace; margin: 1em; max-width: 1000px; font-size: 14px;
-}
+body { font-family: 'Droid Sans Mono', monospace; margin: 1em; max-width: 1000px; font-size: 14px; }
+
+.title > a { color: black; }
+.title > a:active { color: black; text-decoration: none; }
+.title > a:hover { color: black; text-decoration: underline; }
+.title > a:link { color: black; text-decoration: none; }
+.title > a:visited { color: black; text-decoration: none; }
 
 h1 { font-size: 22px; }
+h2 { font-size: 18px; }
 em { font-decoration: none; font-style: normal; font-weight: bold; }
 
 .black { color: default; }
@@ -15,7 +21,7 @@ p { margin-top: 1em; }
 .search_result_lines { border: 1px solid black;
                        background-image: url('/static/img/static.png');
                        color: black;}
-.highlight { font-weight: bold; color: #ef151d; }
+.search-highlight { font-weight: bold; color: #ef151d; }
 .search_result_filename { font-weight: bold; }
 
 .search_result_filename > a { color: black; }
@@ -23,3 +29,8 @@ p { margin-top: 1em; }
 .search_result_filename > a:hover { color: black; text-decoration: underline; }
 .search_result_filename > a:link { color: black; text-decoration: none; }
 .search_result_filename > a:visited { color: black; text-decoration: none; }
+
+pre, code { white-space: pre; font-family: 'Droid Sans Mono', monospace; }
+.highlight { white-space: pre; font-family: 'Droid Sans Mono', monospace; }
+
+.render_time { color: #aaa; }

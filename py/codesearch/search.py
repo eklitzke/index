@@ -21,24 +21,16 @@ class SearchHandler(handler_meta.RequestHandler):
             self.rpc_client = None
             self.rpc_client_released = True
 
-    def format_string(self, s):
-        s = escape.xhtml_escape(s)
-        s = s.replace(self.escaped_query, '<em>' + self.escaped_query + '</em>')
-        s = s.replace(' ', '&nbsp;')
-        s = s.replace('\t', '&nbsp;' * 8)
-        return s
-
     def search_callback(self, rpc_container, results):
         self.ensure_released()
         self.escaped_query = escape.xhtml_escape(self.query)
 
         def highlight(text):
             text = escape.xhtml_escape(text)
-            text = text.replace(' ', '&nbsp;')
-            text = text.replace('\t', '&nbsp;' * 4)
             text = text.replace(
                 self.escaped_query,
-                '<span class="highlight">' + self.escaped_query + '</span>')
+                '<span class="search-highlight">' + self.escaped_query +
+                '</span>')
             return text
 
         try:
