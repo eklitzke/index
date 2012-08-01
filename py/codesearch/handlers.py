@@ -29,8 +29,8 @@ class FileHandlerBase(handler_meta.RequestHandler):
 
     path = 'FIXME'
 
-    # Maximum size is 5 MB
-    max_size = 5 << 20
+    # Maximum size is 1 MB
+    max_size = 1 << 20
 
     def get_fullpath(self, path):
         vestibule = self.settings['vestibule']
@@ -56,7 +56,7 @@ class FileHandlerBase(handler_meta.RequestHandler):
         if st.st_size > self.max_size:
             raise web.HTTPError(
                 403, 'File /%s is too large (%d bytes, max_size is %d bytes)'
-                % (st.st_size, self.max_size))
+                % (path, st.st_size, self.max_size))
 
        # Also note, that while we set last-modified, we do *not* send
         # an etag back (this is handled in the parent class). We rely
@@ -86,7 +86,7 @@ class RawFileHandler(FileHandlerBase):
     into the file "foo/bar/baz.txt" within the vestibule.
     """
 
-    path = '/!(.*)'
+    path = '/:(.*)'
 
     def head(self, path):
         self.get(path, include_body=False)
@@ -114,10 +114,10 @@ class RawFileHandler(FileHandlerBase):
 
 class PrettyPrintHandler(FileHandlerBase):
 
-    path = '/:(.*)'
+    path = '/!(.*)'
 
     def get(self, path):
-        self.env['language'] = 'js'
+        self.env['path'] = path
         realpath = self.get_fullpath(path)
         if realpath is None:
             return
@@ -128,9 +128,11 @@ class PrettyPrintHandler(FileHandlerBase):
         except IOError:
             raise web.HTTPError(404, 'Cannot open %r' % (path,))
 
+        t0 = time.time()
         lexer = lexers.guess_lexer_for_filename(path, file_data)
         self.env['formatted_code'] = pygments.highlight(
-            file_data, lexer, formatters.HtmlFormatter())
+            file_data, lexer, formatters.HtmlFormatter(linenos='table'))
+        self.env['elapsed_ms'] = '%1.1f' % (1000 * (time.time() - t0),)
 
         self.render('pretty_print.html')
 

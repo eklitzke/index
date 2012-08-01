@@ -5,9 +5,16 @@
 {% end %}
 
 {% block title %}
-blah
+{{path}}
 {% end %}
 
 {% block body %}
+<br>
+<h2>{{path}}</h2>
+<br>
 {% raw formatted_code %}
+<br>
+<div class="render_time">
+Highlighted in {{elapsed_ms}} ms.
+</div>
 {% end %}
