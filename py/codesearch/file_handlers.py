@@ -8,6 +8,7 @@ from tornado import web
 from codesearch import handler_meta
 
 import pygments
+import pygments.util
 from pygments import lexers
 from pygments import formatters
 
@@ -34,7 +35,13 @@ class PrettyPrintCache(object):
         except IOError:
             with open(filename) as infile:
                 file_data = infile.read()
-            lexer = lexers.guess_lexer_for_filename(filename, file_data)
+            try:
+                lexer = lexers.guess_lexer_for_filename(filename, file_data)
+            except pygments.util.ClassNotFound:
+                try:
+                    lexer = lexers.guess_lexer(file_data)
+                except pygments.util.ClassNotFound:
+                    lexer = lexers.TextLexer()
             highlight = pygments.highlight(
                 file_data, lexer, formatters.HtmlFormatter(linenos='table'))
             with open(key, 'w') as keyfile:
