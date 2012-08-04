@@ -1,10 +1,11 @@
 {% for result_ctx in search_results %}
 <div class="search_result">
   <div class="search_result_filename">
-    <a href="/!{{result_ctx.filename}}">{{result_ctx.filename}}</a>
+    <a href="/!{{result_ctx['context'].filename}}">{{result_ctx['context'].filename}}</a>
   </div>
+  {% for group in result_ctx['grouped_lines'] %}
   <div class="search_result_lines">
-    {% for line in result_ctx.lines %}
+    {% for line in group %}
     <div class="search_result_line">
       <span class="line_num">{{line.line_num}}</span>:
       <span class="line_text">
@@ -12,6 +13,7 @@
     </div>
     {% end %}
   </div>
+  {% end %}
 </div>
 {% end %}
 

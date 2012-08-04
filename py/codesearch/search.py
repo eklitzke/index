@@ -47,7 +47,25 @@ class SearchHandler(handler_meta.RequestHandler):
                 'csearch_time': rpc_container.time_elapsed
             })
             for result in search_results:
-                self.env['search_results'].append(result)
+                # group the search results by sets of consecutive
+                # lines
+                data = {'context': result,
+                        'grouped_lines': []
+                }
+                is_start = True
+                last_line = 0
+                group = []
+                for r in result.lines:
+                    if not is_start and r.line_num != last_line + 1:
+                        data['grouped_lines'].append(group[:])
+                        del group[:]
+                    else:
+                        group.append(r)
+                    is_start = False
+                    last_line = r.line_num
+                if group:
+                    data['grouped_lines'].append(group)
+                self.env['search_results'].append(data)
             self.render('search_results.html')
             #self.finish()
         except IOError:

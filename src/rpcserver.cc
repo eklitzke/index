@@ -139,7 +139,9 @@ void IndexReaderConnection::Search(std::size_t size) {
         search_query.offset() << ", limit = " <<
         search_query.limit() << std::endl;
 
-    SearchResults results(search_query.limit(), search_query.offset());
+    SearchResults results(search_query.limit(),
+                          search_query.within_file_limit(),
+                          search_query.offset());
     reader_.Find(search_query.query(), &results);
 
     resp = response.mutable_search_response();
