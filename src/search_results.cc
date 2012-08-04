@@ -2,53 +2,94 @@
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
 #include "./search_results.h"
+
+#include "./context.h"
 #include "./file_util.h"
 
 namespace codesearch {
 bool SearchResults::IsFull() {
   std::lock_guard<std::mutex> guard(mutex_);
-  return capacity_ && results_.size() >= capacity_;
+  return UnlockedIsFull();
 }
 
-bool SearchResults::AddResult(const std::string &filename,
-                              std::size_t line_num,
-                              std::size_t line_offset,
-                              const std::string &line_text) {
-  std::lock_guard<std::mutex> guard(mutex_);
-  if (!capacity_ || results_.size() < capacity_) {
-    if (cur_offset_ < offset_) {
-      cur_offset_++;
+void SearchResults::Trim() {
+  assert(capacity_);
+  const std::size_t max_size = capacity_ + offset_;
+  if (results_.size() > max_size) {
+    std::map<std::string, std::vector<FileResult> > results;
+    std::size_t i = 0;
+    for (const auto & p : results_) {
+      results.insert(p);
+      if (++i >= max_size) {
+        break;
+      }
     }
-    if (cur_offset_ >= offset_) {
-      SearchResult r;
-      r.set_filename(filename);
-      r.set_line_num(line_num);
-      r.set_line_offset(line_offset);
-      r.set_line_text(line_text);
-      r.set_lang(FileLanguage(filename));  // FIXME, use files index
-      results_.push_back(r);
-    }
-    return true;
+    std::swap(results_, results);
   }
-  return false;
+  assert(results_.size() <= max_size);
+}
+
+bool SearchResults::AddFileResult(const std::string &filename,
+                                  const std::vector<FileResult> &lines) {
+  std::lock_guard<std::mutex> guard(mutex_);
+  auto pos = results_.lower_bound(filename);
+  assert(pos == results_.end() || pos->first != filename);
+  assert(lines.size() <= within_file_limit_);
+  results_.insert(pos, std::make_pair(filename, lines));
+  return UnlockedIsFull();
 }
 
 std::vector<SearchResultContext> SearchResults::contextual_results() {
+  std::lock_guard<std::mutex> guard(mutex_);
   std::vector<SearchResultContext> results;
-  for (const auto &r : results_) {
+
+  const std::string &vestibule = GetContext()->vestibule();
+
+  std::size_t offset_counter = 0;
+  for (const auto &kv : results_) {
+    if (offset_counter < offset_) {
+      offset_counter++;
+      continue;
+    }
     SearchResultContext context;
-    context.set_filename(r.filename());
-    context.set_lang(r.lang());
-    std::map<std::size_t, std::string> context_lines = GetFileContext(
-        r.filename(), r.line_num(), r.line_offset());
-    for (const auto & p : context_lines) {
-      SearchResult *sr = context.add_lines();
-      sr->set_line_num(p.first);
-      sr->set_line_text(p.second);
-      if (p.first == r.line_num()) {
-        sr->set_is_matched_line(true);
+    context.set_filename(kv.first);
+
+    // We have to get all of the lines out of the file... we're going
+    // to make a map of line_num -> (is_match, line_text) and then
+    // fill in the context map with that.
+    std::map<std::size_t, std::pair<bool, std::string> > context_lines;
+    std::ifstream ifs(vestibule + "/" + kv.first,
+                      std::ifstream::in | std::ifstream::binary);
+    assert(!ifs.fail());
+
+    // For each line in the matched lines for this file...
+    for (const auto &line : kv.second) {
+      std::map<std::size_t, std::string> inner_context = GetFileContext(
+          &ifs, line.line_number, line.offset);
+      for (const auto &context_kv : inner_context) {
+        bool is_matched = context_kv.first == line.line_number;
+        auto pos = context_lines.lower_bound(context_kv.first);
+        if (pos == context_lines.end() || pos->first != context_kv.first) {
+          // this line num / line is not in the context_lines map
+          context_lines.insert(
+              pos, std::make_pair(context_kv.first,
+                                  std::make_pair(
+                                      is_matched, context_kv.second)));
+        } else {
+          // the line num is in the map; just update is_matched field
+          pos->second.first = is_matched;
+        }
       }
     }
+
+    // Great, now we're ready to fill out a SearchResult structure
+    for (const auto &line : context_lines) {
+      SearchResult *sr = context.add_lines();
+      sr->set_line_num(line.first);
+      sr->set_is_matched_line(line.second.first);
+      sr->set_line_text(line.second.second);
+    }
+
     results.push_back(context);
   }
   return results;

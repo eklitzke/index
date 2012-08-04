@@ -129,9 +129,17 @@ message SearchResultContext {
 }
 
 message SearchQueryRequest {
+  // The string query
   required string query = 1;
+
+  // The max number of files that are allowed to match
   optional uint64 limit = 2 [default = 100];
-  optional uint64 offset = 3 [default = 0];
+
+  // Within each file, we will show up to this many matches
+  optional uint64 within_file_limit = 3 [default = 10];
+
+  // This is like a SQL offset
+  optional uint64 offset = 4 [default = 0];
 }
 
 message SearchQueryResponse {

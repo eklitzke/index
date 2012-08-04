@@ -12,21 +12,36 @@
 
 namespace codesearch {
 
+struct FileResult {
+  FileResult(std::size_t off, std::size_t line_num)
+      :offset(off), line_number(line_num) {}
+  std::size_t offset;
+  std::size_t line_number;
+};
+
 class SearchResults {
  public:
-  SearchResults(std::size_t capacity, std::size_t offset)
-      :capacity_(capacity), offset_(offset), cur_offset_(0) {}
-  explicit SearchResults(std::size_t capacity)
-      :SearchResults(capacity, 0) {}
-  SearchResults()
-      :SearchResults(0, 0) {}
+  // Create a container for search results.
+  //
+  // Args:
+  //  limit, the maximum number of files to match
+  //  within_file_limit, the maximum number of results to match within
+  //                     a file
+  //  offset, the offset to use
+  explicit SearchResults(std::size_t limit, std::size_t within_file_limit = 10,
+                         std::size_t offset = 0)
+      :capacity_(limit), within_file_limit_(within_file_limit),
+       offset_(offset) {}
 
+  // Is this container full? This is used so the search threads can
+  // know when they can stop working.
   bool IsFull();
 
-  // Add a result; returns true if the result was added, false if the
-  // container was full (and hence the result was not added).
-  bool AddResult(const std::string &filename, std::size_t line_num,
-                 std::size_t line_offset, const std::string &line_text);
+  // Trim the result set.
+  void Trim();
+
+  bool AddFileResult(const std::string &filename,
+                     const std::vector<FileResult> &results);
 
   std::size_t size() {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -34,8 +49,9 @@ class SearchResults {
   }
 
 
-  // None of these are locked! Exercise caution when using these.
-  const std::vector<SearchResult>& results() const {return results_; };
+  std::size_t max_within_file() const {
+    return within_file_limit_;
+  }
 
   std::vector<SearchResultContext> contextual_results();
 
@@ -44,9 +60,13 @@ class SearchResults {
 
  private:
   const std::size_t capacity_;
+  const std::size_t within_file_limit_;
   const std::size_t offset_;
-  std::size_t cur_offset_;
-  std::vector<SearchResult> results_;
+  std::map<std::string, std::vector<FileResult> > results_;
+
+  bool UnlockedIsFull() {
+    return capacity_ && results_.size() >= (capacity_ + offset_);
+  }
 };
 }
 

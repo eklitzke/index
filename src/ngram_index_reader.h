@@ -4,6 +4,7 @@
 #ifndef SRC_NGRAM_INDEX_READER_H_
 #define SRC_NGRAM_INDEX_READER_H_
 
+#include <condition_variable>
 #include <set>
 #include <string>
 
@@ -30,6 +31,11 @@ class NGramIndexReader {
   const IntegerIndexReader lines_index_;
   std::vector<SSTableReader*> shards_;
 
+  std::mutex mut_;
+  std::condition_variable cond_;
+  std::size_t running_threads_;
+  const std::size_t parallelism_;
+
   // Find an ngram smaller than the ngram_size_
   void FindSmall(const std::string &query, SearchResults *results);
 
@@ -38,10 +44,13 @@ class NGramIndexReader {
                  const SSTableReader &reader,
                  SearchResults *results);
 
+
   bool GetCandidates(const std::string &ngram,
                      std::vector<std::uint64_t> *candidates,
                      const SSTableReader &reader,
                      std::size_t *lower_bound);
+
+  std::size_t WaitForThreads(std::size_t target);
 
 };
 }  // codesearch

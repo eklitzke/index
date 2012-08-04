@@ -17,6 +17,8 @@ int main(int argc, char **argv) {
   desc.add_options()
       ("help,h", "produce help message")
       ("limit", po::value<std::size_t>()->default_value(100))
+      ("within-file-limit", po::value<std::size_t>()->default_value(10))
+      ("offset", po::value<std::size_t>()->default_value(0))
       ("no-print", "suppress printing")
       ("db-path", po::value<std::string>()->default_value("/tmp/index"))
       ("query,q", po::value<std::string>(),
@@ -51,25 +53,36 @@ int main(int argc, char **argv) {
 #endif
 
   std::size_t limit = vm["limit"].as<std::size_t>();
-  codesearch::SearchResults results(limit);
+  codesearch::SearchResults results(
+      limit,
+      vm["within-file-limit"].as<std::size_t>(),
+      vm["offset"].as<std::size_t>());
   std::string query = vm["query"].as<std::string>();
   reader.Find(query, &results);
   if (!vm.count("no-print")) {
     for (const auto &sr_ctx : results.contextual_results()) {
       std::cout << sr_ctx.filename() << std::endl;
       std::cout << std::string(sr_ctx.filename().length(), '-') << std::endl;
+      bool first_line = true;
+      std::size_t last_line = 0;
       for (const auto &line : sr_ctx.lines()) {
+        if (!first_line && line.line_num() - last_line != 1) {
+          std::cout << "  ........" << std::endl;
+        }
         if (line.is_matched_line()) {
           std::cout << "* ";
         } else {
           std::cout << "  ";
         }
         std::cout << line.line_num() << ":" << line.line_text()  << std::endl;
+        first_line = false;
+        last_line = line.line_num();
       }
       std::cout << std::endl;
     }
   } else {
-    std::cout << results.results().size() << " search results" << std::endl;
+    std::cout << results.contextual_results().size() <<
+        "search results" << std::endl;
   }
   return 0;
 }
