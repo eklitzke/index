@@ -4,17 +4,14 @@ Regular Expressions
 
 Front End
 =========
-* add syntax highlighting
-* link to github/files
+* syntax highlighting in search results
 
 Bugs
 ====
-* make search results be returned in a deterministic order
-* adjacent results in searches need to be merged
+* make pagination actually use offset
 * index data should be in a deterministic order, for rsync
 * use a threadpool in cindex rather than creating lots of short-lived threads
 * prevent cindex from blocking threads on rotation
-* we should do UTF-8 detection, rather than a hard list of file exts
 * add a way to bundle file contents with the index
 
 Miscellaneous
@@ -23,4 +20,3 @@ Miscellaneous
 * add logging -- this is important for perf tuning
 * use std::binary_search
 * add a way to shutdown the server process gracefully while using massif
-* add more file extensions

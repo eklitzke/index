@@ -46,7 +46,10 @@ if __name__ == '__main__':
                                          urllib.urlencode({'query': substr}))
             assert response.code == 200
             elapsed = time.time() - t0
-            body = json.loads(response.body)
-            sys.stdout.write('%d %d\n' % (
-                body['csearch_time'], int(elapsed * 1000)))
+            if False:
+                body = json.loads(response.body)
+                sys.stdout.write('%d %d\n' % (
+                    body['csearch_time'], int(elapsed * 1000)))
+            else:
+                sys.stdout.write('%d\n' % (int(elapsed * 1000),))
             sys.stdout.flush()
