@@ -1,5 +1,6 @@
 import datetime
 import email.utils
+import gzip
 import hashlib
 import os
 import time
@@ -28,9 +29,9 @@ class PrettyPrintCache(object):
         st = os.stat(filename)
         key = '%s-%d' % (filename, int(st.st_mtime))
         key = os.path.join(self.cache_dir,
-                           hashlib.sha1(key).hexdigest() + '.html')
+                           hashlib.sha1(key).hexdigest() + '.html.gz')
         try:
-            with open(key) as keyfile:
+            with gzip.open(key) as keyfile:
                 return keyfile.read()
         except IOError:
             with open(filename) as infile:
@@ -44,7 +45,7 @@ class PrettyPrintCache(object):
                     lexer = lexers.TextLexer()
             highlight = pygments.highlight(
                 file_data, lexer, formatters.HtmlFormatter(linenos='table'))
-            with open(key, 'w') as keyfile:
+            with gzip.open(key, 'w') as keyfile:
                 keyfile.write(highlight)
             return highlight
 
