@@ -13,6 +13,8 @@
 #include "./util.h"
 
 #include <chrono>
+#include <iomanip>
+#include <iostream>
 #include <string>
 #include <thread>
 
@@ -164,15 +166,19 @@ void IndexReaderConnection::Search(std::size_t size) {
   response.SerializeToString(&uncompressed_response);
   snappy::Compress(uncompressed_response.data(), uncompressed_response.size(),
                    &compressed_response);
+  double speedup = static_cast<double>(uncompressed_response.size()) /
+      static_cast<double>(compressed_response.size());
 
   std::string size_header;
   Uint64ToString(compressed_response.size(), &size_header);
 
   std::ostream os(&data_buffer_);
   os << size_header << compressed_response;
+
   std::cout << this << " sending response of size " <<
-      compressed_response.size() << " after " << response.time_elapsed() <<
-      " ms" << std::endl;
+      compressed_response.size() << " (speedup " <<
+      std::setiosflags(std::ios::fixed) << std::setprecision(2) << speedup <<
+      "x)" << " after " << response.time_elapsed() << " ms" << std::endl;
 
 #else
    std::string size_header;
