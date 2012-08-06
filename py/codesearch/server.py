@@ -28,7 +28,7 @@ if __name__ == "__main__":
         'static_path': filesystem.get_static_dir(),
         'template_path': filesystem.get_template_dir(),
         'debug': opts.debug,
-        'remote': not opts.local
+        'run_locally': opts.local
     }
     meta_config = index_pb2.MetaIndexConfig()
     with open(os.path.join(opts.index_directory, 'meta_config')) as f:

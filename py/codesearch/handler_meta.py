@@ -25,6 +25,7 @@ class RequestHandler(tornado.web.RequestHandler):
             'css_url': self.css_url,
             'js': True,
             'prod': self.in_prod,
+            'run_locally': self.settings.get('run_locally', False),
             'title': 'codesear.ch',
             'whitespace_escape': whitespace_escape,
         }

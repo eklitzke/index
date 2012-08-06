@@ -59,12 +59,13 @@ class SearchHandler(handler_meta.RequestHandler):
                     if not is_start and r.line_num != last_line + 1:
                         data['grouped_lines'].append(group[:])
                         del group[:]
+                        group.append(r)
                     else:
                         group.append(r)
                     is_start = False
                     last_line = r.line_num
-                if group:
-                    data['grouped_lines'].append(group)
+                assert group
+                data['grouped_lines'].append(group)
                 self.env['search_results'].append(data)
             self.render('search_results.html')
             #self.finish()

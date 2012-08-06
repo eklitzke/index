@@ -8,8 +8,10 @@
     {% end %}
     {% block extra_js %}{% end %}
     <link rel="stylesheet" href="{{css_url('reset')}}">
+    {% if not run_locally %}
     <link href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono"
           rel="stylesheet" type="text/css">
+    {% end %}
     <link rel="stylesheet" href="{{css_url('base')}}" type="text/css">
     {% block extra_css %}{% end %}
     {% if prod %}

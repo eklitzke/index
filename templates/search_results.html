@@ -7,9 +7,9 @@
   <div class="search_result_lines">
     {% for line in group %}
     <div class="search_result_line">
-      <span class="line_num">{{line.line_num}}</span>:
-      <span class="line_text">
-        {% raw highlight(line.line_text) %}</span>
+      <span class="line_num">{{line.line_num}}</span>:<span class="line_text"><code> {% raw highlight(line.line_text).rstrip() %}
+        </code>
+      </span>
     </div>
     {% end %}
   </div>
