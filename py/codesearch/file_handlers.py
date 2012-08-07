@@ -13,13 +13,15 @@ import pygments.util
 from pygments import lexers
 from pygments import formatters
 
+# You can generate this with: date '+%s'
+CACHE_SERIAL = 1344364576
+CACHE_SERIAL_TS = datetime.datetime.fromtimestamp(int(CACHE_SERIAL))
+
 class PrettyPrintCache(object):
     """Since highlighting with pygments can be expensive, we maintain
     a filesystem cache. To clear the cache, you can simply delete the
     directory (or the files it contains).
     """
-
-    cache_serial = '1'
 
     def __init__(self, cache_dir):
         self.cache_dir = os.path.abspath(cache_dir)
@@ -31,7 +33,7 @@ class PrettyPrintCache(object):
         hl_lines = sorted(hl_lines or [])
         st = os.stat(filename)
         key = '%s-%d-%s-%s' % (filename, int(st.st_mtime),
-                               self.cache_serial, hl_lines)
+                               CACHE_SERIAL, hl_lines)
         key = os.path.join(self.cache_dir,
                            hashlib.sha1(key).hexdigest() + '.html.gz')
         try:
@@ -89,12 +91,18 @@ class FileHandlerBase(handler_meta.RequestHandler):
                 403, 'File /%s is too large (%d bytes, max_size is %d bytes)'
                 % (path, st.st_size, self.max_size))
 
-       # Also note, that while we set last-modified, we do *not* send
+        # Also note, that while we set last-modified, we do *not* send
         # an etag back (this is handled in the parent class). We rely
         # entirely on conditional gets. We truncate milliseconds here
         # because they won't be sent back to the client, and if we
         # keep them it messes up the if-modified-since calculation below.
         modified = datetime.datetime.fromtimestamp(int(st.st_mtime))
+
+        # If the CACHE_SERIAL has a value newer than the actual
+        # on-disk file, prefer that time instead (for instance, we may
+        # have made HTML formatting changes, that need to be picked
+        # up).
+        modified = max(modified, CACHE_SERIAL_TS)
         self.set_header('Last-Modified', modified)
 
         # Check the If-Modified-Since, and don't send the result if the
