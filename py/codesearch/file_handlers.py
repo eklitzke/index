@@ -19,15 +19,19 @@ class PrettyPrintCache(object):
     directory (or the files it contains).
     """
 
+    cache_serial = '1'
+
     def __init__(self, cache_dir):
         self.cache_dir = os.path.abspath(cache_dir)
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
 
-    def get_highlighted(self, filename):
+    def get_highlighted(self, filename, hl_lines=None):
         """Get the highlighted version of a file."""
+        hl_lines = sorted(hl_lines or [])
         st = os.stat(filename)
-        key = '%s-%d' % (filename, int(st.st_mtime))
+        key = '%s-%d-%s-%s' % (filename, int(st.st_mtime),
+                               self.cache_serial, hl_lines)
         key = os.path.join(self.cache_dir,
                            hashlib.sha1(key).hexdigest() + '.html.gz')
         try:
@@ -44,9 +48,11 @@ class PrettyPrintCache(object):
                 except pygments.util.ClassNotFound:
                     lexer = lexers.TextLexer()
             highlight = pygments.highlight(
-                file_data, lexer, formatters.HtmlFormatter(linenos='table'))
+                file_data, lexer, formatters.HtmlFormatter(
+                    hl_lines=hl_lines, linenos='table', lineanchors='line',
+                    anchorlinenos=True))
             with gzip.open(key, 'w') as keyfile:
-                keyfile.write(highlight)
+                keyfile.write(highlight.encode('utf-8'))
             return highlight
 
 

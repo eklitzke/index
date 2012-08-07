@@ -6,10 +6,12 @@
   {% for group in result_ctx['grouped_lines'] %}
   <div class="search_result_lines">
     {% for line in group %}
-    <div class="search_result_line">
+    <div class="search_result_line"
+         id="{{result_ctx['context'].filename}}@@line-{{line.line_num}}">
+      <a href="/!{{result_ctx['context'].filename}}#line-{{line.line_num}}">
       <span class="line_num">{{line.line_num}}</span>:<span class="line_text"><code> {% raw highlight(line.line_text).rstrip() %}
         </code>
-      </span>
+      </span></a>
     </div>
     {% end %}
   </div>
@@ -32,3 +34,4 @@ Showing all {{num_results}} matches.
 <div id="about">
 Backend returned in {{csearch_time}} ms. <a href="/about">about<a>
 </div>
+
