@@ -3,6 +3,8 @@
 
 #include "./search_results.h"
 
+#include <algorithm>
+
 #include "./context.h"
 #include "./file_util.h"
 
@@ -33,9 +35,23 @@ bool SearchResults::AddFileResult(const std::string &filename,
                                   const std::vector<FileResult> &lines) {
   std::lock_guard<std::mutex> guard(mutex_);
   auto pos = results_.lower_bound(filename);
-  assert(pos == results_.end() || pos->first != filename);
-  assert(lines.size() <= within_file_limit_);
-  results_.insert(pos, std::make_pair(filename, lines));
+  if (pos != results_.end() && pos->first == filename) {
+    // This will happen sometimes with small indexes, when we do a
+    // search for a term smaller than a trigram. We need to add in the
+    // new lines to the result.
+    std::vector<FileResult> &file_lines = pos->second;
+    file_lines.insert(file_lines.end(), lines.begin(), lines.end());
+    std::sort(file_lines.begin(), file_lines.end());
+    if (file_lines.size() > within_file_limit_) {
+      file_lines.erase(file_lines.begin() + within_file_limit_,
+                       file_lines.end());
+    }
+    assert(file_lines.size() <= within_file_limit_);
+  } else {
+    // The usual case, the file has not yet been added to the search results
+    assert(lines.size() <= within_file_limit_);
+    results_.insert(pos, std::make_pair(filename, lines));
+  }
   return UnlockedIsFull();
 }
 

@@ -74,10 +74,10 @@ std::string Context::FindBestNGram(const std::string &fragment,
   char *p = sorted_ngrams_ + *offset;
   while (p < sorted_ngrams_ + sorted_ngrams_size_) {
     void *data = memmem(p, ngram_size_, fragment.data(), fragment.size());
+    *offset += ngram_size_;
     if (data != nullptr) {
       return std::string(p, ngram_size_);
     }
-    *offset += ngram_size_;
     p = sorted_ngrams_ + *offset;
   }
   return "";

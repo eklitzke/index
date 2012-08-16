@@ -17,6 +17,11 @@ struct FileResult {
       :offset(off), line_number(line_num) {}
   std::size_t offset;
   std::size_t line_number;
+
+  // Needed for std::sort
+  bool operator <(const FileResult &other) const {
+    return offset < other.offset;
+  }
 };
 
 class SearchResults {

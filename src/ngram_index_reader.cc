@@ -174,7 +174,7 @@ void NGramIndexReader::Find(const std::string &query,
 
     // If we've exhausted all shards, and all threads have joined,
     // then we can also return (and the result set will not be full).
-    if (!threads_needed && running_threads == 0) {
+    if ((!threads_needed || it == shards_.end()) && running_threads == 0) {
       break;
     }
   }
