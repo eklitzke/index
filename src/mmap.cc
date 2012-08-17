@@ -3,9 +3,11 @@
 #include "./mmap.h"
 
 #include <cassert>
-#include <string>
 #include <map>
 #include <mutex>
+#include <stdexcept>
+#include <string>
+
 #include <stdio.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -21,7 +23,9 @@ std::pair<std::size_t, const char*> GetMmapForFile(const std::string &name) {
   auto it = mapping_.lower_bound(name);
   if (it == mapping_.end() || it->first != name) {
     FILE *f = fopen(name.c_str(), "r");
-    assert(f != nullptr);
+    if (f == nullptr) {
+      throw std::invalid_argument("failed to mmap(2) file: " + name);
+    }
     int fd = fileno(f);
 
     std::size_t size = lseek(fd, 0, SEEK_END);
