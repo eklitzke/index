@@ -44,7 +44,6 @@ class NGramIndexReader {
                  const SSTableReader &reader,
                  SearchResults *results);
 
-
   bool GetCandidates(const std::string &ngram,
                      std::vector<std::uint64_t> *candidates,
                      const SSTableReader &reader,

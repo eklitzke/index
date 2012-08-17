@@ -79,5 +79,4 @@ void IndexWriter::WriteStatus(IndexConfig_DatabaseState new_state) {
   out.close();
 }
 
-
 }  // index

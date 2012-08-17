@@ -53,7 +53,6 @@ class SearchResults {
     return results_.size();
   }
 
-
   std::size_t max_within_file() const {
     return within_file_limit_;
   }

@@ -47,7 +47,6 @@ class Context {
   const std::size_t ngram_size_;
   std::mutex mut_;
 
-
   void InitializeSmallNGrams();
 };
 
