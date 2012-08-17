@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# Wrapper for the linux "perf" command (useful for CPU profiling)
+
+perf record -g "$@"
+perf report

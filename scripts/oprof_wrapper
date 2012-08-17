@@ -1,7 +1,0 @@
-#!/bin/bash
-sudo opcontrol --reset
-sudo opcontrol --start
-$@
-sudo opcontrol --shutdown
-opgprof $1
-gprof -p $1 | less

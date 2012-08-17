@@ -25,7 +25,7 @@
         ],
     },
     'target_defaults': {
-        'cflags': ['-pedantic', '-Wall', '-std=c++11', '-Os', '-g',
+        'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O2', '-g',
                    #'-I$${HOME}/code/re2',
                ],
         'defines': [

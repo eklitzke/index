@@ -234,18 +234,19 @@ void NGramIndexReader::FindShard(const std::string &query,
       return;
     }
 
-    intersection.clear();
+#if 0
     intersection.reserve(std::min(candidates.size(), new_candidates.size()));
-    auto it = std::set_intersection(
+#endif
+
+    // Do the actual set intersection, storing the result into the
+    // "intersection" vector. Then swap out the contents into our
+    // "candidates" vector.
+    std::set_intersection(
         candidates.begin(), candidates.end(),
         new_candidates.begin(), new_candidates.end(),
-        intersection.begin());
-#if 0
-    candidates.swap(intersection);
-#endif
-    candidates.clear();
-    candidates.reserve(it - intersection.begin());
-    candidates.insert(candidates.begin(), intersection.begin(), it);
+        std::back_inserter(intersection));
+    std::swap(candidates, intersection);
+    intersection.clear();  // reset for the next loop iteration
   }
 
   // We are going to construct a map of filename -> [(line num,
@@ -329,12 +330,8 @@ bool NGramIndexReader::GetCandidates(const std::string &ngram,
   std::uint64_t posting_val = 0;
   for (int i = 0; i < ngram_val.position_ids_size(); i++) {
     std::uint64_t delta = ngram_val.position_ids(i);
-    if (delta != 0) {
-      posting_val += delta;
-      candidates->push_back(posting_val);
-    } else {
-      std::cerr << "warning, 0 seen in posting list" << std::endl;
-    }
+    posting_val += delta;
+    candidates->push_back(posting_val);
   }
   return true;
 }

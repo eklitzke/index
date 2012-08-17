@@ -16,7 +16,7 @@ if __name__ == "__main__":
                       help='Run the application entirely locally')
     parser.add_option('-p', '--port', type='int', default=9000,
                       help='The port to bind on')
-    parser.add_option('--index-directory', default='/var/index',
+    parser.add_option('--index-directory', default='/var/codesearch',
                       help='The index directory to use')
     parser.add_option('--prod', dest='debug', action='store_false',
                       default=True, help='Do not run in debug mode')
