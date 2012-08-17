@@ -1,6 +1,7 @@
 #include <boost/program_options.hpp>
 #include <boost/asio.hpp>
 
+#include "./config.h"
 #include "./context.h"
 #include "./rpcserver.h"
 
@@ -12,7 +13,8 @@ int main(int argc, char **argv) {
   desc.add_options()
       ("help,h", "produce help message")
       ("port,p", po::value<int>()->default_value(9900))
-      ("db-path", po::value<std::string>()->default_value("/tmp/index"))
+      ("db-path", po::value<std::string>()->default_value(
+          codesearch::default_index_directory))
       ;
 
   po::variables_map vm;

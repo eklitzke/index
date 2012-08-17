@@ -3,6 +3,35 @@ Code Search
 
 This is an implementation of a code search engine.
 
+Installing
+----------
+
+The default (and recommended) location for the codesearch index is at
+`/var/codesearch`. A number of files and directories will be created
+in this directory, which represent the index contents. If you are
+setting up codesearch for the first time, you probably need to
+manually create this directory, as typically non-root users are not
+allowed to create new directories under `/var`. (You are also free to
+use another directory, by passing a command line switch, typically
+`--db-path`, to the various codesearch commands.)
+
+To compile, invoke `./run_gyp` and then `make`.
+
+Indexing
+--------
+
+Index things like this:
+
+    cindex [--replace] /path/to/source-code
+    
+Searching
+---------
+
+Search from the command line like this: `csearch mysearchterm`.
+
+To run the web component of codesearch, invoke `rpcserver` and then
+run `./web` for dev, or `./web_prod` for prod.
+
 SSTables
 ========
 

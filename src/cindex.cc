@@ -3,6 +3,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+#include "./config.h"
 #include "./context.h"
 #include "./file_util.h"
 #include "./ngram_index_writer.h"
@@ -23,7 +24,8 @@ int main(int argc, char **argv) {
       ("help,h", "produce help message")
       ("replace,r", "replace the directory contents")
       ("ngram-size", po::value<int>()->default_value(3), "ngram size")
-      ("db-path", po::value<std::string>()->default_value("/tmp/index"))
+      ("db-path", po::value<std::string>()->default_value(
+          codesearch::default_index_directory))
       ("shard-size", po::value<std::size_t>()->default_value(16<<20))
       ("src-dir,s",
        po::value<std::vector<std::string > >(),
@@ -50,14 +52,23 @@ int main(int argc, char **argv) {
 
   std::string db_path_str = vm["db-path"].as<std::string>();
   boost::filesystem::path db_path(db_path_str);
-  if (vm.count("replace")) {
-    boost::filesystem::remove_all(db_path);
-  } else if (boost::filesystem::exists(db_path)) {
-    std::cerr << "database at " << db_path << " already exists, use "
-        "-r/--replace if you wish to replace it" << std::endl;
-    return 1;
+  if (boost::filesystem::exists(db_path)) {
+    if (vm.count("replace")) {
+      // Delete all of the subdirectories and files contained within
+      // the index directory.
+      for (boost::filesystem::directory_iterator end, it(db_path);
+           it != end; ++it) {
+        boost::filesystem::remove_all(it->path());
+      }
+    } else {
+      std::cerr << "database at " << db_path << " already exists, use "
+          "-r/--replace if you wish to replace it" << std::endl;
+      return 1;
+    }
+  } else {
+    // The index directory needs to be created
+    boost::filesystem::create_directories(db_path);
   }
-  boost::filesystem::create_directories(db_path);
 
   std::size_t ngram_size = static_cast<std::size_t>(vm["ngram-size"].as<int>());
 

@@ -2,6 +2,7 @@
 {
     'variables': {
         'common_sources': [
+            'src/config.cc',
             'src/context.cc',
             'src/mmap.cc',
         ],

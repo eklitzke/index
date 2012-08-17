@@ -161,7 +161,7 @@ class PrettyPrintHandler(FileHandlerBase):
         if realpath is None:
             return
 
-        cache = PrettyPrintCache('/tmp/pp-cache')
+        cache = PrettyPrintCache('/var/index/pp-cache')
 
         t0 = time.time()
         self.env['formatted_code'] = cache.get_highlighted(realpath)

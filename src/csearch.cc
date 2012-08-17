@@ -3,6 +3,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+#include "./config.h"
 #include "./context.h"
 #include "./file_util.h"
 #include "./ngram_index_reader.h"
@@ -20,7 +21,8 @@ int main(int argc, char **argv) {
       ("within-file-limit", po::value<std::size_t>()->default_value(10))
       ("offset", po::value<std::size_t>()->default_value(0))
       ("no-print", "suppress printing")
-      ("db-path", po::value<std::string>()->default_value("/tmp/index"))
+      ("db-path", po::value<std::string>()->default_value(
+          codesearch::default_index_directory))
       ("query,q", po::value<std::string>(),
        "(positional) the search query, mandatory")
       ;

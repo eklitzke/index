@@ -6,7 +6,7 @@
 // different threads/objects. For a new binary, a context should be
 // created like this, before calling other codesearch functions:
 //
-// std::unique_ptr<Context> ctx(Context::Acquire("/tmp/index"));
+// std::unique_ptr<Context> ctx(Context::Acquire("/var/codesearch"));
 //
 // This will ensure the context is properly freed at the end of the
 // program. Subsequently, code may safely call the Acquire method to
