@@ -51,13 +51,10 @@ class NGramIndexReader {
                      const SSTableReader &reader,
                      std::size_t *lower_bound);
 
-  void TrimCandidates(const std::string &query,
-                      const std::string &shard_name,
-                      const std::vector<std::uint64_t> &candidates,
-                      std::map<std::string, std::vector<FileResult> >
-                      *results_map,
-                      SearchResults *results);
-
+  std::size_t TrimCandidates(const std::string &query,
+                             const std::string &shard_name,
+                             const std::vector<std::uint64_t> &candidates,
+                             SearchResults *results);
 
   std::size_t WaitForThreads(std::size_t target);
 

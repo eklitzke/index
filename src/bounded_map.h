@@ -15,7 +15,7 @@
 
 namespace codesearch {
 
-#define ORDERED_MAP 1
+#define USE_ORDERED_MAP 1
 
 template <typename K, typename V>
 class BoundedMap {
@@ -24,7 +24,7 @@ class BoundedMap {
       :max_keys_(max_keys), max_vals_(max_vals) {}
   BoundedMap(const BoundedMap &other) = delete;
 
-#ifdef ORDERED_MAP
+#ifdef USE_ORDERED_MAP
   typedef std::map<K, std::vector<V> > map_type;
 #else
   typedef std::unordered_map<K, std::vector<V> > map_type;
@@ -39,14 +39,14 @@ class BoundedMap {
         max_key_ = key;
       }
 
-#ifdef ORDERED_MAP
+#ifdef USE_ORDERED_MAP
       auto pos = map_.lower_bound(key);
 #else
       auto pos = map_.find(key);
 #endif
       if (pos == map_.end() || pos->first != key) {
         map_.insert(pos, std::make_pair(key, std::vector<V>{val}));
-        //LOG(INFO) << "inserted file_id " << key.file_id() << "\n";
+        LOG(INFO) << "inserted file_id " << key.file_id() << "\n";
       } else if (pos->second.size() < max_vals_) {
         pos->second.push_back(val);
       } else {
@@ -54,7 +54,7 @@ class BoundedMap {
       }
       return true;  // we inserted something
     } else if (key <= max_key_){
-#ifdef ORDERED_MAP
+#ifdef USE_ORDERED_MAP
       auto pos = map_.lower_bound(key);
 #else
       auto pos = map_.find(key);
@@ -62,13 +62,13 @@ class BoundedMap {
       if (pos == map_.end() || pos->first != key) {
         assert(key < max_key_);
         map_.insert(pos, std::make_pair(key, std::vector<V> {val}));
-#ifdef ORDERED_MAP
+#ifdef USE_ORDERED_MAP
         map_.erase(--map_.rbegin().base());
 #else
         map_.erase(max_key_);
 #endif
-        //LOG(INFO) << "inserted file_id " << key.file_id() <<
-        // " and removed " << max_key_.file_id() << "\n";
+        LOG(INFO) << "inserted file_id " << key.file_id() <<
+            " and removed " << max_key_.file_id() << "\n";
         max_key_ = key;
 
       } else if (pos->second.size() < max_vals_) {

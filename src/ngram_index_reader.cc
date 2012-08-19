@@ -256,14 +256,12 @@ void NGramIndexReader::FindShard(const std::string &query,
   // We are going to construct a map of filename -> [(line num,
   // offset, line)].
   Timer trim_candidates_timer;
-  std::map<std::string, std::vector<FileResult> > results_map;
-  TrimCandidates(query, reader.shard_name(), candidates, &results_map, results);
-  //LOG(INFO) << "shard " << reader.shard_name() <<
-  //    " trim candidates took " << trim_candidates_timer.elapsed_us() << " us\n";
+  std::size_t lines_added = TrimCandidates(
+      query, reader.shard_name(), candidates, results);
 
-  //LOG(INFO) << "shard " << reader.shard_name() <<
-  //    " searched query \"" << query << "\" to get " << results_map.size() <<
-  //    " files in " << timer.elapsed_us() << " us\n";
+  LOG(INFO) << "shard " << reader.shard_name() <<
+      " searched query \"" << query << "\" to add " << lines_added <<
+      " lines in " << timer.elapsed_us() << " us\n";
 }
 
 // Given an ngram, a result list, an "ngram" reader shard, and a
@@ -294,11 +292,10 @@ bool NGramIndexReader::GetCandidates(const std::string &ngram,
   return true;
 }
 
-void NGramIndexReader::TrimCandidates(
+std::size_t NGramIndexReader::TrimCandidates(
     const std::string &query,
     const std::string &shard_name,
     const std::vector<std::uint64_t> &candidates,
-    std::map<std::string, std::vector<FileResult> > *results_map,
     SearchResults *results) {
 
   // The candidates vector contains the ids of rows in the "lines"
@@ -308,6 +305,12 @@ void NGramIndexReader::TrimCandidates(
   // To do the trimming/sorting for consistent results, we're going to
   // do the full lookup of all of the lines.
 
+  for (const auto &c : candidates) {
+    LOG(INFO) << "candidate, " << shard_name << " " << c << "\n";
+  }
+
+
+  std::size_t lines_added = 0;
   for (const auto &p : candidates) {
     //LOG(INFO) << "shard " << shard_name << " " << p << std::endl;
     PositionValue pos;
@@ -329,9 +332,20 @@ void NGramIndexReader::TrimCandidates(
 
     FileKey filekey(file_id, fileval.filename());
 
-    //LOG(INFO) << "file " << fileval.filename() << ", offset = " << pos.file_offset() << std::endl;
-    results->insert(filekey, FileResult(pos.file_offset(), pos.file_line()));
+    //LOG(INFO) << "file " << fileval.filename() << ", offset = " <<
+    //pos.file_offset() << std::endl;
+    bool added_line = results->insert(
+        filekey, FileResult(pos.file_offset(), pos.file_line()));
+    if (added_line) {
+      LOG(INFO) << "added line for file_id " << file_id << " from shard " <<
+          shard_name << "\n";
+      lines_added++;
+    } else {
+      LOG(INFO) << "did NOT add line for file_id " << file_id <<
+          " from shard " << shard_name << "\n";
+    }
   }
+  return lines_added;
 }
 
 }  // namespace codesearch

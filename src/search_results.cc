@@ -32,6 +32,7 @@ std::vector<SearchResultContext> SearchResults::contextual_results() {
 #endif
     SearchResultContext context;
     context.set_filename(kv.first.filename());
+    LOG(INFO) << "file_id " << kv.first.file_id() << "\n";
 
     // We have to get all of the lines out of the file... we're going
     // to make a map of line_num -> (is_match, line_text) and then
@@ -44,7 +45,6 @@ std::vector<SearchResultContext> SearchResults::contextual_results() {
     // For each line in the matched lines for this file...
     for (const auto &line : kv.second) {
       std::map<std::size_t, std::string> inner_context;
-      LOG(INFO) << "in context thing, filename = " << kv.first.filename() << ", offset = " << line.offset << std::endl;
       try {
         inner_context = GetFileContext(&ifs, line.line_number, line.offset);
       } catch (FileError &e) {
@@ -77,7 +77,7 @@ std::vector<SearchResultContext> SearchResults::contextual_results() {
 
     results.push_back(context);
   }
-  return results;
+  return std::move(results);
 }
 
 }
