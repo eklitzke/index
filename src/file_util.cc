@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <set>
+#include <sstream>
 #include <vector>
 
 namespace {
@@ -184,7 +185,13 @@ std::map<std::size_t, std::string> GetFileContext(std::ifstream *ifs,
   while (p) {
     p--;
     ifs->seekg(p);
-    assert(!ifs->fail() && !ifs->eof());
+    if (ifs->fail() || ifs->eof()) {
+      std::stringstream ss;
+      ss << "ifs->fail() or ifs->eof() after seek to offset " << p <<
+          " (original match was at offset = " << offset << ", line_number = " <<
+          line_number << ")";
+      throw FileError(ss.str());
+    }
     if (ifs->peek() == '\n') {
       if (lines_found_reverse == context) {
         p++;

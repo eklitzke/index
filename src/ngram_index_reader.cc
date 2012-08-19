@@ -1,12 +1,15 @@
 // -*- C++ -*-
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
-#include "./ngram_index_reader.h"
+#include "./bounded_map.h"
 #include "./context.h"
 #include "./index.pb.h"
+#include "./ngram_index_reader.h"
 #include "./util.h"
 
 #include <boost/lexical_cast.hpp>
+#include <glog/logging.h>
+
 #include <fstream>
 #include <set>
 #include <thread>
@@ -178,10 +181,6 @@ void NGramIndexReader::Find(const std::string &query,
       break;
     }
   }
-
-  // Trim the result sets, which sorts the results and trims anything
-  // extra (to ensure that we return consistent search results).
-  results->Trim();
 }
 
 std::size_t NGramIndexReader::WaitForThreads(std::size_t target) {
@@ -213,6 +212,7 @@ void NGramIndexReader::FindShard(const std::string &query,
                                  const std::set<std::string> &ngrams,
                                  const SSTableReader &reader,
                                  SearchResults *results) {
+  Timer timer;
   CondNotifier notifier(mut_, cond_, running_threads_);
   std::size_t lower_bound = reader.lower_bound();
   std::vector<std::uint64_t> candidates;
@@ -227,16 +227,17 @@ void NGramIndexReader::FindShard(const std::string &query,
   if (!GetCandidates(*ngrams_iter, &candidates, reader, &lower_bound)) {
     return;
   }
+
+#if 0
+  intersection.reserve(candidates.size());
+#endif
+
   ngrams_iter++;
   for (; ngrams_iter != ngrams.end() && !candidates.empty(); ++ngrams_iter) {
     std::vector<std::uint64_t> new_candidates;
     if (!GetCandidates(*ngrams_iter, &new_candidates, reader, &lower_bound)) {
       return;
     }
-
-#if 0
-    intersection.reserve(std::min(candidates.size(), new_candidates.size()));
-#endif
 
     // Do the actual set intersection, storing the result into the
     // "intersection" vector. Then swap out the contents into our
@@ -248,67 +249,21 @@ void NGramIndexReader::FindShard(const std::string &query,
     std::swap(candidates, intersection);
     intersection.clear();  // reset for the next loop iteration
   }
+  LOG(INFO) << "shard " << reader.shard_name() <<
+      " finished set intersections after " << timer.elapsed_us() << " us" <<
+      ", final size is " << candidates.size() << "\n";
 
   // We are going to construct a map of filename -> [(line num,
   // offset, line)].
+  Timer trim_candidates_timer;
   std::map<std::string, std::vector<FileResult> > results_map;
+  TrimCandidates(query, reader.shard_name(), candidates, &results_map, results);
+  LOG(INFO) << "shard " << reader.shard_name() <<
+      " trim candidates took " << trim_candidates_timer.elapsed_us() << " us\n";
 
-  // The candidates vector contains the ids of rows in the "lines"
-  // index that are candidates. We need to check each candidate to
-  // make sure it really is a match.
-  //
-  // To do the trimming/sorting for consistent results, we're going to
-  // do the full lookup of all of the lines.
-
-#if DEBUG_PARANOID
-  // Ensure candidates is sorted
-  std::size_t val = 0;
-  for (const auto &c : candidates) {
-    assert(c >= val);
-    val = c;
-  }
-#endif
-
-  for (const auto &p : candidates) {
-    PositionValue pos;
-    std::string value;
-    assert(lines_index_.Find(p, &value));
-    pos.ParseFromString(value);
-
-    // Ensure that the text really matches our query
-    const std::string &pos_line = pos.line();
-    if (pos_line.find(query) != std::string::npos) {
-      files_index_.Find(pos.file_id(), &value);
-      FileValue fileval;
-      fileval.ParseFromString(value);
-
-      std::string filename = fileval.filename();
-      auto rpos = results_map.lower_bound(filename);
-
-      if (rpos == results_map.end() || rpos->first != filename) {
-        // We haven't seen this file yet; create a new FileResult
-        // vector.
-        std::vector<FileResult> result_vec;
-        result_vec.push_back(FileResult(pos.file_offset(), pos.file_line()));
-        results_map.insert(
-            rpos, std::make_pair(filename, std::move(result_vec)));
-      } else if (rpos->second.size() < results->max_within_file()) {
-        // Add the line, but only if the FileResult vector is small
-        // enough. The reason we can get away with this trick is
-        // becasue the candidates vector is already sorted!
-        assert(rpos->first == filename);
-        if (rpos->second.size() < results->max_within_file()) {
-          rpos->second.push_back(
-              FileResult(pos.file_offset(), pos.file_line()));
-        }
-      }
-    }
-  }
-
-  // Now add all of the files
-  for (const auto &kv : results_map) {
-    results->AddFileResult(kv.first, kv.second);
-  }
+  LOG(INFO) << "shard " << reader.shard_name() <<
+      " searched query \"" << query << "\" to get " << results_map.size() <<
+      " files in " << timer.elapsed_us() << " us\n";
 }
 
 // Given an ngram, a result list, an "ngram" reader shard, and a
@@ -318,6 +273,7 @@ bool NGramIndexReader::GetCandidates(const std::string &ngram,
                                      std::vector<std::uint64_t> *candidates,
                                      const SSTableReader &reader,
                                      std::size_t *lower_bound) {
+  Timer timer;
   assert(candidates->empty());
   std::string db_read;
   bool found = reader.FindWithBounds(ngram, &db_read, lower_bound);
@@ -333,6 +289,49 @@ bool NGramIndexReader::GetCandidates(const std::string &ngram,
     posting_val += delta;
     candidates->push_back(posting_val);
   }
+  LOG(INFO) << "shard " << reader.shard_name() << " searched ngram \"" <<
+      ngram << "\" in " << timer.elapsed_us() << " us\n";
   return true;
 }
+
+void NGramIndexReader::TrimCandidates(
+    const std::string &query,
+    const std::string &shard_name,
+    const std::vector<std::uint64_t> &candidates,
+    std::map<std::string, std::vector<FileResult> > *results_map,
+    SearchResults *results) {
+
+  // The candidates vector contains the ids of rows in the "lines"
+  // index that are candidates. We need to check each candidate to
+  // make sure it really is a match.
+  //
+  // To do the trimming/sorting for consistent results, we're going to
+  // do the full lookup of all of the lines.
+
+  for (const auto &p : candidates) {
+    LOG(INFO) << "shard " << shard_name << " " << p << std::endl;
+    PositionValue pos;
+    std::string value;
+    assert(lines_index_.Find(p, &value));
+    pos.ParseFromString(value);
+
+    // Ensure that the text really matches our query
+    const std::string &pos_line = pos.line();
+    if (pos_line.find(query) == std::string::npos) {
+      continue;
+    }
+
+    std::size_t file_id = pos.file_id();
+
+    files_index_.Find(file_id, &value);
+    FileValue fileval;
+    fileval.ParseFromString(value);
+
+    FileKey filekey(file_id, fileval.filename());
+
+    LOG(INFO) << "file " << fileval.filename() << ", offset = " << pos.file_offset() << std::endl;
+    results->insert(filekey, FileResult(pos.file_offset(), pos.file_line()));
+  }
+}
+
 }  // namespace codesearch

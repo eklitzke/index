@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 
+#include "./bounded_map.h"
 #include "./context.h"
 #include "./integer_index_reader.h"
 #include "./search_results.h"
@@ -37,7 +38,8 @@ class NGramIndexReader {
   const std::size_t parallelism_;
 
   // Find an ngram smaller than the ngram_size_
-  void FindSmall(const std::string &query, SearchResults *results);
+  void FindSmall(const std::string &query,
+                 SearchResults *results);
 
   void FindShard(const std::string &query,
                  const std::set<std::string> &ngrams,
@@ -48,6 +50,14 @@ class NGramIndexReader {
                      std::vector<std::uint64_t> *candidates,
                      const SSTableReader &reader,
                      std::size_t *lower_bound);
+
+  void TrimCandidates(const std::string &query,
+                      const std::string &shard_name,
+                      const std::vector<std::uint64_t> &candidates,
+                      std::map<std::string, std::vector<FileResult> >
+                      *results_map,
+                      SearchResults *results);
+
 
   std::size_t WaitForThreads(std::size_t target);
 

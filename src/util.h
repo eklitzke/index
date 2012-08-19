@@ -6,6 +6,9 @@
 
 #include <array>
 #include <string>
+#include <chrono>
+
+#include <glog/logging.h>
 
 namespace codesearch {
 std::string ConstructShardPath(const std::string &index_directory,
@@ -35,6 +38,43 @@ std::string PrintBinaryString(const std::string &str);
 
 // Returns true if src is valid UTF-8, false otherwise.
 bool IsValidUtf8(const std::string &src);
+
+// A standard timer class.
+class Timer {
+ public:
+
+  typedef std::chrono::system_clock clock_type;
+
+  Timer() :start_time_(clock_type::now()) {}
+
+  long elapsed_s() { return elapsed_count<std::chrono::seconds>(); }
+  long elapsed_ms() { return elapsed_count<std::chrono::milliseconds>(); }
+  long elapsed_us() { return elapsed_count<std::chrono::microseconds>(); }
+  long elapsed_ns() { return elapsed_count<std::chrono::nanoseconds>(); }
+ private:
+  std::chrono::time_point<std::chrono::system_clock> start_time_;
+
+  template <typename T>
+  inline int elapsed_count() {
+    return std::chrono::duration_cast<T>(
+        clock_type::now() - start_time_).count();
+  }
+};
+
+class HighResolutionTimer : public Timer {
+ public:
+  typedef std::chrono::high_resolution_clock clock_type;
+};
+
+class ScopedTimer : public Timer {
+ public:
+  ScopedTimer(const std::string &msg) :msg_(msg) {}
+  ~ScopedTimer() {
+    LOG(INFO) << msg_ << ", elapsed = " << elapsed_us() << " us\n";
+  }
+ private:
+  const std::string msg_;
+};
 
 }
 #endif

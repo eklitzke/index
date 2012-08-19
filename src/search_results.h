@@ -4,17 +4,68 @@
 #ifndef SRC_SEARCH_RESULTS_H_
 #define SRC_SEARCH_RESULTS_H_
 
+#include <functional>
 #include <mutex>
 #include <string>
 #include <vector>
 
+#include "./bounded_map.h"
 #include "./index.pb.h"
+
+namespace codesearch {
+
+class FileKey {
+ public:
+  FileKey(std::uint64_t file_id = 0, const std::string &filename = "")
+      :file_id_(file_id), filename_(filename) {}
+
+  std::uint64_t file_id() const { return file_id_; }
+  std::string filename() const { return filename_; }
+
+  inline bool operator <(const FileKey &other) const {
+    return file_id_ < other.file_id_;
+  }
+
+  inline bool operator <=(const FileKey &other) const {
+    return file_id_ <= other.file_id_;
+  }
+
+  inline bool operator ==(const FileKey &other) const {
+    return file_id_ == other.file_id_;
+  }
+
+  inline bool operator !=(const FileKey &other) const {
+    return file_id_ != other.file_id_;
+  }
+
+  inline bool operator >(const FileKey &other) const {
+    return file_id_ > other.file_id_;
+  }
+
+  inline bool operator >=(const FileKey &other) const {
+    return file_id_ >= other.file_id_;
+  }
+
+ protected:
+  std::uint64_t file_id_;
+  std::string filename_;
+};
+}
+
+namespace std {
+template <> struct hash<codesearch::FileKey> {
+  size_t operator()(const codesearch::FileKey &k) const {
+    return hash<uint64_t>()(k.file_id());
+  }
+};
+}
 
 namespace codesearch {
 
 struct FileResult {
   FileResult(std::size_t off, std::size_t line_num)
       :offset(off), line_number(line_num) {}
+
   std::size_t offset;
   std::size_t line_number;
 
@@ -24,54 +75,14 @@ struct FileResult {
   }
 };
 
-class SearchResults {
+class SearchResults : public BoundedMap<FileKey, FileResult> {
  public:
-  // Create a container for search results.
-  //
-  // Args:
-  //  limit, the maximum number of files to match
-  //  within_file_limit, the maximum number of results to match within
-  //                     a file
-  //  offset, the offset to use
-  explicit SearchResults(std::size_t limit, std::size_t within_file_limit = 10,
-                         std::size_t offset = 0)
-      :capacity_(limit), within_file_limit_(within_file_limit),
-       offset_(offset) {}
-
-  // Is this container full? This is used so the search threads can
-  // know when they can stop working.
-  bool IsFull();
-
-  // Trim the result set.
-  void Trim();
-
-  bool AddFileResult(const std::string &filename,
-                     const std::vector<FileResult> &results);
-
-  std::size_t size() {
-    std::lock_guard<std::mutex> guard(mutex_);
-    return results_.size();
-  }
-
-  std::size_t max_within_file() const {
-    return within_file_limit_;
-  }
-
+  SearchResults(std::size_t a, std::size_t b)
+      :BoundedMap(a, b) {}
   std::vector<SearchResultContext> contextual_results();
-
-  // The mutex is publicly visible.
-  std::mutex mutex_;
-
- private:
-  const std::size_t capacity_;
-  const std::size_t within_file_limit_;
-  const std::size_t offset_;
-  std::map<std::string, std::vector<FileResult> > results_;
-
-  bool UnlockedIsFull() {
-    return capacity_ && results_.size() >= (capacity_ + offset_);
-  }
 };
-}
+
+}  // namespace codesearch
+
 
 #endif

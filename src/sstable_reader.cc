@@ -5,6 +5,8 @@
 #include "./util.h"
 #include "./mmap.h"
 
+#include <glog/logging.h>
+
 #include <array>
 #include <cassert>
 #include <cstring>
@@ -17,7 +19,8 @@
 #include <sys/mman.h>
 
 namespace codesearch {
-SSTableReader::SSTableReader(const std::string &name) {
+SSTableReader::SSTableReader(const std::string &name)
+    :name_(name) {
   std::pair<std::size_t, const char *> mmap_data = GetMmapForFile(name);
   std::size_t mmap_size = mmap_data.first;
   mmap_addr_ = mmap_data.second;

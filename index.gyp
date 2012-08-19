@@ -39,6 +39,7 @@
             '-lboost_filesystem',
             '-lboost_system',
             '-lboost_program_options',
+            '-lglog',
             '-lprotobuf',
             '-lsnappy',
             #'../libre2.a',

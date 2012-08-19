@@ -33,7 +33,18 @@ class SSTableReader {
   std::size_t lower_bound() const { return 0; }
   std::size_t upper_bound() const { return hdr_.num_keys(); }
 
+  std::string shard_name() const {
+    std::string::size_type pos = name_.find_last_of('/');
+    if (pos == std::string::npos || pos == name_.size() - 1) {
+      return name_;
+    }
+    return name_.substr(pos + 1, std::string::npos);
+  }
+
  private:
+  // the name of the backing file
+  const std::string name_;
+
   // this address points to the start of the mmaped index
   const char *mmap_addr_;
 

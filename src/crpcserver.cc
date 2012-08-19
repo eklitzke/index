@@ -1,5 +1,6 @@
 #include <boost/program_options.hpp>
 #include <boost/asio.hpp>
+#include <glog/logging.h>
 
 #include "./config.h"
 #include "./context.h"
@@ -25,6 +26,8 @@ int main(int argc, char **argv) {
     std::cout << desc << std::endl;
     return 0;
   }
+
+  google::InitGoogleLogging(argv[0]);
 
   std::string db_path_str = vm["db-path"].as<std::string>();
   std::unique_ptr<codesearch::Context> ctx(

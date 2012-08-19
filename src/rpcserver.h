@@ -20,6 +20,9 @@ class IndexReaderServer {
                     const boost::asio::ip::tcp::endpoint &endpoint)
       :db_path_(db_path), io_service_(io_service),
        acceptor_(*io_service, endpoint), conn_(nullptr), conn_count_(0) {}
+  IndexReaderServer(const IndexReaderServer &other) = delete;
+  IndexReaderServer& operator=(const IndexReaderServer &other) = delete;
+
 
   void Start();
   ~IndexReaderServer();
