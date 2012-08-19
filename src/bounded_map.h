@@ -46,7 +46,7 @@ class BoundedMap {
 #endif
       if (pos == map_.end() || pos->first != key) {
         map_.insert(pos, std::make_pair(key, std::vector<V>{val}));
-        LOG(INFO) << "inserted file_id " << key.file_id() << "\n";
+        //LOG(INFO) << "inserted file_id " << key.file_id() << "\n";
       } else if (pos->second.size() < max_vals_) {
         pos->second.push_back(val);
       } else {
@@ -67,8 +67,8 @@ class BoundedMap {
 #else
         map_.erase(max_key_);
 #endif
-        LOG(INFO) << "inserted file_id " << key.file_id() << " and removed " <<
-            max_key_.file_id() << "\n";
+        //LOG(INFO) << "inserted file_id " << key.file_id() <<
+        // " and removed " << max_key_.file_id() << "\n";
         max_key_ = key;
 
       } else if (pos->second.size() < max_vals_) {
@@ -89,7 +89,6 @@ class BoundedMap {
 
   bool IsFull() const {
     std::lock_guard<std::mutex> guard(mut_);
-    LOG(INFO) << "called is full, returned " << (map_.size() >= max_keys_) << "\n";
     return map_.size() >= max_keys_;
   }
 

@@ -70,7 +70,7 @@ class ScopedTimer : public Timer {
  public:
   ScopedTimer(const std::string &msg) :msg_(msg) {}
   ~ScopedTimer() {
-    LOG(INFO) << msg_ << ", elapsed = " << elapsed_us() << " us\n";
+    //LOG(INFO) << msg_ << ", elapsed = " << elapsed_us() << " us\n";
   }
  private:
   const std::string msg_;

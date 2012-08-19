@@ -249,21 +249,21 @@ void NGramIndexReader::FindShard(const std::string &query,
     std::swap(candidates, intersection);
     intersection.clear();  // reset for the next loop iteration
   }
-  LOG(INFO) << "shard " << reader.shard_name() <<
-      " finished set intersections after " << timer.elapsed_us() << " us" <<
-      ", final size is " << candidates.size() << "\n";
+  //LOG(INFO) << "shard " << reader.shard_name() <<
+  //    " finished set intersections after " << timer.elapsed_us() << " us" <<
+  //    ", final size is " << candidates.size() << "\n";
 
   // We are going to construct a map of filename -> [(line num,
   // offset, line)].
   Timer trim_candidates_timer;
   std::map<std::string, std::vector<FileResult> > results_map;
   TrimCandidates(query, reader.shard_name(), candidates, &results_map, results);
-  LOG(INFO) << "shard " << reader.shard_name() <<
-      " trim candidates took " << trim_candidates_timer.elapsed_us() << " us\n";
+  //LOG(INFO) << "shard " << reader.shard_name() <<
+  //    " trim candidates took " << trim_candidates_timer.elapsed_us() << " us\n";
 
-  LOG(INFO) << "shard " << reader.shard_name() <<
-      " searched query \"" << query << "\" to get " << results_map.size() <<
-      " files in " << timer.elapsed_us() << " us\n";
+  //LOG(INFO) << "shard " << reader.shard_name() <<
+  //    " searched query \"" << query << "\" to get " << results_map.size() <<
+  //    " files in " << timer.elapsed_us() << " us\n";
 }
 
 // Given an ngram, a result list, an "ngram" reader shard, and a
@@ -289,8 +289,8 @@ bool NGramIndexReader::GetCandidates(const std::string &ngram,
     posting_val += delta;
     candidates->push_back(posting_val);
   }
-  LOG(INFO) << "shard " << reader.shard_name() << " searched ngram \"" <<
-      ngram << "\" in " << timer.elapsed_us() << " us\n";
+  //LOG(INFO) << "shard " << reader.shard_name() << " searched ngram \"" <<
+  //    ngram << "\" in " << timer.elapsed_us() << " us\n";
   return true;
 }
 
@@ -309,7 +309,7 @@ void NGramIndexReader::TrimCandidates(
   // do the full lookup of all of the lines.
 
   for (const auto &p : candidates) {
-    LOG(INFO) << "shard " << shard_name << " " << p << std::endl;
+    //LOG(INFO) << "shard " << shard_name << " " << p << std::endl;
     PositionValue pos;
     std::string value;
     assert(lines_index_.Find(p, &value));
@@ -329,7 +329,7 @@ void NGramIndexReader::TrimCandidates(
 
     FileKey filekey(file_id, fileval.filename());
 
-    LOG(INFO) << "file " << fileval.filename() << ", offset = " << pos.file_offset() << std::endl;
+    //LOG(INFO) << "file " << fileval.filename() << ", offset = " << pos.file_offset() << std::endl;
     results->insert(filekey, FileResult(pos.file_offset(), pos.file_line()));
   }
 }
