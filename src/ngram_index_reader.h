@@ -51,11 +51,19 @@ class NGramIndexReader {
                      const SSTableReader &reader,
                      std::size_t *lower_bound);
 
+  // Take the candidates list, and trim the list to only those that
+  // are real matches, and add them to the SearchResults object. This
+  // returns a guess of how many lines it inserted into the
+  // SearchResults object, which will usually be an overestimate
+  // (since due to ordering constraints, anything added can be removed
+  // later).
   std::size_t TrimCandidates(const std::string &query,
                              const std::string &shard_name,
                              const std::vector<std::uint64_t> &candidates,
                              SearchResults *results);
 
+  // Wait until there are at most target threads running, and then
+  // return the number of currently running threads.
   std::size_t WaitForThreads(std::size_t target);
 
 };

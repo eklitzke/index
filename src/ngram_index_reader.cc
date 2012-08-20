@@ -31,6 +31,25 @@ class CondNotifier {
   std::condition_variable &cond_;
   std::size_t &running_threads_;
 };
+
+// Choose the concurrency level.
+//
+// We should always pick at least std::thread::hardware_concurrency(),
+// but possibly we would want to pick an even higher level. For
+// instance if the hardware concurrency is N, we might want to pick
+// 2*N or N+1 or 2*N+1.
+//
+// In fact, for now we just choose N, i.e. the value of
+// std::thread::hardware_concurrency(). The reason is that the most
+// pathological queries that can be done are for things like "char" or
+// "void", i.e. queries where all of the ngrams have very large
+// posting lists. For these queries, we can typically satisfy the
+// whole query easily, usually just by querying the very first shard
+// -- so we want to keep concurrency low. For queries for more unique
+// terms, e.g. "mangosteem jam", we would want a higher concurrency
+// level, but since those queries tend to be faster anyway, we choose
+// to optimize for the pathological case.
+inline std::size_t concurrency() { return std::thread::hardware_concurrency(); }
 }
 
 namespace codesearch {
@@ -38,8 +57,7 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory)
     :ctx_(Context::Acquire(index_directory)),
      ngram_size_(ctx_->ngram_size()), files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines"), running_threads_(0),
-     //parallelism_(std::thread::hardware_concurrency() + 1) {
-     parallelism_(std::thread::hardware_concurrency()) {
+     parallelism_(concurrency()) {
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config(config_name.c_str(),
                        std::ifstream::binary | std::ifstream::in);
@@ -252,9 +270,10 @@ void NGramIndexReader::FindShard(const std::string &query,
     std::swap(candidates, intersection);
     intersection.clear();  // reset for the next loop iteration
   }
-  //LOG(INFO) << "shard " << reader.shard_name() <<
-  //    " finished set intersections after " << timer.elapsed_us() << " us" <<
-  //    ", final size is " << candidates.size() << "\n";
+  LOG(INFO) << "shard " << reader.shard_name() <<
+      " finished SST lookups and set intersections after " <<
+      timer.elapsed_us() << " us" << ", final size is " << candidates.size() <<
+      "\n";
 
   // We are going to construct a map of filename -> [(line num,
   // offset, line)].
@@ -264,17 +283,18 @@ void NGramIndexReader::FindShard(const std::string &query,
 
   LOG(INFO) << "shard " << reader.shard_name() <<
       " searched query \"" << query << "\" to add " << lines_added <<
-      " lines in " << timer.elapsed_us() << " us\n";
+      " lines in " << timer.elapsed_us() << " us (trim took " <<
+      trim_candidates_timer.elapsed_us() << " us)\n";
 }
 
 // Given an ngram, a result list, an "ngram" reader shard, and a
 // lower bound, fill in the result list with all of the positions in
-// the posting list for that ngram.
+// the posting list for that ngram. This is the function that actually
+// does the SST lookup.
 bool NGramIndexReader::GetCandidates(const std::string &ngram,
                                      std::vector<std::uint64_t> *candidates,
                                      const SSTableReader &reader,
                                      std::size_t *lower_bound) {
-  Timer timer;
   assert(candidates->empty());
   std::string db_read;
   bool found = reader.FindWithBounds(ngram, &db_read, lower_bound);
@@ -290,8 +310,6 @@ bool NGramIndexReader::GetCandidates(const std::string &ngram,
     posting_val += delta;
     candidates->push_back(posting_val);
   }
-  //LOG(INFO) << "shard " << reader.shard_name() << " searched ngram \"" <<
-  //    ngram << "\" in " << timer.elapsed_us() << " us\n";
   return true;
 }
 
@@ -317,22 +335,20 @@ std::size_t NGramIndexReader::TrimCandidates(
     pos.ParseFromString(value);
 
     // Check that it's going to be possible to insert with this file
-    // id -- no mutexes need to be accessed!
+    // id -- no mutexes need to be accessed for this check!
     std::uint64_t file_id = pos.file_id();
     if (file_id >= max_file_id) {
       continue;
     }
 
     // Ensure that the text really matches our query
-    const std::string &pos_line = pos.line();
-    if (pos_line.find(query) == std::string::npos) {
+    if (pos.line().find(query) == std::string::npos) {
       continue;
     }
 
     files_index_.Find(file_id, &value);
     FileValue fileval;
     fileval.ParseFromString(value);
-
     FileKey filekey(file_id, fileval.filename());
 
     BoundedMapInsertionResult status = results->insert(
@@ -340,12 +356,12 @@ std::size_t NGramIndexReader::TrimCandidates(
     if (status == INSERT_SUCCESSFUL) {
       lines_added++;
     } else if (status == KEY_TOO_LARGE) {
-      // track this file_id, so we can avoid trying to insert with
-      // file ids >= this one in the future.
+      // We failed to insert the file data, because the file_id was
+      // too big. Track this file_id, so we can avoid trying to insert
+      // with file ids >= this one in the future.
       max_file_id = file_id;
     }
   }
   return lines_added;
 }
-
 }  // namespace codesearch
