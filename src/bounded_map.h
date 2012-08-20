@@ -15,6 +15,12 @@
 
 namespace codesearch {
 
+enum BoundedMapInsertionResult {
+  INSERT_SUCCESSFUL = 0,
+  KEY_TOO_LARGE     = 1,
+  VAL_LIST_TOO_LONG = 2
+};
+
 #define USE_ORDERED_MAP 1
 
 template <typename K, typename V>
@@ -31,7 +37,7 @@ class BoundedMap {
 #endif
 
   // Insert a key/value to the map
-  bool insert(const K &key, const V &val) {
+  BoundedMapInsertionResult insert(const K &key, const V &val) {
     std::lock_guard<std::mutex> guard(mut_);
     if (map_.size() < max_keys_) {
       if (key > max_key_) {
@@ -48,9 +54,9 @@ class BoundedMap {
       } else if (pos->second.size() < max_vals_) {
         pos->second.push_back(val);
       } else {
-        return false;  // the vector was full
+        return VAL_LIST_TOO_LONG;
       }
-      return true;  // we inserted something
+      return INSERT_SUCCESSFUL;
     } else if (key <= max_key_){
 #ifdef USE_ORDERED_MAP
       auto pos = map_.lower_bound(key);
@@ -70,11 +76,11 @@ class BoundedMap {
       } else if (pos->second.size() < max_vals_) {
         pos->second.push_back(val);
       } else {
-        return false;  // the vector was full
+        return VAL_LIST_TOO_LONG;
       }
-      return true;  // we inserted something
+      return INSERT_SUCCESSFUL;
     }
-    return false;
+    return KEY_TOO_LARGE;
   }
 
   // Get a copy of the map
@@ -85,7 +91,6 @@ class BoundedMap {
 
   bool IsFull() const {
     std::lock_guard<std::mutex> guard(mut_);
-    LOG(INFO) << "we are full!\n";
     return map_.size() >= max_keys_;
   }
 

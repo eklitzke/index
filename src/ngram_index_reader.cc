@@ -308,11 +308,19 @@ std::size_t NGramIndexReader::TrimCandidates(
   // do the full lookup of all of the lines.
 
   std::size_t lines_added = 0;
+  std::uint64_t max_file_id = UINT64_MAX;
   for (const auto &candidate : candidates) {
     PositionValue pos;
     std::string value;
     assert(lines_index_.Find(candidate, &value));
     pos.ParseFromString(value);
+
+    // Check that it's going to be possible to insert with this file
+    // id -- no mutexes need to be accessed!
+    std::uint64_t file_id = pos.file_id();
+    if (file_id >= max_file_id) {
+      continue;
+    }
 
     // Ensure that the text really matches our query
     const std::string &pos_line = pos.line();
@@ -320,26 +328,21 @@ std::size_t NGramIndexReader::TrimCandidates(
       continue;
     }
 
-    std::size_t file_id = pos.file_id();
-
     files_index_.Find(file_id, &value);
     FileValue fileval;
     fileval.ParseFromString(value);
 
     FileKey filekey(file_id, fileval.filename());
 
-    //LOG(INFO) << "file " << fileval.filename() << ", offset = " <<
-    //pos.file_offset() << std::endl;
-    bool added_line = results->insert(
+    BoundedMapInsertionResult status = results->insert(
         filekey, FileResult(pos.file_offset(), pos.file_line()));
-    if (added_line) {
-      //LOG(INFO) << "added line for file_id " << file_id << " from shard " <<
-      //    shard_name << "\n";
+    if (status == INSERT_SUCCESSFUL) {
       lines_added++;
-    }/* else {
-      LOG(INFO) << "did NOT add line for file_id " << file_id <<
-          " from shard " << shard_name << "\n";
-          }*/
+    } else if (status == KEY_TOO_LARGE) {
+      // track this file_id, so we can avoid trying to insert with
+      // file ids >= this one in the future.
+      max_file_id = file_id;
+    }
   }
   return lines_added;
 }
