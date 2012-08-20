@@ -38,7 +38,8 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory)
     :ctx_(Context::Acquire(index_directory)),
      ngram_size_(ctx_->ngram_size()), files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines"), running_threads_(0),
-     parallelism_(std::thread::hardware_concurrency() + 1) {
+     //parallelism_(std::thread::hardware_concurrency() + 1) {
+     parallelism_(std::thread::hardware_concurrency()) {
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config(config_name.c_str(),
                        std::ifstream::binary | std::ifstream::in);
