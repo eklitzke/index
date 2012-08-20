@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help,h", "produce help message")
-      ("limit", po::value<std::size_t>()->default_value(100))
+      ("limit", po::value<std::size_t>()->default_value(10))
       ("within-file-limit", po::value<std::size_t>()->default_value(10))
       ("offset", po::value<std::size_t>()->default_value(0))
       ("no-print", "suppress printing")

@@ -187,6 +187,8 @@ std::size_t NGramIndexReader::WaitForThreads(std::size_t target) {
   // Wait for a notification
   std::unique_lock<std::mutex> lock(mut_);
   cond_.wait(lock, [=](){ return running_threads_ <= target; });
+  LOG(INFO) << "wait for thread completed, running threads = " <<
+      running_threads_ << "\n";
   return running_threads_;
 }
 
@@ -305,17 +307,11 @@ std::size_t NGramIndexReader::TrimCandidates(
   // To do the trimming/sorting for consistent results, we're going to
   // do the full lookup of all of the lines.
 
-  for (const auto &c : candidates) {
-    LOG(INFO) << "candidate, " << shard_name << " " << c << "\n";
-  }
-
-
   std::size_t lines_added = 0;
-  for (const auto &p : candidates) {
-    //LOG(INFO) << "shard " << shard_name << " " << p << std::endl;
+  for (const auto &candidate : candidates) {
     PositionValue pos;
     std::string value;
-    assert(lines_index_.Find(p, &value));
+    assert(lines_index_.Find(candidate, &value));
     pos.ParseFromString(value);
 
     // Ensure that the text really matches our query
@@ -337,13 +333,13 @@ std::size_t NGramIndexReader::TrimCandidates(
     bool added_line = results->insert(
         filekey, FileResult(pos.file_offset(), pos.file_line()));
     if (added_line) {
-      LOG(INFO) << "added line for file_id " << file_id << " from shard " <<
-          shard_name << "\n";
+      //LOG(INFO) << "added line for file_id " << file_id << " from shard " <<
+      //    shard_name << "\n";
       lines_added++;
-    } else {
+    }/* else {
       LOG(INFO) << "did NOT add line for file_id " << file_id <<
           " from shard " << shard_name << "\n";
-    }
+          }*/
   }
   return lines_added;
 }
