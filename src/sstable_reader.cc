@@ -41,8 +41,8 @@ SSTableReader::SSTableReader(const std::string &name)
   mmap_addr_ += sizeof(std::uint64_t) + hdr_size + padding.size();
 }
 
-bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
-                                   std::size_t *lower_bound) const {
+bool SSTableReader::CheckMinMaxBounds(const char *needle,
+                                      std::size_t *lower_bound) const {
   std::uint64_t key_size = hdr_.key_size();
 
   // First we check that the needle being searched for is within the
@@ -57,7 +57,17 @@ bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
     *lower_bound = upper_bound() + 1;
     return false;
   }
+  return true;
+}
 
+bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
+                                   std::size_t *lower_bound) const {
+  std::uint64_t key_size = hdr_.key_size();
+
+  // Check that the key is within the min/max bounds.
+  if (!CheckMinMaxBounds(needle, lower_bound)) {
+    return false;
+  }
   std::size_t upper = upper_bound();
   while (*lower_bound <= upper) {
     std::size_t pos = (upper + *lower_bound) / 2;
@@ -95,7 +105,7 @@ bool SSTableReader::FindWithBounds(const std::string &needle,
                                    std::size_t *lower_bound) const {
   std::string padded;
   PadNeedle(needle, &padded);
-  return FindWithBounds(padded.c_str(), result, lower_bound);
+  return FindWithBounds(padded.data(), result, lower_bound);
 }
 
 bool SSTableReader::Find(const char *needle, std::string *result) const {
@@ -104,16 +114,18 @@ bool SSTableReader::Find(const char *needle, std::string *result) const {
 }
 
 bool SSTableReader::Find(std::uint64_t needle, std::string *result) const {
-  std::size_t lower_bound = 0;
+  std::uint64_t lower_bound = 0;
   std::string val;
+  std::string padded;
   Uint64ToString(needle, &val);
-  return FindWithBounds(val.c_str(), result, &lower_bound);
+  PadNeedle(val, &padded);
+  return FindWithBounds(padded.data(), result, &lower_bound);
 }
 
 bool SSTableReader::Find(const std::string &needle, std::string *result) const {
   std::string padded;
   PadNeedle(needle, &padded);
-  return Find(padded.c_str(), result);
+  return Find(padded.data(), result);
 }
 
 void SSTableReader::PadNeedle(const std::string &in, std::string *out) const {

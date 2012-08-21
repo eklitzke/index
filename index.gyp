@@ -36,6 +36,7 @@
         'libraries': [
             '-pthread',
             '/usr/lib64/libtcmalloc.so.4',  # disable if using valgrind/massif
+            '/usr/lib64/libprofiler.so.0',
             '-lboost_filesystem',
             '-lboost_system',
             '-lboost_program_options',

@@ -15,6 +15,9 @@ class SSTableReader {
  public:
   explicit SSTableReader(const std::string &name);
 
+  // Checks that a given needle is within the min/max bounds for this table.
+  bool CheckMinMaxBounds(const char *needle, std::size_t *lower_bound) const;
+
   bool Find(const char *needle, std::string *result) const;
   bool Find(std::uint64_t needle, std::string *result) const;
   bool Find(const std::string &needle, std::string *result) const;
