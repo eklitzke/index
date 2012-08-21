@@ -6,9 +6,16 @@
 
 #include <fstream>
 #include <map>
+#include <stdexcept>
 #include <string>
 
 namespace codesearch {
+
+class FileError : public std::logic_error {
+ public:
+  FileError(const std::string &msg) :std::logic_error(msg) {}
+};
+
 std::string FileLanguage(const std::string &filename);
 
 // Returns true if we should index this file. This applies some

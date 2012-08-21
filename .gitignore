@@ -1,7 +1,9 @@
 *.a
+*.log
 *.out.css
 *.pb.cc
 *.pb.h
+*.prof
 *.py[co]
 *_pb2.py
 build/

@@ -2,6 +2,7 @@
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <glog/logging.h>
 
 #include "./config.h"
 #include "./context.h"
@@ -17,7 +18,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help,h", "produce help message")
-      ("limit", po::value<std::size_t>()->default_value(100))
+      ("limit", po::value<std::size_t>()->default_value(10))
       ("within-file-limit", po::value<std::size_t>()->default_value(10))
       ("offset", po::value<std::size_t>()->default_value(0))
       ("no-print", "suppress printing")
@@ -41,6 +42,8 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  google::InitGoogleLogging(argv[0]);
+
   std::string db_path_str = vm["db-path"].as<std::string>();
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str));
@@ -56,9 +59,10 @@ int main(int argc, char **argv) {
 
   std::size_t limit = vm["limit"].as<std::size_t>();
   codesearch::SearchResults results(
-      limit,
-      vm["within-file-limit"].as<std::size_t>(),
-      vm["offset"].as<std::size_t>());
+      static_cast<std::size_t>(limit),
+      vm["within-file-limit"].as<std::size_t>()
+      //vm["offset"].as<std::size_t>()
+                                    );
   std::string query = vm["query"].as<std::string>();
   reader.Find(query, &results);
   if (!vm.count("no-print")) {

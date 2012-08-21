@@ -15,6 +15,9 @@ class SSTableReader {
  public:
   explicit SSTableReader(const std::string &name);
 
+  // Checks that a given needle is within the min/max bounds for this table.
+  bool CheckMinMaxBounds(const char *needle, std::size_t *lower_bound) const;
+
   bool Find(const char *needle, std::string *result) const;
   bool Find(std::uint64_t needle, std::string *result) const;
   bool Find(const std::string &needle, std::string *result) const;
@@ -30,10 +33,30 @@ class SSTableReader {
   bool FindWithBounds(const std::string &needle, std::string *result,
                       std::size_t *lower_bound) const;
 
-  std::size_t lower_bound() const { return 0; }
-  std::size_t upper_bound() const { return hdr_.num_keys(); }
+  inline std::string min_key() const {
+    std::string retval;
+    PadNeedle(hdr_.min_value(), &retval);
+    return retval;
+  }
+
+  inline std::string max_key() const {
+    std::string retval;
+    PadNeedle(hdr_.max_value(), &retval);
+    return retval;
+  }
+
+  std::string shard_name() const {
+    std::string::size_type pos = name_.find_last_of('/');
+    if (pos == std::string::npos || pos == name_.size() - 1) {
+      return name_;
+    }
+    return name_.substr(pos + 1, std::string::npos);
+  }
 
  private:
+  // the name of the backing file
+  const std::string name_;
+
   // this address points to the start of the mmaped index
   const char *mmap_addr_;
 
@@ -42,6 +65,10 @@ class SSTableReader {
 
   // pad a search key
   void PadNeedle(const std::string &in, std::string *out) const;
+
+  inline std::size_t lower_bound() const { return 0; }
+  inline std::size_t upper_bound() const { return hdr_.num_keys(); }
+
 };
 }
 

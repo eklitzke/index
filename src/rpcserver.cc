@@ -12,7 +12,6 @@
 #include "./index.pb.h"
 #include "./util.h"
 
-#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -120,8 +119,7 @@ void IndexReaderConnection::DataCallback(const boost::system::error_code& error,
 }
 
 void IndexReaderConnection::Search(std::size_t size) {
-  std::chrono::time_point<std::chrono::system_clock> start, end;
-  start = std::chrono::system_clock::now();
+  Timer timer;
 
   data_buffer_.commit(size);
 
@@ -142,8 +140,9 @@ void IndexReaderConnection::Search(std::size_t size) {
         search_query.limit() << std::endl;
 
     SearchResults results(search_query.limit(),
-                          search_query.within_file_limit(),
-                          search_query.offset());
+                          search_query.within_file_limit()
+                          //search_query.offset()
+                          );
     reader_.Find(search_query.query(), &results);
 
     resp = response.mutable_search_response();
@@ -156,10 +155,7 @@ void IndexReaderConnection::Search(std::size_t size) {
     SelfDestruct();
     return;
   }
-  end = std::chrono::system_clock::now();
-  response.set_time_elapsed(
-      std::chrono::duration_cast<std::chrono::milliseconds>
-      (end - start).count());
+  response.set_time_elapsed(timer.elapsed_ms());
 
 #ifdef USE_SNAPPY
   std::string uncompressed_response, compressed_response;

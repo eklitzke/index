@@ -5,6 +5,8 @@
 #include "./util.h"
 #include "./mmap.h"
 
+#include <glog/logging.h>
+
 #include <array>
 #include <cassert>
 #include <cstring>
@@ -17,7 +19,8 @@
 #include <sys/mman.h>
 
 namespace codesearch {
-SSTableReader::SSTableReader(const std::string &name) {
+SSTableReader::SSTableReader(const std::string &name)
+    :name_(name) {
   std::pair<std::size_t, const char *> mmap_data = GetMmapForFile(name);
   std::size_t mmap_size = mmap_data.first;
   mmap_addr_ = mmap_data.second;
@@ -38,23 +41,33 @@ SSTableReader::SSTableReader(const std::string &name) {
   mmap_addr_ += sizeof(std::uint64_t) + hdr_size + padding.size();
 }
 
-bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
-                                   std::size_t *lower_bound) const {
+bool SSTableReader::CheckMinMaxBounds(const char *needle,
+                                      std::size_t *lower_bound) const {
   std::uint64_t key_size = hdr_.key_size();
 
   // First we check that the needle being searched for is within the
   // min/max values stored in this SSTable.
   if (memcmp(static_cast<const void *>(needle),
-             static_cast<const void *>(hdr_.min_value().data()),
+             static_cast<const void *>(min_key().data()),
              key_size) < 0) {
     return false;
   } else if (memcmp(static_cast<const void *>(needle),
-                    static_cast<const void *>(hdr_.max_value().data()),
+                    static_cast<const void *>(max_key().data()),
                     key_size) > 0) {
     *lower_bound = upper_bound() + 1;
     return false;
   }
+  return true;
+}
 
+bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
+                                   std::size_t *lower_bound) const {
+  std::uint64_t key_size = hdr_.key_size();
+
+  // Check that the key is within the min/max bounds.
+  if (!CheckMinMaxBounds(needle, lower_bound)) {
+    return false;
+  }
   std::size_t upper = upper_bound();
   while (*lower_bound <= upper) {
     std::size_t pos = (upper + *lower_bound) / 2;
@@ -92,7 +105,7 @@ bool SSTableReader::FindWithBounds(const std::string &needle,
                                    std::size_t *lower_bound) const {
   std::string padded;
   PadNeedle(needle, &padded);
-  return FindWithBounds(padded.c_str(), result, lower_bound);
+  return FindWithBounds(padded.data(), result, lower_bound);
 }
 
 bool SSTableReader::Find(const char *needle, std::string *result) const {
@@ -101,15 +114,18 @@ bool SSTableReader::Find(const char *needle, std::string *result) const {
 }
 
 bool SSTableReader::Find(std::uint64_t needle, std::string *result) const {
+  std::uint64_t lower_bound = 0;
   std::string val;
+  std::string padded;
   Uint64ToString(needle, &val);
-  return Find(val.c_str(), result);
+  PadNeedle(val, &padded);
+  return FindWithBounds(padded.data(), result, &lower_bound);
 }
 
 bool SSTableReader::Find(const std::string &needle, std::string *result) const {
   std::string padded;
   PadNeedle(needle, &padded);
-  return Find(padded.c_str(), result);
+  return Find(padded.data(), result);
 }
 
 void SSTableReader::PadNeedle(const std::string &in, std::string *out) const {
