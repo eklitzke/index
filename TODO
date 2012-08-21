@@ -13,13 +13,14 @@ Bugs
 * use a threadpool in cindex rather than creating lots of short-lived threads
 * prevent cindex from blocking threads on rotation
 * add a way to bundle file contents with the index
+* fix GetFileContext() to not seek so much
 
 Miscellaneous
 =============
 * index github
 * add logging -- this is important for perf tuning
-* use std::binary_search
 * add a way to shutdown the server process gracefully while using massif
+* investigate using a heap instead of a bounded map
 
 Cleanups
 ========
