@@ -235,7 +235,7 @@ void NGramIndexReader::FindShard(const std::string &query,
                                  SearchResults *results) {
   Timer timer;
   CondNotifier notifier(mut_, cond_, running_threads_);
-  std::size_t lower_bound = reader.lower_bound();
+  std::size_t lower_bound = 0;
   std::vector<std::uint64_t> candidates;
   std::vector<std::uint64_t> intersection;
 

@@ -48,11 +48,11 @@ bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
   // First we check that the needle being searched for is within the
   // min/max values stored in this SSTable.
   if (memcmp(static_cast<const void *>(needle),
-             static_cast<const void *>(hdr_.min_value().data()),
+             static_cast<const void *>(min_key().data()),
              key_size) < 0) {
     return false;
   } else if (memcmp(static_cast<const void *>(needle),
-                    static_cast<const void *>(hdr_.max_value().data()),
+                    static_cast<const void *>(max_key().data()),
                     key_size) > 0) {
     *lower_bound = upper_bound() + 1;
     return false;
@@ -104,9 +104,10 @@ bool SSTableReader::Find(const char *needle, std::string *result) const {
 }
 
 bool SSTableReader::Find(std::uint64_t needle, std::string *result) const {
+  std::size_t lower_bound = 0;
   std::string val;
   Uint64ToString(needle, &val);
-  return Find(val.c_str(), result);
+  return FindWithBounds(val.c_str(), result, &lower_bound);
 }
 
 bool SSTableReader::Find(const std::string &needle, std::string *result) const {

@@ -30,8 +30,17 @@ class SSTableReader {
   bool FindWithBounds(const std::string &needle, std::string *result,
                       std::size_t *lower_bound) const;
 
-  std::size_t lower_bound() const { return 0; }
-  std::size_t upper_bound() const { return hdr_.num_keys(); }
+  inline std::string min_key() const {
+    std::string retval;
+    PadNeedle(hdr_.min_value(), &retval);
+    return retval;
+  }
+
+  inline std::string max_key() const {
+    std::string retval;
+    PadNeedle(hdr_.max_value(), &retval);
+    return retval;
+  }
 
   std::string shard_name() const {
     std::string::size_type pos = name_.find_last_of('/');
@@ -53,6 +62,10 @@ class SSTableReader {
 
   // pad a search key
   void PadNeedle(const std::string &in, std::string *out) const;
+
+  inline std::size_t lower_bound() const { return 0; }
+  inline std::size_t upper_bound() const { return hdr_.num_keys(); }
+
 };
 }
 

@@ -4,7 +4,10 @@
 #ifndef SRC_INTEGER_INDEX_READER_H_
 #define SRC_INTEGER_INDEX_READER_H_
 
+#include <map>
+#include <memory>
 #include <string>
+
 #include "./sstable_reader.h"
 
 namespace codesearch {
@@ -22,10 +25,8 @@ class IntegerIndexReader {
   // very cheap.
   bool Find(std::uint64_t needle, std::string *result) const;
 
-  ~IntegerIndexReader();
-
  private:
-  std::vector<SSTableReader*> shards_;
+  std::map<std::uint64_t, std::unique_ptr<SSTableReader> > shards_;
 };
 }
 

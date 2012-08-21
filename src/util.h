@@ -6,8 +6,10 @@
 
 #include <array>
 #include <string>
+#include <cassert>
 #include <chrono>
 
+#include <endian.h>
 #include <glog/logging.h>
 
 namespace codesearch {
@@ -16,6 +18,11 @@ std::string ConstructShardPath(const std::string &index_directory,
                                std::uint32_t shard_num);
 
 void Uint64ToString(std::uint64_t val, std::string *out);
+
+inline std::uint64_t ToUint64(const std::string &str) {
+  assert(str.size() == sizeof(std::uint64_t));
+  return be64toh(*reinterpret_cast<const std::uint64_t*>(str.data()));
+}
 
 template<typename int_type>
 std::uint64_t ToUint64(const std::array<int_type,

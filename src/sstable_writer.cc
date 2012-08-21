@@ -43,8 +43,10 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
     min_key_ = padded_key;
   }
 
+  // ensure the keys are inserted in sorted order
   assert(memcmp(last_key_.c_str(), padded_key.c_str(), key_size_) <= 0);
   last_key_ = padded_key;
+
   idx_out_.write(padded_key.c_str(), key_size_);
   assert(!idx_out_.fail() && !idx_out_.eof());
 
@@ -115,6 +117,8 @@ void SSTableWriter::Merge() {
 
   assert(index_size_ == FileSize(&idx, &out));
   assert(data_size_ == FileSize(&data, &out));
+  assert(min_key_.size() == key_size_);
+  assert(last_key_.size() == key_size_);
 
   SSTableHeader header;
   header.set_index_size(index_size_);
