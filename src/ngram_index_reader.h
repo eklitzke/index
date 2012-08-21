@@ -5,6 +5,7 @@
 #define SRC_NGRAM_INDEX_READER_H_
 
 #include <condition_variable>
+#include <memory>
 #include <set>
 #include <string>
 
@@ -23,14 +24,12 @@ class NGramIndexReader {
   // max number of results that will be returned.
   void Find(const std::string &query, SearchResults *results);
 
-  ~NGramIndexReader();
-
  private:
   Context *ctx_;
   const std::size_t ngram_size_;
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
-  std::vector<SSTableReader*> shards_;
+  std::vector<std::unique_ptr<SSTableReader> > shards_;
 
   std::mutex mut_;
   std::condition_variable cond_;

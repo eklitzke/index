@@ -15,6 +15,7 @@
 #ifndef SRC_CONTEXT_H_
 #define SRC_CONTEXT_H_
 
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -42,7 +43,7 @@ class Context {
           bool create);
   std::string index_directory_;
   std::string vestibule_;
-  char *sorted_ngrams_;
+  std::unique_ptr<char[]> sorted_ngrams_;
   std::size_t sorted_ngrams_size_;
   const std::size_t ngram_size_;
   std::mutex mut_;

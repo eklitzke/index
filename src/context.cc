@@ -71,14 +71,14 @@ std::string Context::FindBestNGram(const std::string &fragment,
       assert(sorted_ngrams_size_);
     }
   }
-  char *p = sorted_ngrams_ + *offset;
-  while (p < sorted_ngrams_ + sorted_ngrams_size_) {
+  char *p = sorted_ngrams_.get() + *offset;
+  while (p < sorted_ngrams_.get() + sorted_ngrams_size_) {
     void *data = memmem(p, ngram_size_, fragment.data(), fragment.size());
     *offset += ngram_size_;
     if (data != nullptr) {
       return std::string(p, ngram_size_);
     }
-    p = sorted_ngrams_ + *offset;
+    p = sorted_ngrams_.get() + *offset;
   }
   return "";
 }
@@ -96,9 +96,9 @@ void Context::InitializeSmallNGrams() {
   ngram_counts.close();
 
   sorted_ngrams_size_ = ngram_size_ * ngram_counts_proto.ngram_counts_size();
-  sorted_ngrams_ = new char[sorted_ngrams_size_];
+  sorted_ngrams_ = std::unique_ptr<char[]>(new char[sorted_ngrams_size_]);
 
-  char *offset = sorted_ngrams_;
+  char *offset = sorted_ngrams_.get();
   for (const auto &ngram : ngram_counts_proto.ngram_counts()) {
     const std::string &ngram_str = ngram.ngram();
     assert(ngram_str.size() == ngram_size_);
@@ -112,6 +112,5 @@ Context::~Context() {
   google::protobuf::ShutdownProtobufLibrary();
   std::lock_guard<std::mutex> guard(mut);
   contexts.erase(index_directory_);
-  delete[] sorted_ngrams_;
 }
 }

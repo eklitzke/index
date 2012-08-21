@@ -67,14 +67,8 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory)
   for (std::size_t i = 0; i < index_config.num_shards(); i++) {
     std::string shard_name = (index_directory + "/ngrams/shard_" +
                               boost::lexical_cast<std::string>(i) + ".sst");
-    SSTableReader *shard = new SSTableReader(shard_name);
-    shards_.push_back(shard);
-  }
-}
-
-NGramIndexReader::~NGramIndexReader() {
-  for (auto &shard : shards_) {
-    delete shard;
+    shards_.push_back(std::unique_ptr<SSTableReader>(
+        new SSTableReader(shard_name)));
   }
 }
 
