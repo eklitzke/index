@@ -15,30 +15,44 @@
 namespace {
 std::mutex m_;
 std::map<std::string, std::pair<std::size_t, const char*> > mapping_;
+
+std::pair<std::size_t, void*> DoMmap(const std::string &name) {
+  FILE *f = fopen(name.c_str(), "r");
+  if (f == nullptr) {
+    throw std::invalid_argument("failed to mmap(2) file: " + name);
+  }
+  int fd = fileno(f);
+
+  std::size_t size = lseek(fd, 0, SEEK_END);
+  rewind(f);
+
+  void *addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+#ifdef USE_MADV_RANDOM
+  madvise(addr, size, MADV_RANDOM);
+#endif
+  fclose(f);
+  return std::make_pair(size, addr);
+}
 }
 
 namespace codesearch {
+MmapCtx::MmapCtx(const std::string &name) {
+  auto p = DoMmap(name);
+  size_ = p.first;
+  mapping_ = p.second;
+}
+
+MmapCtx::~MmapCtx() {
+  assert(munmap(mapping_, size_) == 0);
+}
+
 std::pair<std::size_t, const char*> GetMmapForFile(const std::string &name) {
   std::lock_guard<std::mutex> guard(m_);
   auto it = mapping_.lower_bound(name);
   if (it == mapping_.end() || it->first != name) {
-    FILE *f = fopen(name.c_str(), "r");
-    if (f == nullptr) {
-      throw std::invalid_argument("failed to mmap(2) file: " + name);
-    }
-    int fd = fileno(f);
-
-    std::size_t size = lseek(fd, 0, SEEK_END);
-    rewind(f);
-
-    void *addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
-#ifdef USE_MADV_RANDOM
-    madvise(addr, size, MADV_RANDOM);
-#endif
-    fclose(f);
-
-    const char *caddr = reinterpret_cast<const char *>(addr);
-    std::pair<std::size_t, const char *> p = std::make_pair(size, caddr);
+    auto pair = DoMmap(name);
+    const char *caddr = reinterpret_cast<const char *>(pair.second);
+    std::pair<std::size_t, const char *> p = std::make_pair(pair.first, caddr);
     mapping_.insert(it, std::make_pair(name, p));
     return p;
   }

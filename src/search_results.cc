@@ -37,15 +37,13 @@ std::vector<SearchResultContext> SearchResults::contextual_results() {
     // to make a map of line_num -> (is_match, line_text) and then
     // fill in the context map with that.
     std::map<std::size_t, std::pair<bool, std::string> > context_lines;
-    std::ifstream ifs(vestibule + "/" + kv.first.filename(),
-                      std::ifstream::in | std::ifstream::binary);
-    assert(!ifs.fail());
+    std::string filename = vestibule + "/" + kv.first.filename();
 
     // For each line in the matched lines for this file...
     for (const auto &line : kv.second) {
       std::map<std::size_t, std::string> inner_context;
       try {
-        inner_context = GetFileContext(&ifs, line.line_number, line.offset);
+        inner_context = GetFileContext(filename, line.line_number, line.offset);
       } catch (FileError &e) {
         std::cerr << kv.first.filename() << ": " << e.what() << std::endl;
         throw;

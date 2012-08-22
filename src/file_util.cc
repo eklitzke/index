@@ -1,9 +1,11 @@
 #include "./file_util.h"
 
 #include "./context.h"
+#include "./mmap.h"
 #include "./util.h"
 
 #include <cassert>
+#include <iostream>
 #include <set>
 #include <sstream>
 #include <vector>
@@ -115,6 +117,62 @@ std::string GetExtension(const std::string &filename) {
   }
   return filename.substr(dotpos, std::string::npos);
 }
+
+inline const char* c_memchr(const char *s, int c, size_t n) {
+  return reinterpret_cast<const char*>(
+      memchr(reinterpret_cast<const void*>(s), c, n));
+}
+
+inline const char* c_memrchr(const char *s, int c, size_t n) {
+  return reinterpret_cast<const char*>(
+      memrchr(reinterpret_cast<const void*>(s), c, n));
+}
+
+std::string GetLineBackwards(const char *buf, std::size_t *position) {
+  assert(*position && buf[*position - 1] == '\n');
+#if 0
+  if (*position == 1) {
+    *position = 0;
+    return std::string();
+  }
+#endif
+  std::string line;
+  std::size_t newpos;
+  const char *newbuf = c_memrchr(buf, '\n', *position - 1);
+  if (newbuf == nullptr) {
+    newpos = 0;
+    line = std::string(buf, *position - 1);
+  } else {
+    newpos = newbuf - buf + 1;
+    line = std::string(newbuf + 1, *position - newpos - 1);
+  }
+  assert(line.find_first_of('\n') == std::string::npos);
+  *position = newpos;
+  return line;
+}
+
+std::string GetLineForwards(const char *buf, std::size_t buf_size,
+                            std::size_t *position) {
+  assert(*position < buf_size);
+  assert(!*position || buf[*position - 1] == '\n');
+
+  std::string line;
+  std::size_t newpos;
+  const char *newbuf = c_memchr(buf + *position, '\n', buf_size - *position - 1);
+  if (newbuf == nullptr) {
+    newpos = buf_size;
+    line = std::string(buf + *position, buf_size - *position);
+    if (line.size() && line[line.size() - 1] == '\n') {
+      line = line.substr(0, line.size() - 1);
+    }
+  } else {
+    newpos = newbuf - buf + 1;
+    line = std::string(buf + *position, newpos - *position - 1);
+  }
+  assert(line.find_first_of('\n') == std::string::npos);
+  *position = newpos;
+  return line;
+}
 }
 
 namespace codesearch {
@@ -170,67 +228,54 @@ bool ShouldIndex(const std::string &filename, std::size_t read_size) {
   return valid_data > 0 && valid_data >= 20 * invalid_data;
 }
 
-std::map<std::size_t, std::string> GetFileContext(std::ifstream *ifs,
+std::map<std::size_t, std::string> GetFileContext(const std::string &name,
                                                   std::size_t line_number,
                                                   std::uint64_t offset,
                                                   std::size_t context) {
-  std::size_t p = offset;
-  std::size_t lines_found_reverse = 0;
+  MmapCtx memory_map(name);
+  const char *mmap_addr = memory_map.mapping();
+  const std::size_t map_size = memory_map.size();
+  std::map<std::size_t, std::string> return_map;
 
-  // N.B. This is really inefficient, because we are re-seeking for
-  // each character encountered. The portable/fastish way to do it is
-  // do have some buffering here (e.g. read 100 characters at a time
-  // backwards), the unportable/really-fast way to do it is to use
-  // mmap(2) with memrchr(3) to search backwards for newlines.
-  while (p) {
-    p--;
-    ifs->seekg(p);
-    if (ifs->fail() || ifs->eof()) {
-      std::stringstream ss;
-      ss << "ifs->fail() or ifs->eof() after seek to offset " << p <<
-          " (original match was at offset = " << offset << ", line_number = " <<
-          line_number << ")";
-      throw FileError(ss.str());
-    }
-    if (ifs->peek() == '\n') {
-      if (lines_found_reverse == context) {
-        p++;
-        ifs->seekg(p);
-        assert(!ifs->fail() && !ifs->eof());
+  // We are going to maintain an invariant that at the start of this
+  // function, and after each loop iteration (both forwards and
+  // backwards), the position of the cursor will be at a position
+  // indicated by a caret mark below:
+  //
+  //  foo\nbar\nbaz\n\nquux
+  //  ^    ^    ^     ^^
+  //
+  // That is, at each point, the previous character is a newline (or
+  // the start of the file).
+
+  std::uint64_t pos = offset;
+
+  // Check the invariant
+  assert(pos == 0 || mmap_addr[pos - 1] == '\n');
+
+  if (pos != 0) {
+    for (std::size_t i = 0; i < context; i++) {
+      std::string line = GetLineBackwards(mmap_addr, &pos);
+      return_map.insert(return_map.begin(),
+                        std::make_pair(line_number - i - 1, line));
+      if (pos == 0) {
         break;
-      } else {
-        lines_found_reverse++;
       }
     }
   }
 
-  // The file is aligned to where we should start reading data, and we
-  // can figure out how many lines we are back based on
-  // lines_found_reverse.
-  assert(lines_found_reverse <= line_number);
-  std::map<std::size_t, std::string> line_map;
-  for (std::size_t line = line_number - lines_found_reverse;
-       line < line_number + context + 1; line++) {
-    std::string line_str;
-    getline(*ifs, line_str);
-    line_map.insert(std::make_pair(line, line_str));
-  }
-  return line_map;
-}
-
-// Same, but automatically opens the file for reading.
-std::map<std::size_t, std::string> GetFileContext(const std::string &file_path,
-                                                  std::size_t line_number,
-                                                  std::uint64_t offset,
-                                                  std::size_t context) {
-  std::string fp = file_path;
-  if (file_path.empty() || *file_path.begin() != '/') {
-    Context *ctx = GetContext();
-    fp = ctx->vestibule() + "/" + file_path;
+  pos = offset;
+  if (pos < map_size - 1) {
+    for (std::size_t i = 0; i < context + 1; i++) {
+      std::string line = GetLineForwards(mmap_addr, map_size, &pos);
+      return_map.insert(return_map.begin(),
+                        std::make_pair(line_number + i, line));
+      if (pos >= map_size) {
+        break;
+      }
+    }
   }
 
-  std::ifstream ifs(fp, std::ifstream::binary | std::ifstream::in);
-  assert(!ifs.fail() && !ifs.eof());
-  return GetFileContext(&ifs, line_number, offset, context);
+  return return_map;
 }
 }
