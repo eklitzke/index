@@ -4,6 +4,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
+#include <glog/logging.h>
 #ifdef USE_SNAPPY
 #include <snappy.h>
 #endif  // USE_SNAPPY
@@ -13,13 +14,12 @@
 #include "./util.h"
 
 #include <iomanip>
-#include <iostream>
 #include <string>
 #include <thread>
 
 namespace {
-static std::set<codesearch::IndexReaderConnection *> conns;
-static std::mutex conns_mut;
+std::set<codesearch::IndexReaderConnection *> conns;
+std::mutex conns_mut;
 }
 
 namespace codesearch {
@@ -88,9 +88,8 @@ void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
   if (error) {
     if (error == boost::asio::error::eof) {
     } else {
-      std::cerr << "got error " << error << " after reading " <<
-          bytes_transferred << " bytes while waiting for size header" <<
-          std::endl;
+      LOG(ERROR) << "got error " << error << " after reading " <<
+          bytes_transferred << " bytes while waiting for size header\n";
     }
     SelfDestruct();
   } else {
@@ -110,8 +109,7 @@ void IndexReaderConnection::SizeCallback(const boost::system::error_code& error,
 void IndexReaderConnection::DataCallback(const boost::system::error_code& error,
                                          std::size_t bytes_transferred) {
   if (error) {
-    std::cerr << "got error " << error << "while waiting for data" <<
-        std::endl;
+    LOG(ERROR) << "got error " << error << "while waiting for data\n";
     SelfDestruct();
   } else {
     Search(bytes_transferred);
@@ -133,11 +131,11 @@ void IndexReaderConnection::Search(std::size_t size) {
 
   if (request.has_search_query()) {
     const SearchQueryRequest &search_query = request.search_query();
-    std::cout << this << " doing search query, request_num = " <<
+    LOG(INFO) << this << " doing search query, request_num = " <<
         request.request_num() << ", query = \"" <<
         search_query.query() << "\", offset = " <<
         search_query.offset() << ", limit = " <<
-        search_query.limit() << std::endl;
+        search_query.limit() << "\n";
 
     SearchResults results(search_query.limit(),
                           search_query.within_file_limit()
@@ -150,8 +148,7 @@ void IndexReaderConnection::Search(std::size_t size) {
       resp->add_results()->MergeFrom(result);
     }
   } else {
-    std::cerr << this << " don't know how to handle queries of that type" <<
-        std::endl;
+    LOG(WARNING) << this << " don't know how to handle queries of that type\n";
     SelfDestruct();
     return;
   }
@@ -171,20 +168,21 @@ void IndexReaderConnection::Search(std::size_t size) {
   std::ostream os(&data_buffer_);
   os << size_header << compressed_response;
 
-  std::cout << this << " sending response of size " <<
+  LOG(INFO) << this << " sending response of size " <<
       compressed_response.size() << " (speedup " <<
       std::setiosflags(std::ios::fixed) << std::setprecision(2) << speedup <<
-      "x)" << " after " << response.time_elapsed() << " ms" << std::endl;
+      "x)" << " after " << response.time_elapsed() << " ms\n";
 
 #else
    std::string size_header;
    Uint64ToString(response.ByteSize(), &size_header);
+   assert(size_header.size() == sizeof(std::uint64_t));
 
    std::ostream os(&data_buffer_);
    os << size_header;
    response.SerializeToOstream(&os);
-   std::cout << this << " sending response of size " << response.ByteSize() <<
-       " after " << resp->time_elapsed() << " ms" << std::endl;
+   LOG(INFO) << this << " sending response of size " << response.ByteSize() <<
+       " after " << resp->time_elapsed() << " ms\n";
 
 #endif
 
@@ -206,7 +204,7 @@ void IndexReaderConnection::WriteCallback(
 }
 
 void IndexReaderConnection::SelfDestruct() {
-  std::cout << this << " self-destructing" << std::endl;
+  LOG(INFO) << this << " self-destructing\n";
   started_ = false;
   io_service_.stop();
 }
@@ -230,7 +228,7 @@ codesearch::IndexReaderConnection* NewConnection(const std::string &s) {
 void LaunchConnection(codesearch::IndexReaderConnection *conn) {
   conn->Start();
   delete conn;
-  std::cout << "thread ending" << std::endl;
+  LOG(INFO) << "thread ending\n";
 }
 
 // Force all connections to stop. The main reason that we would want
@@ -278,7 +276,7 @@ void IndexReaderServer::HandleAccept(const boost::system::error_code& error) {
   }
 #endif
   if (error) {
-    std::cerr << "unexpectedly got error " << error << std::endl;
+    LOG(ERROR) << "unexpectedly got error " << error << "\n";
     delete conn_;
   } else {
     // Let the IndexReaderConnection execute in its own thread from

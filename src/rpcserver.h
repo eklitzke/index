@@ -25,6 +25,8 @@ class IndexReaderServer {
 
 
   void Start();
+  void Stop();
+
   ~IndexReaderServer();
 
  private:

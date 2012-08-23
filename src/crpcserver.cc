@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help,h", "produce help message")
-      ("port,p", po::value<int>()->default_value(9900))
+      ("port,p", po::value<int>()->default_value(codesearch::default_rpc_port))
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
       ;

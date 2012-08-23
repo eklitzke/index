@@ -25,9 +25,7 @@
         ],
     },
     'target_defaults': {
-        'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O2', '-g',
-                   #'-I$${HOME}/code/re2',
-               ],
+        'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O2', '-flto', '-g' ],
         'defines': [
             '_GNU_SOURCE',
             'USE_SNAPPY',
@@ -69,6 +67,14 @@
                 'src/util.cc',
                 'src/print_ngram_counts.cc',
             ],
+        },
+        {
+            'type': 'executable',
+                    'target_name': 'bench',
+                    'sources': [
+                        'src/config.cc',
+                        'src/bench.cc',
+                    ],
         },
         {
             'type': 'executable',

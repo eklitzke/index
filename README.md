@@ -32,6 +32,17 @@ Search from the command line like this: `csearch mysearchterm`.
 To run the web component of codesearch, invoke `rpcserver` and then
 run `./web` for dev, or `./web_prod` for prod.
 
+Benchmarking
+------------
+
+Make sure the `rpcserver` process is running. Then run
+
+    ./bin/bench -f queries.txt
+
+This will print a bunch of timings, followed by a line at the end like
+
+    156 total searches in 3115 ms (avg 19 ms per query / 50.0803 qps)
+
 SSTables
 ========
 
