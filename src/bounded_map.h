@@ -15,7 +15,7 @@
 
 namespace codesearch {
 
-enum BoundedMapInsertionResult {
+enum class BoundedMapInsertionResult : std::uint8_t {
   INSERT_SUCCESSFUL = 0,
   KEY_TOO_LARGE     = 1,
   VAL_LIST_TOO_LONG = 2
@@ -54,9 +54,9 @@ class BoundedMap {
       } else if (pos->second.size() < max_vals_) {
         pos->second.push_back(val);
       } else {
-        return VAL_LIST_TOO_LONG;
+        return BoundedMapInsertionResult::VAL_LIST_TOO_LONG;
       }
-      return INSERT_SUCCESSFUL;
+      return BoundedMapInsertionResult::INSERT_SUCCESSFUL;
     } else if (key <= max_key_){
 #ifdef USE_ORDERED_MAP
       auto pos = map_.lower_bound(key);
@@ -76,11 +76,11 @@ class BoundedMap {
       } else if (pos->second.size() < max_vals_) {
         pos->second.push_back(val);
       } else {
-        return VAL_LIST_TOO_LONG;
+        return BoundedMapInsertionResult::VAL_LIST_TOO_LONG;
       }
-      return INSERT_SUCCESSFUL;
+      return BoundedMapInsertionResult::INSERT_SUCCESSFUL;
     }
-    return KEY_TOO_LARGE;
+    return BoundedMapInsertionResult::KEY_TOO_LARGE;
   }
 
   // Get a copy of the map

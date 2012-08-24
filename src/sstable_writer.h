@@ -13,7 +13,7 @@ static_assert(sizeof(std::uint64_t) == 8, "Something's whack with uint64_t");
 
 namespace codesearch {
 
-enum WriterState {
+enum class WriterState : std::uint8_t {
   UNINITIALIZED = 0,
   INITIALIZED = 1,
   MERGED = 3

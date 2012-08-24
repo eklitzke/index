@@ -347,9 +347,9 @@ std::size_t NGramIndexReader::TrimCandidates(
 
     BoundedMapInsertionResult status = results->insert(
         filekey, FileResult(pos.file_offset(), pos.file_line()));
-    if (status == INSERT_SUCCESSFUL) {
+    if (status == BoundedMapInsertionResult::INSERT_SUCCESSFUL) {
       lines_added++;
-    } else if (status == KEY_TOO_LARGE) {
+    } else if (status == BoundedMapInsertionResult::KEY_TOO_LARGE) {
       // We failed to insert the file data, because the file_id was
       // too big. Track this file_id, so we can avoid trying to insert
       // with file ids >= this one in the future.

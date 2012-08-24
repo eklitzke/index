@@ -13,8 +13,8 @@
 namespace codesearch {
 SSTableWriter::SSTableWriter(const std::string &name,
                              std::size_t key_size)
-    :name_(name), state_(UNINITIALIZED), index_size_(0), data_size_(0),
-     num_keys_(0) {
+    :name_(name), state_(WriterState::UNINITIALIZED), index_size_(0),
+     data_size_(0), num_keys_(0) {
   std::size_t sizediff = key_size % sizeof(std::size_t);
   if (sizediff != 0) {
     key_size += sizeof(std::size_t) - sizediff;
@@ -24,16 +24,16 @@ SSTableWriter::SSTableWriter(const std::string &name,
 }
 
 void SSTableWriter::Initialize() {
-  assert(state_ == UNINITIALIZED);
+  assert(state_ == WriterState::UNINITIALIZED);
   idx_out_.open(name_ + ".idx",std::ofstream::binary | std::ofstream::trunc |
                 std::ofstream::out);
   data_out_.open(name_ + ".data", std::ofstream::binary |
                  std::ofstream::trunc | std::ofstream::out);
-  state_ = INITIALIZED;
+  state_ = WriterState::INITIALIZED;
 }
 
 void SSTableWriter::Add(const std::string &key, const std::string &val) {
-  assert(state_ == INITIALIZED);
+  assert(state_ == WriterState::INITIALIZED);
   assert(key.size() <= key_size_);
   num_keys_++;
 
@@ -104,8 +104,8 @@ void SSTableWriter::Add(const google::protobuf::Message &key,
 }
 
 void SSTableWriter::Merge() {
-  assert(state_ == INITIALIZED);
-  state_ = MERGED;
+  assert(state_ == WriterState::INITIALIZED);
+  state_ = WriterState::MERGED;
   idx_out_.close();
   data_out_.close();
 
