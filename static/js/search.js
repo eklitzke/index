@@ -55,5 +55,4 @@ $(document).ready(function () {
         S.search(searchVal);
     });
     S.decodeHash();
-    document.getElementById('search_input').focus();
 });
