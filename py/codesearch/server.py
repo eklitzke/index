@@ -24,11 +24,11 @@ if __name__ == "__main__":
                       help='How many instances to run in prod')
     opts, args = parser.parse_args()
     settings = {
-        'index_directory': opts.index_directory,
-        'static_path': filesystem.get_static_dir(),
-        'template_path': filesystem.get_template_dir(),
         'debug': opts.debug,
-        'run_locally': opts.local
+        'index_directory': opts.index_directory,
+        'run_locally': opts.local,
+        'static_path': filesystem.get_static_dir(),
+        'template_path': filesystem.get_template_dir()
     }
     meta_config = index_pb2.MetaIndexConfig()
     with open(os.path.join(opts.index_directory, 'meta_config')) as f:

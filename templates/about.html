@@ -5,21 +5,19 @@ about codesear.ch
 {% end %}
 
 {% block body %}
-    <div class="about">
-      This is an implementation of &ldquo;fgrep&rdquo; running on a
-      single &ldquo;small&rdquo; EC2 instance. It's indexing all of
-      the code checked in as part of
-      the <a href="http://source.android.com/">Android Open Source
-      Project</a>, more than 40,000,000 lines of code (including
-      things like the source for the Linux Kernel, WebKit, gcc, libc,
-      dalvik, etc.)
-      <p>
-      The basic idea for this implementation is inspired
-      by <a href="http://swtch.com/~rsc/regexp/regexp4.html">http://swtch.com/~rsc/regexp/regexp4.html</a>,
-      although this implementation is more limited (it does not
-      support regexes). Regex support should be coming real soon
-      though.
-      <h2>Implementation Notes &amp; Buzzwords</h2>
+<h2>The Index</h2>
+This is an implementation of &ldquo;fgrep&rdquo; running on a
+single &ldquo;small&rdquo; EC2 instance. It's indexing all of
+the code checked in as part of
+the Linux 3.5.2 kernel, more than 14,000,000 lines of code.
+<p>
+  The basic idea for this implementation is inspired
+  by <a href="http://swtch.com/~rsc/regexp/regexp4.html">http://swtch.com/~rsc/regexp/regexp4.html</a>,
+  although this implementation is more limited (it does not
+  support regexes). Regex support should be coming real soon
+  though.
+  
+  <h2>Implementation Notes &amp; Buzzwords</h2>
       The implementation uses a custom
       <a href="http://www.igvita.com/2012/02/06/sstable-and-log-structured-storage-leveldb/">SSTable</a>
       implementation written in C++,
@@ -35,7 +33,7 @@ about codesear.ch
       there are more than 100 total shards), so generally the speedup
       on a multi-core system would be about proportional to the number
       of cores on that system. On my dual-core consumer grade laptop,
-      even pathological queries generally return in under 50
+      even pathological queries generally return in under 20
       milliseconds.
       <p>
       The frontend is written in Python
@@ -53,9 +51,5 @@ about codesear.ch
       The search index and the RPC protocol both use Google's
       excellent <a href="http://code.google.com/p/snappy/">Snappy</a>
       library for compression.
-      <p>
-      The poorly written Javascript code works
-      using <a href="http://zeptojs.com/">Zepto</a>
-      + <a href="https://github.com/janl/mustache.js/">Mustache.js</a>.
     </div>
 {% end %}

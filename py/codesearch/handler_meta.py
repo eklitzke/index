@@ -1,12 +1,13 @@
+import datetime
 import json
 import tornado.web
 
+def email_escape(string):
+    """HTML escape every single character in a string."""
+    return ''.join('&#x%x;' % (ord(c),) for c in string)
+
 _handlers = []
 
-def whitespace_escape(s):
-    s = s.replace(' ', '&nbsp;')
-    s = s.replace('\t', '&nbsp;' * 8)
-    return s
 
 class RequestHandlerMeta(type(tornado.web.RequestHandler)):
     def __init__(cls, name, bases, cls_dict):
@@ -14,6 +15,7 @@ class RequestHandlerMeta(type(tornado.web.RequestHandler)):
         if 'path' in cls_dict:
             _handlers.append((cls_dict['path'], cls))
             return ret
+
 
 class RequestHandler(tornado.web.RequestHandler):
 
@@ -23,11 +25,13 @@ class RequestHandler(tornado.web.RequestHandler):
         super(RequestHandler, self).initialize()
         self.env = {
             'css_url': self.css_url,
+            'email_escape': email_escape,
             'js': True,
+            'navbar_links': self.navbar_links,
+            'now': datetime.datetime.now(),
             'prod': self.in_prod,
             'run_locally': self.settings.get('run_locally', False),
             'title': 'codesear.ch',
-            'whitespace_escape': whitespace_escape,
         }
 
     def compute_etag(self):
@@ -59,6 +63,17 @@ class RequestHandler(tornado.web.RequestHandler):
         else:
             filename = 'css/%s.css' % (s,)
         return self.static_url(filename)
+
+    @property
+    def navbar_links(self):
+        for path, name in [('/', 'Home'),
+                           ('/about', 'About'),
+                           ('/contact', 'Contact')]:
+            if path == self.request.path:
+                yield path, name, True
+            else:
+                yield path, name, False
+
 
 def get_handlers():
     return _handlers

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}
+about codesear.ch
+{% end %}
+
+{% block body %}
+<p>
+  This is a project by Evan Klitzke. If you're interested, you can
+  email me
+  at <a href="mailto:{% raw email_escape('evan@eklitzke.org') %}">{%
+  raw email_escape('evan@eklitzke.org') %}</a>,
+  or you can follow
+  my <a href="https://github.com/eklitzke">GitHub</a>.
+
+{% end %}

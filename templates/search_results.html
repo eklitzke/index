@@ -23,7 +23,9 @@
 {% if overflowed %}
 Result set too large, limiting results to first {{num_results}} matches.
 {% if show_more %}
+<!--
 <a href="#" id="more_link">Show more?</a>
+-->
 {% else %}
 Cowardly refusing to let you search for more results.
 {% end %}
@@ -32,6 +34,6 @@ Showing all {{num_results}} matches.
 {% end %}
 
 <div id="about">
-Backend returned in {{csearch_time}} ms. <a href="/about">about<a>
+Backend returned in {{csearch_time}} ms.
 </div>
 

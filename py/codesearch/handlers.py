@@ -1,19 +1,34 @@
 from codesearch import handler_meta
 
-class HomeHandler(handler_meta.RequestHandler):
+class StaticHandler(handler_meta.RequestHandler):
+
+    abstract = True
+
+    def get(self):
+        if getattr(self, 'no_js', False):
+            self.env['js'] = False
+        self.render(self.template_path)
+
+
+class HomeHandler(StaticHandler):
 
     path = '/'
+    template_path = 'search.html'
 
-    def get(self):
-        self.render('search.html')
 
-class AboutHandler(handler_meta.RequestHandler):
+class AboutHandler(StaticHandler):
 
     path = '/about'
+    template_path = 'about.html'
+    no_js = True
 
-    def get(self):
-        self.env['js'] = False
-        self.render('about.html')
+
+class ContactHandler(StaticHandler):
+
+    path = '/contact'
+    template_path = 'contact.html'
+    no_js = True
+
 
 # for side-effects
 from codesearch import file_handlers

@@ -14,7 +14,7 @@ from pygments import lexers
 from pygments import formatters
 
 # You can generate this with: date '+%s'
-CACHE_SERIAL = 1344364576
+CACHE_SERIAL = 1345923276
 CACHE_SERIAL_TS = datetime.datetime.fromtimestamp(int(CACHE_SERIAL))
 
 class PrettyPrintCache(object):
@@ -156,12 +156,12 @@ class PrettyPrintHandler(FileHandlerBase):
     path = '/!(.*)'
 
     def get(self, path):
-        self.env['path'] = path
+        self.env['filepath'] = path
         realpath = self.get_fullpath(path)
         if realpath is None:
             return
 
-        cache = PrettyPrintCache('/var/index/pp-cache')
+        cache = PrettyPrintCache('/var/codesearch/pp-cache')
 
         t0 = time.time()
         self.env['formatted_code'] = cache.get_highlighted(realpath)
