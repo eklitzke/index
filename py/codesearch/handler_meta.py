@@ -1,6 +1,10 @@
 import datetime
 import json
+import mimetypes
 import tornado.web
+
+mimetypes.init()
+mimetypes.add_type('image/vnd.microsoft.icon', '.ico')
 
 def email_escape(string):
     """HTML escape every single character in a string."""
