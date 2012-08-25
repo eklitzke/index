@@ -43,7 +43,7 @@ p { margin-top: 1em; }
 .search_result a:visited { color: black; text-decoration: none; }
 
 .highlight { white-space: pre;
-             font-family: Monaco, Menlo, Consolas, "Droid Sans Mono", "Courier New", monospace;
+             font-family: Monaco, Menlo, Inconsolata, Consolas, monospace;
            }
 
 .render_time { color: #aaa; }
@@ -54,7 +54,7 @@ p { margin-top: 1em; }
 pre, code { color: inherit;
             background-color: inherit;
             border: none;
-            font-family: Monaco, Menlo, Consolas, "Droid Sans Mono", "Courier New", monospace;
+            font-family: Monaco, Menlo, Inconsolata, Consolas, monospace;
             white-space: pre;
           }
             

@@ -21,7 +21,8 @@
 
 <br>
 {% if overflowed %}
-Result set too large, limiting results to first {{num_results}} matches.
+Result set too large, limiting results to first {{num_results}}
+matching files.
 {% if show_more %}
 <!--
 <a href="#" id="more_link">Show more?</a>
@@ -30,7 +31,7 @@ Result set too large, limiting results to first {{num_results}} matches.
 Cowardly refusing to let you search for more results.
 {% end %}
 {% else %}
-Showing all {{num_results}} matches.
+Showing all {{num_results}} matching files.
 {% end %}
 
 <div id="about">
