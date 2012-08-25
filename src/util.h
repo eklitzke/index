@@ -41,9 +41,11 @@ std::uint64_t ToUint64(const std::array<int_type,
 // Get padding to word align something of some size.
 std::string GetWordPadding(std::size_t size);
 
+// Format a binary string (to be C-escaped).
 std::string PrintBinaryString(const std::string &str);
 
-// Returns true if src is valid UTF-8, false otherwise.
+// Returns true if src is valid UTF-8, false otherwise (and empty
+// strings are considered valid).
 bool IsValidUtf8(const std::string &src);
 
 // A standard timer class.

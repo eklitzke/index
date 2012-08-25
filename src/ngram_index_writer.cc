@@ -83,10 +83,13 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
       val.set_file_line(++linenum);
       val.set_line(line);
 
+      // N.B. we write *all* valid UTF-8 lines to the index, even
+      // those whose length is less than our trigram length. This
+      // makes it possible to reconstruct file contents just from the
+      // lines index.
       std::uint64_t line_id = lines_index_.Add(val);
       positions_map.insert(std::make_pair(line_id, line));
     }
-    ifs.close();
   }
 
   // We have all of the lines (in memory!) -- generate a map of type
@@ -159,18 +162,17 @@ void NGramIndexWriter::MaybeRotate(bool force) {
     for (auto &it : lists_) {
       NGramValue ngram_val;
       std::size_t val_count = 0;
-      {
-        // Because of the loose locking we have, position ids can be
-        // added out of order. We need to re-order them before we add
-        // them into the posting list.
-        std::sort(it.second.begin(), it.second.end());
-        std::uint64_t last_val = 0;
-        for (const auto v : it.second) {
-          assert(!last_val || v > last_val);
-          ngram_val.add_position_ids(v - last_val);
-          last_val = v;
-          val_count++;
-        }
+
+      // Because of the loose locking we have, position ids can be
+      // added out of order. We need to re-order them before we add
+      // them into the posting list.
+      std::sort(it.second.begin(), it.second.end());
+      std::uint64_t last_val = 0;
+      for (const auto &v : it.second) {
+        assert(!last_val || v > last_val);
+        ngram_val.add_position_ids(v - last_val);
+        last_val = v;
+        val_count++;
       }
       counter->UpdateCount(it.first, val_count);
       index_writer_.Add(it.first, ngram_val);
