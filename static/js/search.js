@@ -1,61 +1,145 @@
+var $window = $(window);
+var $document = $(document);
+var $body = $('body');
+var $searchInput = $('#search_input');
+var $searchResults = $('#search_results');
+var $searchStatus = $('search_status');
+
 var S = {};
-S.currentSearch = null;
-S.lastLimit = null;
-S.lastQuery = null;
-S.nextOffset = 0;
-S.decodeHash = (function ()  {
-    if (window.location.hash) {
-        var q = window.location.hash.substr(2);
-        if (q) {
-            $('#search_input').val(q);
-            S.search(q);
-        }
+
+S.dummySearch = {
+    'params': {'query': null, 'limit': null},
+    'abort': function() {}
+};
+
+S.currentSearch = S.dummySearch;
+
+S.parseQueryString = function(query) {
+    if (query.charAt(0) === '?') {
+        query = query.slice(1);
     }
-});
-S.search = (function (searchVal, limit) {
+    var q = {};
+    query.split('&').forEach(function(kvpair) {
+        var pair = kvpair.split('=').map(decodeURIComponent);
+        var key = pair[0], value = pair[1];
+        if (q.hasOwnProperty(key)) {
+            if (q[key] instanceof Array) {
+                q[key].push(value);
+            } else {
+                q[key] = [q[key], value];
+            }
+        } else {
+            q[key] = value;
+        }
+    }, this);
+    return q;
+};
+
+// borrowed from underscore.js
+S.debounce = function(func, wait, immediate) {
+    var timeout;
+    return function() {
+        var context = this, args = arguments;
+        var later = function() {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        if (immediate && !timeout) func.apply(context, args);
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
+
+S.search = function(searchVal, limit) {
     limit = parseInt(limit || 20, 10);
-    console.log('search, val = ' + searchVal + ', limit = ' + limit);
-    history.replaceState({}, "codesear.ch", '/#!' + encodeURI(searchVal));
+    console.log('search: query = %o, limit = %o', searchVal, limit);
+    var params = {'query': searchVal, 'limit': limit};
+    var xhr = $.get('/api/search?' + $.param(params));
+    xhr.params = params;
+    return xhr;
+};
 
-    var $searchResults = $('#search_results');
-    if (searchVal.length <= 0) {
-        $searchResults.empty();
-        S.lastQuery = "";
-    } else if (limit != S.lastLimit || searchVal != S.lastQuery) {
-        if (S.currentSearch !== null) {
-            console.log('aborting current search');
-            S.currentSearch.abort();
-        }
-        S.lastQuery = searchVal;
-        S.lastLimit = limit;
-        $searchResults.addClass('grey');
-        $('#search_status').
-            css({'visibility': 'visible'}).
-            text('searching...');
-        var params = {'query': searchVal};
-        if (limit) {
-            params['limit'] = limit;
-        }
-        S.currentSearch = $.get(
-            '/api/search?' + $.param(params), function (r) {
-                S.currentSearch = null;
-                $searchResults.empty();
-                $searchResults.html(r);
-                $searchResults.removeClass('grey');
-                $('#search_status').css({'visibility': 'hidden'});
-            });
+S.ui = {};
+
+S.ui.loadState = function(state) {
+    if (state && state.q) {
+        $searchInput
+            .val(state.q)
+            .triggerSearch();
     }
+};
+
+S.ui.loadQueryString = function() {
+    S.ui.loadState(S.parseQueryString(location.search));
+};
+
+S.ui.renderResults = function(html, searchVal) {
+    $searchResults
+        .html(html || '')
+        .removeClass('grey');
+    $searchStatus.css({'visibility': 'hidden'});
+    if (searchVal) {
+        $window.trigger('ui:updateURL', [searchVal]);
+    }
+};
+
+S.ui.search = function(searchVal) {
+    if (S.currentSearch.params.query === searchVal) {
+        return;
+    }
+
+    S.currentSearch.abort();
+
+    if (searchVal) {
+        $searchResults.addClass('grey');
+        $searchStatus
+            .css({'visibility': 'visible'})
+            .text('searching...');
+
+        S.currentSearch = S.search(searchVal).done(function(html) {
+            S.ui.renderResults(html, searchVal);
+        });
+    } else {
+        S.currentSearch = S.dummySearch;
+        S.ui.renderResults();
+    }
+};
+
+S.ui.updateURL = function(searchVal) {
+    var search = '?' + $.param({'q': searchVal});
+    var action = (location.search === search) ? 'replaceState' : 'pushState';
+    history[action]({'q': searchVal}, "codesear.ch", location.pathname + search);
+};
+
+// extend jQuery
+
+$.fn.triggerSearch = function() {
+    return this.trigger('ui:search', [this.val().trim()]);
+};
+    
+
+//
+// main
+//
+
+// dom events
+
+$window.on('popstate', function(e) {
+    S.ui.loadState(e.originalEvent.state);
 });
 
-// Since this JS is loaded at the end of the document, no need to wait
-// for $(document).ready(). Wrap it in an anonymous function to avoid
-// var leakage.
-(function () {
-    console.log('ready');
-    $('#search_input').keyup(function (e) {
-        console.log('----------');
-        var searchVal = $('#search_input').val();
-        S.search(searchVal);
-    });
-    S.decodeHash();
-})();
+$searchInput.keyup(function(e) {
+    $(this).triggerSearch();
+});
+
+// synthetic events
+
+$window.on('ui:search', S.debounce(function(e, searchVal) {
+    S.ui.search(searchVal);
+}, 100));
+
+$window.on('ui:updateURL', S.debounce(function(e, query) {
+    S.ui.updateURL(query);
+}, 500));
+
+S.ui.loadQueryString();
