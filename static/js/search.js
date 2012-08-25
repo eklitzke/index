@@ -13,7 +13,7 @@ S.decodeHash = (function ()  {
     }
 });
 S.search = (function (searchVal, limit) {
-    limit = parseInt(limit || 20);
+    limit = parseInt(limit || 20, 10);
     console.log('search, val = ' + searchVal + ', limit = ' + limit);
     history.replaceState({}, "codesear.ch", '/#!' + encodeURI(searchVal));
 
@@ -47,7 +47,10 @@ S.search = (function (searchVal, limit) {
     }
 });
 
-$(document).ready(function () {
+// Since this JS is loaded at the end of the document, no need to wait
+// for $(document).ready(). Wrap it in an anonymous function to avoid
+// var leakage.
+(function () {
     console.log('ready');
     $('#search_input').keyup(function (e) {
         console.log('----------');
@@ -55,4 +58,4 @@ $(document).ready(function () {
         S.search(searchVal);
     });
     S.decodeHash();
-});
+})();
