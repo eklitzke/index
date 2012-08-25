@@ -45,7 +45,8 @@ int main(int argc, char **argv) {
     input = &std::cin;
   }
 
-  std::cout << "connecting..." << std::flush;
+  std::cout << "connecting... " << std::flush;
+  codesearch::Timer connect_timer;
 
   boost::asio::io_service io;
 
@@ -55,6 +56,8 @@ int main(int argc, char **argv) {
 
   boost::asio::ip::tcp::socket socket(io);
   boost::asio::connect(socket, resolver.resolve(query));
+  std::cout << "connected in " << connect_timer.elapsed_us() << " us" <<
+      std::endl;
 
   const bool show_sizes = vm.count("show-sizes") > 0;
   const std::size_t limit = vm["limit"].as<std::size_t>();
