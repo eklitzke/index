@@ -1,6 +1,6 @@
 CC := g++
 CFLAGS := -O3 -flto -Wall -pedantic
-TARGETS = fault overloading
+TARGETS = assignment fault overloading
 
 .PHONY: all
 all: $(TARGETS)
