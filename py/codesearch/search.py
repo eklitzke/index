@@ -5,13 +5,13 @@ from codesearch import search_rpc
 
 _rpc_pool = search_rpc.SearchRpcPool.instance()
 
-class SearchHandler(handler_meta.RequestHandler):
+class SearchBase(handler_meta.RequestHandler):
 
-    path = '/api/search'
-    default_limit = 20
+    abstract = True
+    default_limit = 10
 
     def initialize(self, *args, **kwargs):
-        super(SearchHandler, self).initialize(*args, **kwargs)
+        super(SearchBase, self).initialize(*args, **kwargs)
         self.rpc_client = _rpc_pool.acquire()
         self.rpc_client_released = False
 
@@ -40,12 +40,12 @@ class SearchHandler(handler_meta.RequestHandler):
                 'highlight': highlight,
                 'offset': self.offset,
                 'escaped_query': self.escaped_query,
-                'search_results': [],
                 'num_results': len(search_results),
                 'show_more': self.limit < self.default_limit * 10,
                 'overflowed': overflowed,
                 'csearch_time': rpc_container.time_elapsed
             })
+            env_search_results = []
             for result in search_results:
                 # group the search results by sets of consecutive
                 # lines
@@ -66,9 +66,9 @@ class SearchHandler(handler_meta.RequestHandler):
                     last_line = r.line_num
                 assert group
                 data['grouped_lines'].append(group)
-                self.env['search_results'].append(data)
-            self.render('search_results.html')
-            #self.finish()
+                env_search_results.append(data)
+            self.env['search_results'] = env_search_results
+            self.render_search()
         except IOError:
             # A common reason that this might happen is that the
             # client closed its connection while waiting for our
@@ -84,21 +84,52 @@ class SearchHandler(handler_meta.RequestHandler):
             # IOError.
             pass
 
+    def render_search(self):
+        raise NotImplementedError()
+
     @web.asynchronous
     def get(self):
-        self.query = self.get_argument('query', '', strip=False).encode('utf-8')
-        limit = int(self.get_argument('limit', self.default_limit))
-        limit = max(limit, 10) # at least 10 results, please
-        if limit > self.default_limit * 10:
-            raise web.HTTPError(403)
-            return
-        self.limit = limit
-        self.offset = int(self.get_argument('offset', 0))
-        try:
-            self.rpc_client.search(
-                self.query, self.search_callback, self.limit + 1, self.offset)
-        except IOError:
-            if self.rpc_client is not None:
-                self.rpc_client.close()
-                self.ensure_released()
-            self.finish()
+        self.query = self.get_argument(self.query_param_name,
+                                       '', strip=False).encode('utf-8')
+        if self.query:
+            limit = int(self.get_argument('limit', self.default_limit))
+            limit = max(limit, 10) # at least 10 results, please
+            if limit > self.default_limit * 10:
+                raise web.HTTPError(403)
+                return
+            self.limit = limit
+            self.offset = int(self.get_argument('offset', 0))
+            try:
+                self.rpc_client.search(
+                    self.query, self.search_callback, self.limit + 1, self.offset)
+            except IOError:
+                if self.rpc_client is not None:
+                    self.rpc_client.close()
+                    self.ensure_released()
+                self.finish()
+        else:
+            self.render_search()
+
+
+class HomeHandler(SearchBase):
+
+    path = '/'
+    query_param_name = 'q'
+
+    def render_search(self):
+        if self.env.get('search_results'):
+            search_results = self.render_string(
+                'search_results.html', **self.env)
+            self.env['raw_search_html'] = search_results
+        else:
+            self.env['raw_search_html'] = ''
+        self.render('search.html')
+
+
+class SearchHandler(SearchBase):
+
+    path = '/api/search'
+    query_param_name = 'query'
+
+    def render_search(self):
+        self.render('search_results.html')

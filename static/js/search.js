@@ -51,7 +51,7 @@ S.debounce = function(func, wait, immediate) {
 };
 
 S.search = function(searchVal, limit) {
-    limit = parseInt(limit || 20, 10);
+    limit = parseInt(limit || 10, 10);
     console.log('search: query = %o, limit = %o', searchVal, limit);
     var params = {'query': searchVal, 'limit': limit};
     var xhr = $.get('/api/search?' + $.param(params));
@@ -61,16 +61,18 @@ S.search = function(searchVal, limit) {
 
 S.ui = {};
 
-S.ui.loadState = function(state) {
+S.ui.loadState = function(state, doSearch) {
     if (state && state.q) {
         $searchInput
-            .val(state.q)
-            .triggerSearch();
+            .val(state.q);
+        if (doSearch) {
+            $searchInput.triggerSearch();
+        }
     }
 };
 
-S.ui.loadQueryString = function() {
-    S.ui.loadState(S.parseQueryString(location.search));
+S.ui.loadQueryString = function(skipSearch) {
+    S.ui.loadState(S.parseQueryString(location.search), false);
 };
 
 S.ui.renderResults = function(html, searchVal) {
@@ -116,7 +118,7 @@ S.ui.updateURL = function(searchVal) {
 $.fn.triggerSearch = function() {
     return this.trigger('ui:search', [this.val().trim()]);
 };
-    
+
 
 //
 // main
@@ -125,7 +127,7 @@ $.fn.triggerSearch = function() {
 // dom events
 
 $window.on('popstate', function(e) {
-    S.ui.loadState(e.originalEvent.state);
+    S.ui.loadState(e.originalEvent.state, true);
 });
 
 $searchInput.keyup(function(e) {

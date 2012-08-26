@@ -6,7 +6,7 @@ import tornado.iostream
 from codesearch import index_pb2
 
 _size_fmt = '!Q'
-assert(struct.calcsize(_size_fmt) == 8)
+assert struct.calcsize(_size_fmt) == 8
 
 class _incrementer(object):
 

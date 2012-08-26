@@ -10,12 +10,6 @@ class StaticHandler(handler_meta.RequestHandler):
         self.render(self.template_path)
 
 
-class HomeHandler(StaticHandler):
-
-    path = '/'
-    template_path = 'search.html'
-
-
 class AboutHandler(StaticHandler):
 
     path = '/about'
