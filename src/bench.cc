@@ -86,8 +86,8 @@ int main(int argc, char **argv) {
       std::string serialized_req;
       request.SerializeToString(&serialized_req);
 
-      std::string request_buf;
-      codesearch::Uint64ToString(serialized_req.size(), &request_buf);
+      std::string request_buf = codesearch::Uint64ToString(
+          serialized_req.size());
       request_buf += serialized_req;
 
       std::cout << query << " " << std::flush;
@@ -115,7 +115,6 @@ int main(int argc, char **argv) {
         std::cout << response_size_int << " ";
       }
       std::cout << timer.elapsed_ms() << std::endl;
-
     }
   }
 

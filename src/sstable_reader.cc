@@ -115,9 +115,8 @@ bool SSTableReader::Find(const char *needle, std::string *result) const {
 
 bool SSTableReader::Find(std::uint64_t needle, std::string *result) const {
   std::uint64_t lower_bound = 0;
-  std::string val;
+  std::string val = Uint64ToString(needle);
   std::string padded;
-  Uint64ToString(needle, &val);
   PadNeedle(val, &padded);
   return FindWithBounds(padded.data(), result, &lower_bound);
 }

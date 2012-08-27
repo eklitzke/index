@@ -50,8 +50,7 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
   idx_out_.write(padded_key.c_str(), key_size_);
   assert(!idx_out_.fail() && !idx_out_.eof());
 
-  std::string offset_str;
-  Uint64ToString(data_size_, &offset_str);
+  std::string offset_str = Uint64ToString(data_size_);
   idx_out_.write(offset_str.c_str(), sizeof(std::uint64_t));
   assert(!idx_out_.fail() && !idx_out_.eof());
   index_size_ += key_size_ + sizeof(std::uint64_t);
@@ -63,8 +62,7 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
   const std::string &compress_data = val;
 #endif
 
-  std::string data_size;
-  Uint64ToString(compress_data.size(), &data_size);
+  std::string data_size = Uint64ToString(compress_data.size());
   data_out_.write(data_size.c_str(), sizeof(std::uint64_t));
   assert(!data_out_.fail() && !data_out_.eof());
   data_out_.write(compress_data.c_str(), compress_data.size());
@@ -81,8 +79,7 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
 
 void SSTableWriter::Add(const std::uint64_t key,
                         const google::protobuf::Message &val) {
-  std::string key_string;
-  Uint64ToString(key, &key_string);
+  std::string key_string = Uint64ToString(key);
   std::string value_string;
   val.SerializeToString(&value_string);
   Add(key_string, value_string);
@@ -129,8 +126,7 @@ void SSTableWriter::Merge() {
   header.set_num_keys(num_keys_);
 
   std::uint64_t header_size = header.ByteSize();
-  std::string header_size_str;
-  Uint64ToString(header_size, &header_size_str);
+  std::string header_size_str = Uint64ToString(header_size);
   out.write(header_size_str.c_str(), header_size_str.size());
   header.SerializeToOstream(&out);
   std::string padding = GetWordPadding(header_size);

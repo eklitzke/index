@@ -162,9 +162,7 @@ void IndexReaderConnection::Search(std::size_t size) {
   double speedup = static_cast<double>(uncompressed_response.size()) /
       static_cast<double>(compressed_response.size());
 
-  std::string size_header;
-  Uint64ToString(compressed_response.size(), &size_header);
-
+  std::string size_header = Uint64ToString(compressed_response.size());
   std::ostream os(&data_buffer_);
   os << size_header << compressed_response;
 
@@ -174,8 +172,7 @@ void IndexReaderConnection::Search(std::size_t size) {
       "x)" << " after " << response.time_elapsed() << " ms\n";
 
 #else
-   std::string size_header;
-   Uint64ToString(response.ByteSize(), &size_header);
+   std::string size_header = Uint64ToString(response.ByteSize());
    assert(size_header.size() == sizeof(std::uint64_t));
 
    std::ostream os(&data_buffer_);

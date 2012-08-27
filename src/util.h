@@ -17,7 +17,10 @@ std::string ConstructShardPath(const std::string &index_directory,
                                const std::string &name,
                                std::uint32_t shard_num);
 
-void Uint64ToString(std::uint64_t val, std::string *out);
+inline std::string Uint64ToString(std::uint64_t val) {
+  const std::uint64_t be_val = htobe64(val);
+  return std::string(reinterpret_cast<const char *>(&be_val), 8);
+}
 
 inline std::uint64_t ToUint64(const std::string &str) {
   assert(str.size() == sizeof(std::uint64_t));
@@ -39,7 +42,13 @@ std::uint64_t ToUint64(const std::array<int_type,
 }
 
 // Get padding to word align something of some size.
-std::string GetWordPadding(std::size_t size);
+inline std::string GetWordPadding(std::size_t size) {
+  std::size_t mantissa = size % 8;
+  if (mantissa) {
+    return std::string(8 - mantissa, '\0');
+  }
+  return "";
+}
 
 // Format a binary string (to be C-escaped).
 std::string PrintBinaryString(const std::string &str);

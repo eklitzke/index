@@ -4,11 +4,12 @@
 #ifndef SRC_NGRAM_COUNTER_H_
 #define SRC_NGRAM_COUNTER_H_
 
-#include "./index.pb.h"
 #include <map>
 #include <mutex>
 #include <string>
 #include <vector>
+
+#include "./index.pb.h"
 
 namespace codesearch {
 class NGramCounter {
@@ -27,4 +28,4 @@ class NGramCounter {
 };
 }
 
-#endif
+#endif  // SRC_NGRAM_COUNTER_H_

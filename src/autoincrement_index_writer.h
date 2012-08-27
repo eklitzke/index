@@ -1,12 +1,13 @@
 // -*- C++ -*-
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
-#ifndef SRC_AUTOINCREMENT_INDEX_H_
-#define SRC_AUTOINCREMENT_INDEX_H_
+#ifndef SRC_AUTOINCREMENT_INDEX_WRITER_H_
+#define SRC_AUTOINCREMENT_INDEX_WRITER_H_
+
+#include <mutex>
+#include <string>
 
 #include "./index_writer.h"
-#include <string>
-#include <mutex>
 
 namespace codesearch {
 class AutoIncrementIndexWriter {
@@ -35,4 +36,4 @@ class AutoIncrementIndexWriter {
 };
 }
 
-#endif  // SRC_AUTOINCREMENT_INDEX_H_
+#endif  // SRC_AUTOINCREMENT_INDEX_WRITER_H_
