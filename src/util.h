@@ -27,18 +27,17 @@ inline std::uint64_t ToUint64(const std::string &str) {
   return be64toh(*reinterpret_cast<const std::uint64_t*>(str.data()));
 }
 
-template<typename int_type>
-std::uint64_t ToUint64(const std::array<int_type,
-                       sizeof(std::uint64_t)> &data) {
-  return (
-    (static_cast<std::uint64_t>(std::get<0>(data)) << 54) +
-    (static_cast<std::uint64_t>(std::get<1>(data)) << 48) +
-    (static_cast<std::uint64_t>(std::get<2>(data)) << 40) +
-    (static_cast<std::uint64_t>(std::get<3>(data)) << 32) +
-    (static_cast<std::uint64_t>(std::get<4>(data)) << 24) +
-    (static_cast<std::uint64_t>(std::get<5>(data)) << 16) +
-    (static_cast<std::uint64_t>(std::get<6>(data)) << 8) +
-    (static_cast<std::uint64_t>(std::get<7>(data))));
+template <typename byte_type>
+inline std::uint64_t ToUint64(const byte_type str[sizeof(std::uint64_t)]) {
+  static_assert(sizeof(byte_type) == 1, "invalid byte_type for ToUint64");
+  return be64toh(*reinterpret_cast<const std::uint64_t*>(str));
+}
+
+template <typename byte_type>
+inline std::uint64_t ToUint64(
+    const std::array<byte_type, sizeof(std::uint64_t)> &arr) {
+  static_assert(sizeof(byte_type) == 1, "invalid byte_type for ToUint64");
+  return be64toh(*reinterpret_cast<const std::uint64_t*>(arr.data()));
 }
 
 // Get padding to word align something of some size.
@@ -64,6 +63,7 @@ class Timer {
   typedef std::chrono::system_clock clock_type;
 
   Timer() :start_time_(clock_type::now()) {}
+  virtual ~Timer() {};
 
   long elapsed_s() { return elapsed_count<std::chrono::seconds>(); }
   long elapsed_ms() { return elapsed_count<std::chrono::milliseconds>(); }
