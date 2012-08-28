@@ -2,7 +2,6 @@
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-#include <glog/logging.h>
 
 #include "./config.h"
 #include "./context.h"
@@ -49,7 +48,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  google::InitGoogleLogging(argv[0]);
+  codesearch::InitializeLogging(argv[0]);
 
   std::string db_path_str = vm["db-path"].as<std::string>();
   boost::filesystem::path db_path(db_path_str);

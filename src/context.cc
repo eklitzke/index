@@ -3,9 +3,11 @@
 #include "./context.h"
 
 #include <google/protobuf/stubs/common.h>
+#include <glog/logging.h>
 
 #include "./mmap.h"
 #include "./index.pb.h"
+#include "./util.h"
 
 #include <fstream>
 #include <map>
@@ -52,7 +54,7 @@ Context* Context::Acquire(const std::string &db_path,
                           std::size_t ngram_size,
                           const std::string &vestibule_path,
                           bool create) {
-std::lock_guard<std::mutex> guard(mut);
+  std::lock_guard<std::mutex> guard(mut);
   auto it = contexts.lower_bound(db_path);
   if (it != contexts.end() && it->first == db_path) {
     return it->second;
@@ -64,13 +66,7 @@ std::lock_guard<std::mutex> guard(mut);
 
 std::string Context::FindBestNGram(const std::string &fragment,
                                    std::size_t *offset) {
-  {
-    std::lock_guard<std::mutex> guard(mut_);
-    if (!sorted_ngrams_size_) {
-      InitializeSmallNGrams();
-      assert(sorted_ngrams_size_);
-    }
-  }
+  InitializeSmallNGrams();
   char *p = sorted_ngrams_.get() + *offset;
   while (p < sorted_ngrams_.get() + sorted_ngrams_size_) {
     void *data = memmem(p, ngram_size_, fragment.data(), fragment.size());
@@ -84,6 +80,13 @@ std::string Context::FindBestNGram(const std::string &fragment,
 }
 
 void Context::InitializeSmallNGrams() {
+  std::lock_guard<std::mutex> guard(mut_);
+  if (sorted_ngrams_ != nullptr) {
+    // the small ngrams have already been initialized
+    return;
+  }
+
+  Timer initialization_timer;
   assert(sorted_ngrams_ == nullptr);
   assert(sorted_ngrams_size_ == 0);
 
@@ -97,6 +100,7 @@ void Context::InitializeSmallNGrams() {
 
   sorted_ngrams_size_ = ngram_size_ * ngram_counts_proto.ngram_counts_size();
   sorted_ngrams_ = std::unique_ptr<char[]>(new char[sorted_ngrams_size_]);
+  assert(sorted_ngrams_size_ > 0);
 
   char *offset = sorted_ngrams_.get();
   for (const auto &ngram : ngram_counts_proto.ngram_counts()) {
@@ -105,6 +109,8 @@ void Context::InitializeSmallNGrams() {
     memcpy(offset, ngram_str.data(), ngram_str.size());
     offset += ngram_str.size();
   }
+  LOG(INFO) << "initialized sorted ngrams list in " <<
+    initialization_timer.elapsed_ms() << " ms\n";
 }
 
 Context::~Context() {

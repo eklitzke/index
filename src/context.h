@@ -36,6 +36,11 @@ class Context {
   std::size_t ngram_size() const { return ngram_size_; }
   std::string vestibule() const { return vestibule_; }
 
+  // Initialize the list of small ngrams -- normally this method will
+  // be called on demand (that is, the first time a query is done for
+  // a small ngram).
+  void InitializeSmallNGrams();
+
  private:
   Context(const std::string &index_directory,
           std::size_t ngram_size,
@@ -47,8 +52,6 @@ class Context {
   std::size_t sorted_ngrams_size_;
   const std::size_t ngram_size_;
   std::mutex mut_;
-
-  void InitializeSmallNGrams();
 };
 
 // This allows getting the current context, assuming that only one has

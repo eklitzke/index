@@ -52,6 +52,12 @@ inline std::string GetWordPadding(std::size_t size) {
   return "";
 }
 
+// Initialize glog
+inline void InitializeLogging(const char *program_name) {
+  google::InitGoogleLogging(program_name);
+  LOG(INFO) << " initialized logging\n";
+}
+
 // Format a binary string (to be C-escaped).
 std::string PrintBinaryString(const std::string &str);
 
@@ -96,6 +102,5 @@ class ScopedTimer : public Timer {
  private:
   const std::string msg_;
 };
-
-}
-#endif
+}  // namespace codesearch
+#endif  // SRC_UTIL_H_

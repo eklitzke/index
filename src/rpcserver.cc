@@ -253,6 +253,7 @@ void DeleteAllConnections() {
 namespace codesearch {
 
 void IndexReaderServer::Start() {
+  LOG(INFO) << "now accepting RPC connections\n";
   StartAccept();
 }
 

@@ -2,12 +2,12 @@
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-#include <glog/logging.h>
 
 #include "./config.h"
 #include "./context.h"
 #include "./file_util.h"
 #include "./ngram_index_reader.h"
+#include "./util.h"
 
 #include <string>
 
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  google::InitGoogleLogging(argv[0]);
+  codesearch::InitializeLogging(argv[0]);
 
   std::string db_path_str = vm["db-path"].as<std::string>();
   std::unique_ptr<codesearch::Context> ctx(
