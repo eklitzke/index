@@ -18,6 +18,36 @@
 
 namespace po = boost::program_options;
 
+namespace {
+// XXX: this is a little bit lazy because we'll waste memory with a
+// lot of repeated strings and string parts; in practice it shouldn't
+// be too bad though, since the number of total files is limited.
+struct IndexEntity {
+  std::string filepath;
+  std::string canonical;
+  std::string dir;
+  std::string fname;
+
+  IndexEntity(const std::string &fp,
+              const std::string &canon,
+              const std::string &d,
+              const std::string &fn)
+      :filepath(fp), canonical(canon), dir(d), fname(fn) {}
+
+  inline bool operator<(const IndexEntity &other) const {
+    return filepath < other.filepath;
+  }
+
+  inline bool operator<(const IndexEntity *other) const {
+    return filepath < other->filepath;
+  }
+
+  inline bool operator<(IndexEntity *other) const {
+    return filepath < other->filepath;
+  }
+};
+}
+
 int main(int argc, char **argv) {
   // Declare the supported options.
   po::options_description desc("Allowed options");
@@ -49,7 +79,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-google::InitGoogleLogging(argv[0]);
+  google::InitGoogleLogging(argv[0]);
 
   std::string db_path_str = vm["db-path"].as<std::string>();
   boost::filesystem::path db_path(db_path_str);
@@ -85,9 +115,9 @@ google::InitGoogleLogging(argv[0]);
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str, ngram_size, src_dirs[0], true));
   {
-    codesearch::NGramIndexWriter ngram_writer(
-        db_path_str, ngram_size, shard_size, num_threads);
+    std::vector<IndexEntity> files;
 
+    std::cout << "collecting candidate files" << std::endl;
     for (const auto &d : src_dirs) {
       std::string dir = d.substr(0, d.find_last_not_of('/') + 1);
       std::string match;
@@ -115,12 +145,27 @@ google::InitGoogleLogging(argv[0]);
         }
         std::string fname = filepath.substr(dir.size(), std::string::npos);
         fname = fname.substr(fname.find_first_not_of('/'), std::string::npos);
-        if (codesearch::ShouldIndex(filepath)) {
-          std::cout << "indexing " << fname << std::endl;
-          ngram_writer.AddFile(canonical, dir, fname);
-        } else {
-          std::cout << "skipping " << fname << std::endl;
-        }
+        files.push_back(IndexEntity(filepath, canonical, dir, fname));
+      }
+    }
+
+    // We want the index to always have its files in the same order,
+    // so we sort the files here. This ensures that if we re-index
+    // some content, it won't change search results (when the file
+    // contents themselves have not changed).
+    std::cout << "sorting file candidates" << std::endl;
+    std::sort(files.begin(), files.end());
+
+    codesearch::NGramCounterCtx counter_ctx;
+    codesearch::NGramIndexWriter ngram_writer(
+        db_path_str, ngram_size, shard_size, num_threads);
+
+    for (const auto &file : files) {
+      if (codesearch::ShouldIndex(file.filepath)) {
+        std::cout << "indexing " << file.fname << std::endl;
+        ngram_writer.AddFile(file.canonical, file.dir, file.fname);
+      } else {
+        std::cout << "skipping " << file.fname << std::endl;
       }
     }
     std::cout << "finishing database..." << std::endl;
@@ -129,8 +174,8 @@ google::InitGoogleLogging(argv[0]);
   std::ofstream ngram_counts(db_path_str + "/ngram_counts",
                 std::ofstream::binary | std::ofstream::trunc |
                 std::ofstream::out);
-  codesearch::NGramCounter *counter = codesearch::NGramCounter::Instance();
-  codesearch::NGramCounts counts = counter->ReverseSortedCounts();
+  codesearch::NGramCounts counts = \
+      codesearch::NGramCounter::Instance()->ReverseSortedCounts();
   counts.SerializeToOstream(&ngram_counts);
   std::cout << "done indexing" << std::endl;
   return 0;

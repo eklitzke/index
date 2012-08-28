@@ -22,10 +22,21 @@ void NGramCounter::UpdateCount(const std::string &ngram, std::size_t count) {
   counts_[ngram] += count;
 }
 
+void NGramCounter::UpdateCounts(
+    const std::map<std::string, std::size_t> &count_map) {
+  std::lock_guard<std::mutex> guard(mutex_);
+  for (const auto &kv : count_map) {
+    counts_[kv.first] += kv.second;
+  }
+}
+
 NGramCounts NGramCounter::ReverseSortedCounts() {
   std::vector<std::pair<std::size_t, std::string> > reverse_counts;
-  for (const auto &p : counts_) {
-    reverse_counts.push_back(std::make_pair(p.second, p.first));
+  {
+    std::lock_guard<std::mutex> guard(mutex_);
+    for (const auto &p : counts_) {
+      reverse_counts.push_back(std::make_pair(p.second, p.first));
+    }
   }
   std::sort(reverse_counts.begin(), reverse_counts.end());
   std::reverse(reverse_counts.begin(), reverse_counts.end());
