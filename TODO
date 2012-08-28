@@ -21,6 +21,8 @@ Miscellaneous
 * add logging -- this is important for perf tuning
 * add a way to shutdown the server process gracefully while using massif
 * investigate using a heap instead of a bounded map
+* initialize the sorted trigrams list at startup, rather than on
+  demand; this will make performance more consistent
 
 Cleanups
 ========
