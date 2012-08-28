@@ -25,7 +25,14 @@
         ],
     },
     'target_defaults': {
-        'cflags': ['-pedantic', '-Wall', '-std=c++11', '-O2', '-flto', '-g' ],
+        'cflags': ['-pedantic',
+                   '-Wall',
+                   '-std=c++11',
+                   '-O2',
+                   '-flto',
+                   '-g',
+                   #'-fno-builtin-memcmp',  # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43052
+                   ],
         'defines': [
             '_GNU_SOURCE',
             'USE_SNAPPY',

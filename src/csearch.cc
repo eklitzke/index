@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
     }
   } else {
     std::cout << results.contextual_results().size() <<
-        "search results" << std::endl;
+        " search results" << std::endl;
   }
   return 0;
 }
