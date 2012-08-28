@@ -31,7 +31,8 @@
                    '-O2',
                    '-flto',
                    '-g',
-                   #'-fno-builtin-memcmp',  # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43052
+                   # see http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43052
+                   #'-fno-builtin-memcmp',
                    ],
         'defines': [
             '_GNU_SOURCE',
