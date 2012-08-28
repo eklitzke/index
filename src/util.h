@@ -22,6 +22,9 @@ inline std::string Uint64ToString(std::uint64_t val) {
   return std::string(reinterpret_cast<const char *>(&be_val), 8);
 }
 
+// N.B. using a C-style array or std::array is preferred, because the
+// size of the array is checked at compile-time rather than asserted
+// at run-time.
 inline std::uint64_t ToUint64(const std::string &str) {
   assert(str.size() == sizeof(std::uint64_t));
   return be64toh(*reinterpret_cast<const std::uint64_t*>(str.data()));
