@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
   std::string db_path_str = vm["db-path"].as<std::string>();
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str));
-  ctx->InitializeSmallNGrams();
+  ctx->InitializeSortedNGrams();
 
   boost::asio::io_service io_service;
   boost::asio::ip::tcp::endpoint endpoint(

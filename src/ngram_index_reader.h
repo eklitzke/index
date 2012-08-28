@@ -12,6 +12,7 @@
 #include "./bounded_map.h"
 #include "./context.h"
 #include "./integer_index_reader.h"
+#include "./ngram.h"
 #include "./search_results.h"
 
 namespace codesearch {
@@ -41,11 +42,11 @@ class NGramIndexReader {
                  SearchResults *results);
 
   void FindShard(const std::string &query,
-                 const std::set<std::string> &ngrams,
+                 const std::vector<NGram> &ngrams,
                  const SSTableReader &reader,
                  SearchResults *results);
 
-  bool GetCandidates(const std::string &ngram,
+  bool GetCandidates(const NGram &ngram,
                      std::vector<std::uint64_t> *candidates,
                      const SSTableReader &reader,
                      std::size_t *lower_bound);

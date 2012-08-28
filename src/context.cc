@@ -6,9 +6,11 @@
 #include <glog/logging.h>
 
 #include "./mmap.h"
+#include "./ngram.h"
 #include "./index.pb.h"
 #include "./util.h"
 
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <mutex>
@@ -16,6 +18,24 @@
 namespace {
 std::mutex mut;
 std::map<std::string, codesearch::Context *> contexts;
+
+class NGramFrequency {
+ public:
+  NGramFrequency() = delete;
+  NGramFrequency(codesearch::NGram ngram, std::size_t frequency)
+      :ngram_(ngram), frequency_(frequency) {}
+
+  bool operator<(const NGramFrequency &other) const {
+    return frequency_ < other.frequency_;
+  }
+
+  codesearch::NGram ngram() const { return ngram_; }
+  std::size_t frequency() const { return frequency_; }
+
+ private:
+  codesearch::NGram ngram_;
+  std::size_t frequency_;
+};
 }
 
 namespace codesearch {
@@ -66,7 +86,7 @@ Context* Context::Acquire(const std::string &db_path,
 
 std::string Context::FindBestNGram(const std::string &fragment,
                                    std::size_t *offset) {
-  InitializeSmallNGrams();
+  InitializeSortedNGrams();
   char *p = sorted_ngrams_.get() + *offset;
   while (p < sorted_ngrams_.get() + sorted_ngrams_size_) {
     void *data = memmem(p, ngram_size_, fragment.data(), fragment.size());
@@ -79,7 +99,26 @@ std::string Context::FindBestNGram(const std::string &fragment,
   return "";
 }
 
-void Context::InitializeSmallNGrams() {
+void Context::SortNGrams(std::vector<NGram> *ngrams) {
+  InitializeSortedNGrams();
+  std::vector<NGramFrequency> frequencies;
+  frequencies.reserve(ngrams->size());
+  for (const auto &ngram : *ngrams) {
+    auto it = ngram_counts_.find(ngram);
+    if (it == ngram_counts_.end()) {
+      frequencies.push_back(NGramFrequency(ngram, 0));
+    } else {
+      frequencies.push_back(NGramFrequency(ngram, it->second));
+    }
+  }
+  std::sort(frequencies.begin(), frequencies.end());
+  ngrams->clear();
+  for (const auto &freq : frequencies) {
+    ngrams->push_back(freq.ngram());
+  }
+}
+
+void Context::InitializeSortedNGrams() {
   std::lock_guard<std::mutex> guard(mut_);
   if (sorted_ngrams_ != nullptr) {
     // the small ngrams have already been initialized
@@ -108,6 +147,7 @@ void Context::InitializeSmallNGrams() {
     assert(ngram_str.size() == ngram_size_);
     memcpy(offset, ngram_str.data(), ngram_str.size());
     offset += ngram_str.size();
+    ngram_counts_.insert(std::make_pair(NGram(ngram_str), ngram.count()));
   }
   LOG(INFO) << "initialized sorted ngrams list in " <<
     initialization_timer.elapsed_ms() << " ms\n";

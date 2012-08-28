@@ -4,6 +4,7 @@
 #include "./bounded_map.h"
 #include "./context.h"
 #include "./index.pb.h"
+#include "./ngram.h"
 #include "./ngram_index_reader.h"
 #include "./util.h"
 
@@ -80,12 +81,17 @@ void NGramIndexReader::Find(const std::string &query,
   }
 
   // split the query into its constituent ngrams
-  std::set<std::string> ngrams;
-  for (std::string::size_type i = 0;
-       i <= query.length() - ngram_size_; i++) {
-    ngrams.insert(query.substr(i, ngram_size_));
+  std::vector<NGram> ngrams;
+  {
+    std::set<NGram> ngrams_set;
+    for (std::string::size_type i = 0;
+         i <= query.length() - ngram_size_; i++) {
+      ngrams_set.insert(NGram(query.substr(i, ngram_size_)));
+    }
+    assert(!ngrams_set.empty());
+    ngrams.insert(ngrams.begin(), ngrams_set.begin(), ngrams_set.end());
   }
-  assert(!ngrams.empty());
+  ctx_->SortNGrams(&ngrams);
 
   // An overview of how searching works follows.
   //
@@ -224,7 +230,7 @@ void NGramIndexReader::FindSmall(const std::string &query,
 }
 
 void NGramIndexReader::FindShard(const std::string &query,
-                                 const std::set<std::string> &ngrams,
+                                 const std::vector<NGram> &ngrams,
                                  const SSTableReader &reader,
                                  SearchResults *results) {
   Timer timer;
@@ -285,13 +291,13 @@ void NGramIndexReader::FindShard(const std::string &query,
 // lower bound, fill in the result list with all of the positions in
 // the posting list for that ngram. This is the function that actually
 // does the SST lookup.
-bool NGramIndexReader::GetCandidates(const std::string &ngram,
+bool NGramIndexReader::GetCandidates(const NGram &ngram,
                                      std::vector<std::uint64_t> *candidates,
                                      const SSTableReader &reader,
                                      std::size_t *lower_bound) {
   assert(candidates->empty());
   std::string db_read;
-  bool found = reader.FindWithBounds(ngram, &db_read, lower_bound);
+  bool found = reader.FindWithBounds(ngram.string(), &db_read, lower_bound);
   if (!found) {
     return false;
   }

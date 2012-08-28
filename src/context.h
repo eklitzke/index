@@ -15,10 +15,13 @@
 #ifndef SRC_CONTEXT_H_
 #define SRC_CONTEXT_H_
 
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+
+#include "./ngram.h"
 
 namespace codesearch {
 class Context {
@@ -36,10 +39,12 @@ class Context {
   std::size_t ngram_size() const { return ngram_size_; }
   std::string vestibule() const { return vestibule_; }
 
+  void SortNGrams(std::vector<NGram> *ngrams);
+
   // Initialize the list of small ngrams -- normally this method will
   // be called on demand (that is, the first time a query is done for
   // a small ngram).
-  void InitializeSmallNGrams();
+  void InitializeSortedNGrams();
 
  private:
   Context(const std::string &index_directory,
@@ -48,8 +53,13 @@ class Context {
           bool create);
   std::string index_directory_;
   std::string vestibule_;
+
   std::unique_ptr<char[]> sorted_ngrams_;
   std::size_t sorted_ngrams_size_;
+
+  // maps ngram to count
+  std::map<NGram, std::size_t> ngram_counts_;
+
   const std::size_t ngram_size_;
   std::mutex mut_;
 };
