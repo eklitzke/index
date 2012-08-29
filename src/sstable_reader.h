@@ -15,6 +15,10 @@ namespace codesearch {
 class SSTableReader {
  public:
   explicit SSTableReader(const std::string &name);
+#if 0
+  SSTableReader(const SSTableReader &other) = delete;
+#endif
+  SSTableReader& operator=(const SSTableReader &other) = delete;
 
   // Checks that a given needle is within the min/max bounds for this table.
   bool CheckMinMaxBounds(const char *needle, std::size_t *lower_bound) const;
