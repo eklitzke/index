@@ -6,6 +6,7 @@
 
 #include "./index.pb.h"
 
+#include <cstring>
 #include <string>
 
 static_assert(sizeof(std::uint64_t) == 8, "Something's whack with uint64_t");
@@ -20,7 +21,7 @@ class SSTableReader {
 
   bool Find(const char *needle, std::string *result) const;
   bool Find(std::uint64_t needle, std::string *result) const;
-  bool Find(const std::string &needle, std::string *result) const;
+  bool Find(std::string needle, std::string *result) const;
 
   // When searching for multiple needles (e.g. as in a SQL "IN"
   // query), an optimization that can be done is to search for the
@@ -30,18 +31,18 @@ class SSTableReader {
   // methods.
   bool FindWithBounds(const char *needle, std::string *result,
                       std::size_t *lower_bound) const;
-  bool FindWithBounds(const std::string &needle, std::string *result,
-                      std::size_t *lower_bound) const;
+  bool FindWithBounds(const char *needle, std::size_t needle_size,
+                      std::string *result, std::size_t *lower_bound) const;
 
   inline std::string min_key() const {
-    std::string retval;
-    PadNeedle(hdr_.min_value(), &retval);
+    std::string retval = hdr_.min_value();
+    PadNeedle(&retval);
     return retval;
   }
 
   inline std::string max_key() const {
-    std::string retval;
-    PadNeedle(hdr_.max_value(), &retval);
+    std::string retval = hdr_.max_value();
+    PadNeedle(&retval);
     return retval;
   }
 
@@ -64,7 +65,7 @@ class SSTableReader {
   SSTableHeader hdr_;
 
   // pad a search key
-  void PadNeedle(const std::string &in, std::string *out) const;
+  void PadNeedle(std::string *needle) const;
 
   inline std::size_t lower_bound() const { return 0; }
   inline std::size_t upper_bound() const { return hdr_.num_keys(); }

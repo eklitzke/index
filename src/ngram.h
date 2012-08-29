@@ -130,6 +130,8 @@ class NGram {
   std::string string() const { return std::string(data_.buf, 3); }
   std::uint32_t num() const { return data_.num; }
 
+  const static std::size_t ngram_size = 3;
+
  private:
   union {
     char buf[sizeof(std::uint32_t)];

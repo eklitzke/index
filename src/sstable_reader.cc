@@ -13,6 +13,7 @@
 #include <memory>
 #include <iostream>
 
+#include <alloca.h>
 #ifdef USE_SNAPPY
 #include <snappy.h>
 #endif
@@ -100,12 +101,19 @@ bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
   return false;
 }
 
-bool SSTableReader::FindWithBounds(const std::string &needle,
+bool SSTableReader::FindWithBounds(const char *needle,
+                                   std::size_t needle_size,
                                    std::string *result,
                                    std::size_t *lower_bound) const {
-  std::string padded;
-  PadNeedle(needle, &padded);
-  return FindWithBounds(padded.data(), result, lower_bound);
+  const std::size_t key_size = hdr_.key_size();
+
+  // C++11 seems to disallow VLA, even though it's in C99. GCC is
+  // happy to compile code with VLA, but it warns at -Wall which is
+  // annoying. Just use alloca instead.
+  char *padded_needle = static_cast<char *>(alloca(key_size));
+  memset(padded_needle, 0, key_size - needle_size);
+  memcpy(padded_needle + key_size - needle_size, needle, needle_size);
+  return FindWithBounds(padded_needle, result, lower_bound);
 }
 
 bool SSTableReader::Find(const char *needle, std::string *result) const {
@@ -116,25 +124,19 @@ bool SSTableReader::Find(const char *needle, std::string *result) const {
 bool SSTableReader::Find(std::uint64_t needle, std::string *result) const {
   std::uint64_t lower_bound = 0;
   std::string val = Uint64ToString(needle);
-  std::string padded;
-  PadNeedle(val, &padded);
-  return FindWithBounds(padded.data(), result, &lower_bound);
+  PadNeedle(&val);
+  return FindWithBounds(val.data(), result, &lower_bound);
 }
 
-bool SSTableReader::Find(const std::string &needle, std::string *result) const {
-  std::string padded;
-  PadNeedle(needle, &padded);
-  return Find(padded.data(), result);
+bool SSTableReader::Find(std::string needle, std::string *result) const {
+  PadNeedle(&needle);
+  return Find(needle.data(), result);
 }
 
-void SSTableReader::PadNeedle(const std::string &in, std::string *out) const {
+void SSTableReader::PadNeedle(std::string *needle) const {
   std::uint64_t key_size = hdr_.key_size();
-  if (in.size() == key_size) {
-    *out = in;
-  } else if (in.size() < key_size) {
-    *out = std::string(key_size - in.size(), '\0') + in;
-  } else {
-    assert(false);
+  if (needle->size() < key_size) {
+    needle->insert(needle->begin(), key_size - needle->size(), '\0');
   }
 }
 }

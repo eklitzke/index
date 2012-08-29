@@ -297,7 +297,8 @@ bool NGramIndexReader::GetCandidates(const NGram &ngram,
                                      std::size_t *lower_bound) {
   assert(candidates->empty());
   std::string db_read;
-  bool found = reader.FindWithBounds(ngram.string(), &db_read, lower_bound);
+  bool found = reader.FindWithBounds(
+      ngram.data(), ngram.ngram_size, &db_read, lower_bound);
   if (!found) {
     return false;
   }
