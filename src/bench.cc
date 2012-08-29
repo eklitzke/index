@@ -24,6 +24,7 @@ int main(int argc, char **argv) {
       ("limit", po::value<std::size_t>()->default_value(20),
        "the number of responses to return")
       ("show-sizes", "show response sizes")
+      ("quiet,q", "be quiet")
       ("file,f", po::value<std::string>(), "the query file  (default is stdin)")
       ;
 
@@ -59,6 +60,7 @@ int main(int argc, char **argv) {
   std::cout << "connected in " << connect_timer.elapsed_us() << " us" <<
       std::endl;
 
+  const bool quiet = vm.count("quiet") > 0;
   const bool show_sizes = vm.count("show-sizes") > 0;
   const std::size_t limit = vm["limit"].as<std::size_t>();
   std::size_t search_count = 0;
@@ -90,7 +92,9 @@ int main(int argc, char **argv) {
           serialized_req.size());
       request_buf += serialized_req;
 
-      std::cout << query << " " << std::flush;
+      if (!quiet) {
+        std::cout << query << " " << std::flush;
+      }
 
       codesearch::Timer timer;
       boost::system::error_code error;
@@ -111,10 +115,12 @@ int main(int argc, char **argv) {
       boost::asio::read(
           socket, boost::asio::buffer(full_response.get(), response_size_int));
 
-      if (show_sizes) {
-        std::cout << response_size_int << " ";
+      if (!quiet) {
+        if (show_sizes) {
+          std::cout << response_size_int << " ";
+        }
+        std::cout << timer.elapsed_ms() << std::endl;
       }
-      std::cout << timer.elapsed_ms() << std::endl;
     }
   }
 

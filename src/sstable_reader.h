@@ -15,10 +15,22 @@ namespace codesearch {
 class SSTableReader {
  public:
   explicit SSTableReader(const std::string &name);
-#if 0
-  SSTableReader(const SSTableReader &other) = delete;
-#endif
+
+  // This reader is passed to std::thread, which will make a copy of
+  // the data in the reader, which is why we must create a
+  // copy-constructor.
+  //
+  // TODO: more checking to see if we can simply use a pointer.
+  SSTableReader(const SSTableReader &other)
+      :name_(other.name_), mmap_addr_(other.mmap_addr_), hdr_(other.hdr_),
+       key_size_(other.key_size_), pad_(nullptr) {
+    pad_ = new char[key_size_];
+    memset(pad_, 0, key_size_);
+  }
+
   SSTableReader& operator=(const SSTableReader &other) = delete;
+
+  ~SSTableReader() { delete[] pad_; }
 
   // Checks that a given needle is within the min/max bounds for this table.
   bool CheckMinMaxBounds(const char *needle, std::size_t *lower_bound) const;
@@ -37,6 +49,8 @@ class SSTableReader {
                       std::size_t *lower_bound) const;
   bool FindWithBounds(const char *needle, std::size_t needle_size,
                       std::string *result, std::size_t *lower_bound) const;
+
+  inline std::size_t key_size() const { return key_size_; }
 
   inline std::string min_key() const {
     std::string retval = hdr_.min_value();
@@ -67,6 +81,12 @@ class SSTableReader {
 
   // the header read from the index
   SSTableHeader hdr_;
+
+  // the key size
+  std::size_t key_size_;
+
+  // the pad; concurrent access to this makes this class not thread-safe
+  char *pad_;
 
   // pad a search key
   void PadNeedle(std::string *needle) const;
