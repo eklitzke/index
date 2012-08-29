@@ -29,6 +29,7 @@ class BoundedMap {
   BoundedMap(std::size_t max_keys, std::size_t max_vals)
       :max_keys_(max_keys), max_vals_(max_vals) {}
   BoundedMap(const BoundedMap &other) = delete;
+  BoundedMap& operator=(const BoundedMap &other) = delete;
 
 #ifdef USE_ORDERED_MAP
   typedef std::map<K, std::vector<V> > map_type;

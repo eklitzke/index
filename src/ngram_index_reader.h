@@ -5,7 +5,6 @@
 #define SRC_NGRAM_INDEX_READER_H_
 
 #include <condition_variable>
-#include <memory>
 #include <set>
 #include <string>
 
@@ -19,6 +18,8 @@ namespace codesearch {
 class NGramIndexReader {
  public:
   NGramIndexReader(const std::string &index_directory);
+  NGramIndexReader(const NGramIndexReader &other) = delete;
+  NGramIndexReader& operator=(const NGramIndexReader &other) = delete;
 
   // Find a string in the ngram index. This should be the full query,
   // like "struct foo" or "madvise". If limit is non-zero, it is the
@@ -30,7 +31,7 @@ class NGramIndexReader {
   const std::size_t ngram_size_;
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
-  std::vector<std::unique_ptr<SSTableReader> > shards_;
+  std::vector<SSTableReader> shards_;
 
   std::mutex mut_;
   std::condition_variable cond_;

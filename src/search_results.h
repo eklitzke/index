@@ -79,6 +79,7 @@ class SearchResults : public BoundedMap<FileKey, FileResult> {
  public:
   SearchResults(std::size_t a, std::size_t b)
       :BoundedMap(a, b) {}
+
   std::vector<SearchResultContext> contextual_results();
 };
 
