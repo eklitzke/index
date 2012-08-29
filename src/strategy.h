@@ -4,6 +4,10 @@
 #ifndef SRC_STRATEGY_H_
 #define SRC_STRATEGY_H_
 
+#include <cassert>
+#include <ostream>
+#include <string>
+
 namespace codesearch {
 class SearchStrategy {
  public:
@@ -54,6 +58,7 @@ class SearchStrategy {
       default:
         assert(false);  // not reached
     }
+    return "";
   }
 
  private:
