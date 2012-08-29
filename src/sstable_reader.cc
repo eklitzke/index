@@ -13,7 +13,6 @@
 #include <memory>
 #include <iostream>
 
-#include <alloca.h>
 #ifdef USE_SNAPPY
 #include <snappy.h>
 #endif
@@ -21,7 +20,7 @@
 
 namespace codesearch {
 SSTableReader::SSTableReader(const std::string &name)
-    :name_(name) {
+    :name_(name), pad_(nullptr) {
   std::pair<std::size_t, const char *> mmap_data = GetMmapForFile(name);
   std::size_t mmap_size = mmap_data.first;
   mmap_addr_ = mmap_data.second;
@@ -40,21 +39,23 @@ SSTableReader::SSTableReader(const std::string &name)
 
   // point the mmap at the start of the index
   mmap_addr_ += sizeof(std::uint64_t) + hdr_size + padding.size();
+
+  key_size_ = hdr_.key_size();
+  pad_ = new char[key_size_];
+  memset(pad_, 0, key_size_);
 }
 
 bool SSTableReader::CheckMinMaxBounds(const char *needle,
                                       std::size_t *lower_bound) const {
-  std::uint64_t key_size = hdr_.key_size();
-
   // First we check that the needle being searched for is within the
   // min/max values stored in this SSTable.
   if (memcmp(static_cast<const void *>(needle),
              static_cast<const void *>(min_key().data()),
-             key_size) < 0) {
+             key_size_) < 0) {
     return false;
   } else if (memcmp(static_cast<const void *>(needle),
                     static_cast<const void *>(max_key().data()),
-                    key_size) > 0) {
+                    key_size_) > 0) {
     *lower_bound = upper_bound() + 1;
     return false;
   }
@@ -63,8 +64,6 @@ bool SSTableReader::CheckMinMaxBounds(const char *needle,
 
 bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
                                    std::size_t *lower_bound) const {
-  std::uint64_t key_size = hdr_.key_size();
-
   // Check that the key is within the min/max bounds.
   if (!CheckMinMaxBounds(needle, lower_bound)) {
     return false;
@@ -72,15 +71,15 @@ bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
   std::size_t upper = upper_bound();
   while (*lower_bound <= upper) {
     std::size_t pos = (upper + *lower_bound) / 2;
-    const char *key = mmap_addr_ + pos * (key_size + sizeof(std::uint64_t));
-    int cmpresult = memcmp(needle, key, key_size);
+    const char *key = mmap_addr_ + pos * (key_size_ + sizeof(std::uint64_t));
+    int cmpresult = memcmp(needle, key, key_size_);
     if (cmpresult < 0) {
       upper = pos - 1;
     } else if (cmpresult > 0) {
       *lower_bound = pos + 1;
     } else {
       const std::uint64_t *position = reinterpret_cast<const std::uint64_t*>(
-          key + key_size);
+          key + key_size_);
       std::uint64_t data_offset = be64toh(*position);
       const std::uint64_t *raw_size = reinterpret_cast<const std::uint64_t*>(
           mmap_addr_ + hdr_.index_size() + data_offset);
@@ -107,13 +106,12 @@ bool SSTableReader::FindWithBounds(const char *needle,
                                    std::size_t *lower_bound) const {
   const std::size_t key_size = hdr_.key_size();
 
-  // C++11 seems to disallow VLA, even though it's in C99. GCC is
-  // happy to compile code with VLA, but it warns at -Wall which is
-  // annoying. Just use alloca instead.
-  char *padded_needle = static_cast<char *>(alloca(key_size));
-  memset(padded_needle, 0, key_size - needle_size);
-  memcpy(padded_needle + key_size - needle_size, needle, needle_size);
-  return FindWithBounds(padded_needle, result, lower_bound);
+  // We don't zero pad here, because pad_ is zero filled when it's
+  // allocated, and needles should always be the same size (since
+  // ngrams are always the same size). If that assumption changes,
+  // breakage will occur here, and we'll need to memset with zeroes.
+  memcpy(pad_ + key_size - needle_size, needle, needle_size);
+  return FindWithBounds(pad_, result, lower_bound);
 }
 
 bool SSTableReader::Find(const char *needle, std::string *result) const {
