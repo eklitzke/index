@@ -12,6 +12,7 @@
 #include <glog/logging.h>
 
 #include <fstream>
+#include <functional>
 #include <set>
 #include <thread>
 
@@ -159,7 +160,8 @@ void NGramIndexReader::Find(const std::string &query,
       for (std::size_t i = 0; i < threads_needed && it != shards_.end(); i++) {
         running_threads_++;
         std::thread thr(&NGramIndexReader::FindShard, this,
-                        query, ngrams, *it, results);
+                        std::cref(query), std::cref(ngrams), std::cref(*it),
+                        std::ref(results));
 
         // Detach the thread. The thread will notify our condition
         // variable when its work is done.

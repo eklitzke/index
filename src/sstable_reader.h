@@ -16,11 +16,9 @@ class SSTableReader {
  public:
   explicit SSTableReader(const std::string &name);
 
-  // This reader is passed to std::thread, which will make a copy of
-  // the data in the reader, which is why we must create a
-  // copy-constructor.
-  //
-  // TODO: more checking to see if we can simply use a pointer.
+  // We implement a copy constructor so we can create a std::vector of
+  // SSTableReader objects in the NGramIndexReader. No other copying
+  // should be permitted, however.
   SSTableReader(const SSTableReader &other)
       :name_(other.name_), mmap_addr_(other.mmap_addr_), hdr_(other.hdr_),
        key_size_(other.key_size_), pad_(nullptr) {
