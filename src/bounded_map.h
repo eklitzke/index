@@ -95,6 +95,9 @@ class BoundedMap {
     return map_.size() >= max_keys_;
   }
 
+  std::size_t max_keys() const { return max_keys_; }
+  std::size_t max_vals() const { return max_vals_; }
+
  protected:
   mutable std::mutex mut_;
   map_type map_;

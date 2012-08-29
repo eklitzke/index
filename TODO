@@ -19,13 +19,3 @@ Miscellaneous
 * index github
 * add a way to shutdown the server process gracefully while using massif
 * investigate using a heap instead of a bounded map
-* query ngrams in order of rarest to most common
-
-Cleanups
-========
-
-The code for getting context out of a file is a mess... it does a
-bunch of 1-byte backwards seeks instead of seeking more and buffering,
-and does this for each matched line, even when matches are
-adjacent. Profiling indicates that this is not taking up too much
-time, but it still ought to be fixed.

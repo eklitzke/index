@@ -255,7 +255,8 @@ void NGramIndexReader::FindShard(const std::string &query,
 #endif
 
   ngrams_iter++;
-  for (; ngrams_iter != ngrams.end() && !candidates.empty(); ++ngrams_iter) {
+  for (; ngrams_iter != ngrams.end() && candidates.size() > results->max_keys();
+       ++ngrams_iter) {
     std::vector<std::uint64_t> new_candidates;
     if (!GetCandidates(*ngrams_iter, &new_candidates, reader, &lower_bound)) {
       return;
@@ -273,8 +274,9 @@ void NGramIndexReader::FindShard(const std::string &query,
   }
   LOG(INFO) << "shard " << reader.shard_name() <<
       " finished SST lookups and set intersections after " <<
-      timer.elapsed_us() << " us" << ", final size is " << candidates.size() <<
-      "\n";
+      timer.elapsed_us() << " us" <<
+      (ngrams_iter != ngrams.end() ? " (and aborted early)" : "") <<
+      ", final size is " << candidates.size() << "\n";
 
   // We are going to construct a map of filename -> [(line num,
   // offset, line)].
