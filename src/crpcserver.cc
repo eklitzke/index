@@ -16,6 +16,8 @@ int main(int argc, char **argv) {
       ("port,p", po::value<int>()->default_value(codesearch::default_rpc_port))
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
+      ("strategy", po::value<std::string>()->default_value(
+          codesearch::default_strategy))
       ;
 
   po::variables_map vm;
@@ -30,15 +32,25 @@ int main(int argc, char **argv) {
   codesearch::InitializeLogging(argv[0]);
 
   std::string db_path_str = vm["db-path"].as<std::string>();
-  std::unique_ptr<codesearch::Context> ctx(
-      codesearch::Context::Acquire(db_path_str));
-  ctx->InitializeSortedNGrams();
-
   boost::asio::io_service io_service;
   boost::asio::ip::tcp::endpoint endpoint(
       boost::asio::ip::address::from_string("127.0.0.1"), vm["port"].as<int>());
 
-  codesearch::IndexReaderServer server(db_path_str, &io_service, endpoint);
+  bool strategy_error;
+  codesearch::SearchStrategy strategy = codesearch::InterpretStrategy(
+      vm["strategy"].as<std::string>(), &strategy_error);
+  if (strategy_error == true) {
+    std::cerr << "ERROR: --strategy must be one of " <<
+        "(lexicographic, frequency)\n";
+    return 1;
+  }
+
+  std::unique_ptr<codesearch::Context> ctx(
+      codesearch::Context::Acquire(db_path_str));
+  ctx->InitializeSortedNGrams();
+
+  codesearch::IndexReaderServer server(
+      db_path_str, &io_service, endpoint, strategy);
   server.Start();
   io_service.run();
 

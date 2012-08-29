@@ -26,8 +26,8 @@ namespace codesearch {
 
 class IndexReaderConnection {
  public:
-  IndexReaderConnection(const std::string &db_path)
-      :started_(false), reader_(db_path), socket_(io_service_) {}
+  IndexReaderConnection(const std::string &db_path, SearchStrategy strategy)
+      :started_(false), reader_(db_path, strategy), socket_(io_service_) {}
 
   // Start an IndexReaderConnection's io loop.
   void Start();
@@ -214,9 +214,10 @@ IndexReaderConnection::~IndexReaderConnection() {
 }
 
 namespace {
-codesearch::IndexReaderConnection* NewConnection(const std::string &s) {
+codesearch::IndexReaderConnection* NewConnection(
+    const std::string &db_path, codesearch::SearchStrategy strategy) {
   codesearch::IndexReaderConnection *conn;
-  conn = new codesearch::IndexReaderConnection(s);
+  conn = new codesearch::IndexReaderConnection(db_path, strategy);
   std::lock_guard<std::mutex> guard(conns_mut);
   conns.insert(conn);
   return conn;
@@ -258,7 +259,7 @@ void IndexReaderServer::Start() {
 }
 
 void IndexReaderServer::StartAccept() {
-  conn_ = NewConnection(db_path_);
+  conn_ = NewConnection(db_path_, strategy_);
   acceptor_.async_accept(
       *conn_->socket(),
       std::bind(&IndexReaderServer::HandleAccept, this,

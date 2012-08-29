@@ -114,11 +114,6 @@ bool SSTableReader::FindWithBounds(const char *needle,
   return FindWithBounds(pad_, result, lower_bound);
 }
 
-bool SSTableReader::Find(const char *needle, std::string *result) const {
-  std::size_t lower_bound = 0;
-  return FindWithBounds(needle, result, &lower_bound);
-}
-
 bool SSTableReader::Find(std::uint64_t needle, std::string *result) const {
   std::uint64_t lower_bound = 0;
   std::string val = Uint64ToString(needle);
@@ -129,6 +124,11 @@ bool SSTableReader::Find(std::uint64_t needle, std::string *result) const {
 bool SSTableReader::Find(std::string needle, std::string *result) const {
   PadNeedle(&needle);
   return Find(needle.data(), result);
+}
+
+bool SSTableReader::Find(const NGram &ngram, std::string *result) const {
+  std::uint64_t lower_bound = 0;
+  return FindWithBounds(ngram.data(), ngram.ngram_size, result, &lower_bound);
 }
 
 void SSTableReader::PadNeedle(std::string *needle) const {

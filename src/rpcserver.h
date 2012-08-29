@@ -8,6 +8,7 @@
 
 #include "./index.h"
 #include "./index.pb.h"
+#include "./strategy.h"
 
 namespace codesearch {
 
@@ -17,9 +18,11 @@ class IndexReaderServer {
  public:
   IndexReaderServer(const std::string &db_path,
                     boost::asio::io_service* io_service,
-                    const boost::asio::ip::tcp::endpoint &endpoint)
+                    const boost::asio::ip::tcp::endpoint &endpoint,
+                    SearchStrategy strategy)
       :db_path_(db_path), io_service_(io_service),
-       acceptor_(*io_service, endpoint), conn_(nullptr), conn_count_(0) {}
+       acceptor_(*io_service, endpoint), conn_(nullptr), conn_count_(0),
+       strategy_(strategy) {}
   IndexReaderServer(const IndexReaderServer &other) = delete;
   IndexReaderServer& operator=(const IndexReaderServer &other) = delete;
 
@@ -35,6 +38,7 @@ class IndexReaderServer {
   boost::asio::ip::tcp::acceptor acceptor_;
   IndexReaderConnection *conn_;
   std::size_t conn_count_;
+  SearchStrategy strategy_;
 
   void StartAccept();
 

@@ -13,11 +13,15 @@
 #include "./integer_index_reader.h"
 #include "./ngram.h"
 #include "./search_results.h"
+#include "./strategy.h"
 
 namespace codesearch {
+
 class NGramIndexReader {
  public:
-  NGramIndexReader(const std::string &index_directory);
+  NGramIndexReader(const std::string &index_directory,
+                   SearchStrategy strategy);
+
   NGramIndexReader(const NGramIndexReader &other) = delete;
   NGramIndexReader& operator=(const NGramIndexReader &other) = delete;
 
@@ -32,6 +36,7 @@ class NGramIndexReader {
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
   std::vector<SSTableReader> shards_;
+  SearchStrategy strategy_;
 
   std::mutex mut_;
   std::condition_variable cond_;

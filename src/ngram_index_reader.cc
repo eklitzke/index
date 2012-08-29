@@ -55,11 +55,12 @@ inline std::size_t concurrency() { return std::thread::hardware_concurrency(); }
 }
 
 namespace codesearch {
-NGramIndexReader::NGramIndexReader(const std::string &index_directory)
+NGramIndexReader::NGramIndexReader(const std::string &index_directory,
+                                   SearchStrategy strategy)
     :ctx_(Context::Acquire(index_directory)),
      ngram_size_(ctx_->ngram_size()), files_index_(index_directory, "files"),
-     lines_index_(index_directory, "lines"), running_threads_(0),
-     parallelism_(concurrency()) {
+     lines_index_(index_directory, "lines"), strategy_(strategy),
+     running_threads_(0), parallelism_(concurrency()) {
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config(config_name.c_str(),
                        std::ifstream::binary | std::ifstream::in);
@@ -71,6 +72,8 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory)
                               boost::lexical_cast<std::string>(i) + ".sst");
     shards_.push_back(SSTableReader(shard_name));
   }
+  LOG(INFO) << "initialized NGramIndexReader for directory " <<
+      index_directory << " using strategy " << strategy << "\n";
 }
 
 void NGramIndexReader::Find(const std::string &query,
@@ -82,16 +85,22 @@ void NGramIndexReader::Find(const std::string &query,
 
   // split the query into its constituent ngrams
   std::vector<NGram> ngrams;
-  {
-    std::set<NGram> ngrams_set;
-    for (std::string::size_type i = 0;
-         i <= query.length() - ngram_size_; i++) {
-      ngrams_set.insert(NGram(query.substr(i, ngram_size_)));
-    }
-    assert(!ngrams_set.empty());
-    ngrams.insert(ngrams.begin(), ngrams_set.begin(), ngrams_set.end());
+  std::set<NGram> ngrams_set;
+  for (std::string::size_type i = 0; i <= query.length() - ngram_size_; i++) {
+    ngrams_set.insert(NGram(query.substr(i, ngram_size_)));
   }
-  ctx_->SortNGrams(&ngrams);
+  assert(!ngrams_set.empty());
+  ngrams.insert(ngrams.begin(), ngrams_set.begin(), ngrams_set.end());
+  switch (strategy_.value()) {
+    case SearchStrategy::LEXICOGRAPHIC_SORT:
+      std::sort(ngrams.begin(), ngrams.end());
+      break;
+    case SearchStrategy::FREQUENCY_SORT:
+      ctx_->SortNGrams(&ngrams);
+      break;
+    default:
+      assert(false);  // not reached
+  }
 
   // An overview of how searching works follows.
   //
@@ -240,7 +249,7 @@ void NGramIndexReader::FindShard(const std::string &query,
   std::vector<std::uint64_t> candidates;
   std::vector<std::uint64_t> intersection;
 
-  auto ngrams_iter = ngrams.begin();
+  std::vector<NGram>::const_iterator ngrams_iter = ngrams.begin();
 
   // Get all of the candidates -- that is, all of the lines/positions
   // who have all of the ngrams. To do this we populate the candidates
@@ -300,8 +309,14 @@ bool NGramIndexReader::GetCandidates(const NGram &ngram,
                                      std::size_t *lower_bound) {
   assert(candidates->empty());
   std::string db_read;
-  bool found = reader.FindWithBounds(
-      ngram.data(), ngram.ngram_size, &db_read, lower_bound);
+  bool found;
+  if (strategy_ == SearchStrategy::LEXICOGRAPHIC_SORT) {
+    found = reader.FindWithBounds(
+        ngram.data(), ngram.ngram_size, &db_read, lower_bound);
+  } else {
+    found = reader.Find(ngram, &db_read);
+  }
+  LOG(INFO) << "found " << ngram << " is " << found << "\n";
   if (!found) {
     return false;
   }

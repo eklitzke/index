@@ -20,25 +20,30 @@
 #include <cstring>
 #include <string>
 
+#include <endian.h>
+
 static_assert(sizeof(std::uint32_t) == 4, "this check is really pointless");
 
 namespace codesearch {
 
 class NGram {
  public:
+
+  const static std::size_t ngram_size = 3;
+
   NGram() = delete;
 
   explicit NGram(const char *ngram) {
     // can't strlen the char*, since null bytes are valid
-    memcpy(data_.buf, ngram, 3);
-    data_.buf[3] = '\0';
+    memcpy(data_.buf, ngram, ngram_size);
+    data_.buf[ngram_size] = '\0';
   }
 
 
   explicit NGram(const std::string &ngram) {
-    assert(ngram.size() == 3);
-    memcpy(data_.buf, ngram.data(), 3);
-    data_.buf[3] = '\0';
+    assert(ngram.size() == ngram_size);
+    memcpy(data_.buf, ngram.data(), ngram_size);
+    data_.buf[ngram_size] = '\0';
   }
 
   NGram(const NGram &other) {
@@ -53,27 +58,27 @@ class NGram {
   // despite rule of three, default dtor is OK
 
   inline bool operator<(const NGram &other) const {
-    return data_.num < other.data_.num;
+    return num() < other.num();
   }
 
   inline bool operator<(const char *other) const {
-    return memcmp(data_.buf, other, 3) < 0;
+    return memcmp(data_.buf, other, ngram_size) < 0;
   }
 
   inline bool operator<(const std::string &other) const {
-    return memcmp(data_.buf, other.data(), 3) < 0;
+    return memcmp(data_.buf, other.data(), ngram_size) < 0;
   }
 
   inline bool operator<=(const NGram &other) const {
-    return data_.num <= other.data_.num;
+    return num() <= other.num();
   }
 
   inline bool operator<=(const char *other) const {
-    return memcmp(data_.buf, other, 3) <= 0;
+    return memcmp(data_.buf, other, ngram_size) <= 0;
   }
 
   inline bool operator<=(const std::string &other) const {
-    return memcmp(data_.buf, other.data(), 3) <= 0;
+    return memcmp(data_.buf, other.data(), ngram_size) <= 0;
   }
 
   inline bool operator==(const NGram &other) const {
@@ -81,11 +86,11 @@ class NGram {
   }
 
   inline bool operator==(const char *other) const {
-    return memcmp(data_.buf, other, 3) == 0;
+    return memcmp(data_.buf, other, ngram_size) == 0;
   }
 
   inline bool operator==(const std::string &other) const {
-    return memcmp(data_.buf, other.data(), 3) == 0;
+    return memcmp(data_.buf, other.data(), ngram_size) == 0;
   }
 
   inline bool operator!=(const NGram &other) const {
@@ -93,44 +98,42 @@ class NGram {
   }
 
   inline bool operator!=(const char *other) const {
-    return memcmp(data_.buf, other, 3) != 0;
+    return memcmp(data_.buf, other, ngram_size) != 0;
   }
 
   inline bool operator!=(const std::string &other) const {
-    return memcmp(data_.buf, other.data(), 3) != 0;
+    return memcmp(data_.buf, other.data(), ngram_size) != 0;
   }
 
   inline bool operator>=(const NGram &other) const {
-    return data_.num >= other.data_.num;
+    return num() >= other.num();
   }
 
   inline bool operator>=(const char *other) const {
-    return memcmp(data_.buf, other, 3) >= 0;
+    return memcmp(data_.buf, other, ngram_size) >= 0;
   }
 
   inline bool operator>=(const std::string &other) const {
-    return memcmp(data_.buf, other.data(), 3) >= 0;
+    return memcmp(data_.buf, other.data(), ngram_size) >= 0;
   }
 
   inline bool operator>(const NGram &other) const {
-    return data_.num > other.data_.num;
+    return num() > other.num();
   }
 
   inline bool operator>(const char *other) const {
-    return memcmp(data_.buf, other, 3) > 0;
+    return memcmp(data_.buf, other, ngram_size) > 0;
   }
 
   inline bool operator>(const std::string &other) const {
-    return memcmp(data_.buf, other.data(), 3) > 0;
+    return memcmp(data_.buf, other.data(), ngram_size) > 0;
   }
 
   // Accessors
   const char* data() const { return data_.buf; }
   const char* c_str() const { return data_.buf; }
-  std::string string() const { return std::string(data_.buf, 3); }
-  std::uint32_t num() const { return data_.num; }
-
-  const static std::size_t ngram_size = 3;
+  std::string string() const { return std::string(data_.buf, ngram_size); }
+  std::uint32_t num() const { return be32toh(data_.num); }
 
  private:
   union {
@@ -143,6 +146,13 @@ class NGram {
 
 static_assert(sizeof(NGram) == sizeof(std::uint32_t),
               "compiler generating bad NGram code, naughty");
+}  // namespace codesearch
+
+namespace std {
+inline ostream& operator<<(ostream &os, const codesearch::NGram &ngram) {
+  os << ngram.string();
+  return os;
 }
+}  // namespace std
 
 #endif  // SRC_NGRAM_H_

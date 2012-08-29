@@ -5,6 +5,7 @@
 #define SRC_SSTABLE_READER_H_
 
 #include "./index.pb.h"
+#include "./ngram.h"
 
 #include <cstring>
 #include <string>
@@ -18,7 +19,7 @@ class SSTableReader {
 
   // We implement a copy constructor so we can create a std::vector of
   // SSTableReader objects in the NGramIndexReader. No other copying
-  // should be permitted, however.
+  // should be happening, however.
   SSTableReader(const SSTableReader &other)
       :name_(other.name_), mmap_addr_(other.mmap_addr_), hdr_(other.hdr_),
        key_size_(other.key_size_), pad_(nullptr) {
@@ -33,9 +34,9 @@ class SSTableReader {
   // Checks that a given needle is within the min/max bounds for this table.
   bool CheckMinMaxBounds(const char *needle, std::size_t *lower_bound) const;
 
-  bool Find(const char *needle, std::string *result) const;
   bool Find(std::uint64_t needle, std::string *result) const;
   bool Find(std::string needle, std::string *result) const;
+  bool Find(const NGram &ngram, std::string *result) const;
 
   // When searching for multiple needles (e.g. as in a SQL "IN"
   // query), an optimization that can be done is to search for the
@@ -43,8 +44,6 @@ class SSTableReader {
   // lower bound from the previous term. This optimization is applied
   // in index_reader.cc, and is the motivation for the FindWithBounds
   // methods.
-  bool FindWithBounds(const char *needle, std::string *result,
-                      std::size_t *lower_bound) const;
   bool FindWithBounds(const char *needle, std::size_t needle_size,
                       std::string *result, std::size_t *lower_bound) const;
 
@@ -88,6 +87,12 @@ class SSTableReader {
 
   // pad a search key
   void PadNeedle(std::string *needle) const;
+
+  // The internal version of FindWithBounds; since the needle has to
+  // be properly padded, this version is made private (i.e. purely to
+  // ensure that proper padding has been done).
+  bool FindWithBounds(const char *needle, std::string *result,
+                      std::size_t *lower_bound) const;
 
   inline std::size_t lower_bound() const { return 0; }
   inline std::size_t upper_bound() const { return hdr_.num_keys(); }

@@ -12,5 +12,8 @@ extern const std::string default_index_directory;
 
 // The default RPC port
 extern const std::uint16_t default_rpc_port;
+
+// The default search strategy
+extern const std::string default_strategy;
 }
 #endif
