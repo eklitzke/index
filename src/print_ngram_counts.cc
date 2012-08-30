@@ -43,10 +43,14 @@ int main(int argc, char **argv) {
   std::cout << "distinct ngrams:   " << counts.total_ngrams() << "\n";
   std::cout << "total ngram count: " << counts.total_count() << "\n\n";
 
+  std::uint64_t accum = 0;
   double total_count = static_cast<double>(counts.total_count());
   for (const auto &ngram : counts.ngram_counts()) {
-    printf("%-10lu  %1.6f%%   %s\n", ngram.count(),
-           100 * static_cast<double>(ngram.count()) / total_count,
+    std::uint64_t count = ngram.count();
+    accum += count;
+    printf("%-10lu  %1.6f%%   %1.6f%%   %s\n", count,
+           100 * static_cast<double>(count) / total_count,
+           100 * static_cast<double>(accum) / total_count,
            codesearch::PrintBinaryString(ngram.ngram()).c_str());
   }
   return 0;
