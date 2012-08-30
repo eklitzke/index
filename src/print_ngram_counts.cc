@@ -40,8 +40,14 @@ int main(int argc, char **argv) {
 
   codesearch::NGramCounts counts;
   counts.ParseFromIstream(&ifs);
+  std::cout << "distinct ngrams:   " << counts.total_ngrams() << "\n";
+  std::cout << "total ngram count: " << counts.total_count() << "\n\n";
+
+  double total_count = static_cast<double>(counts.total_count());
   for (const auto &ngram : counts.ngram_counts()) {
-    printf("%-10lu%s\n", ngram.count(), codesearch::PrintBinaryString(ngram.ngram()).c_str());
+    printf("%-10lu  %1.6f%%   %s\n", ngram.count(),
+           100 * static_cast<double>(ngram.count()) / total_count,
+           codesearch::PrintBinaryString(ngram.ngram()).c_str());
   }
   return 0;
 }

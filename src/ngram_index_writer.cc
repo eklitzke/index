@@ -21,6 +21,7 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
      lines_index_(index_directory, "lines", shard_size),
      ngram_size_(ngram_size), num_vals_(0), max_threads_(max_threads),
      threads_running_(0) {
+  assert(ngram_size == NGram::ngram_size);
   index_writer_.Initialize();
   index_writer_.SetKeyType(IndexConfig_KeyType_STRING);
 }
@@ -94,16 +95,16 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
 
   // We have all of the lines (in memory!) -- generate a map of type
   // ngram -> [position_id]
-  std::map<std::string, std::vector<std::uint64_t> > ngrams_map;
+  std::map<NGram, std::vector<std::uint64_t> > ngrams_map;
   for (const auto &item : positions_map) {
     const uint64_t position_id = item.first;
     const std::string &line = item.second;
     if (line.size() < ngram_size_) {
       continue;
     }
-    std::set<std::string> seen_ngrams;
+    std::set<NGram> seen_ngrams;
     for (std::string::size_type i = 0; i <= line.size() - ngram_size_; i++) {
-      std::string ngram = line.substr(i, ngram_size_);
+      NGram ngram = NGram(line.substr(i, ngram_size_));
       auto pos = seen_ngrams.lower_bound(ngram);
       if (pos == seen_ngrams.end() || *pos != ngram) {
         const auto &map_item = ngrams_map.lower_bound(ngram);
@@ -137,9 +138,8 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
   Notify();
 }
 
-void NGramIndexWriter::Add(const std::string &ngram,
+void NGramIndexWriter::Add(const NGram &ngram,
                            const std::vector<std::uint64_t> &vals) {
-  assert(ngram.size() == ngram_size_);
   const auto it = lists_.lower_bound(ngram);
   if (it != lists_.end() && it->first == ngram) {
     std::vector<std::uint64_t> &ngram_vals = it->second;
@@ -175,7 +175,7 @@ void NGramIndexWriter::MaybeRotate(bool force) {
         val_count++;
       }
       counter->UpdateCount(it.first, val_count);
-      index_writer_.Add(it.first, ngram_val);
+      index_writer_.Add(it.first.string(), ngram_val);
     }
     index_writer_.Rotate();
     num_vals_ = 0;

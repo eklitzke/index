@@ -10,19 +10,30 @@
 #include <vector>
 
 #include "./index.pb.h"
+#include "./ngram.h"
 
 namespace codesearch {
 class NGramCounter {
  public:
   static NGramCounter* Instance();
 
-  void UpdateCount(const std::string &ngram, std::size_t count);
+  // Update the count for an NGram
+  void UpdateCount(const NGram &ngram, std::uint64_t count);
 
+  // Get the reverse sorted counts, that is, the map of {ngram: count}
+  // ordered by most common ngram first.
   NGramCounts ReverseSortedCounts();
+
+  // Get the total count of all ngram counts, i.e. this is like
+  // sum(counts_.values()).
+  std::uint64_t TotalCount();
+
+  // Get the total number of ngrams, i.e. this is like len(counts_.keys())
+  std::uint64_t TotalNGrams();
 
  private:
   std::mutex mutex_;
-  std::map<std::string, std::size_t> counts_;
+  std::map<NGram, std::uint64_t> counts_;
 
   NGramCounter() {}
 };

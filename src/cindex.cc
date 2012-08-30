@@ -130,6 +130,8 @@ int main(int argc, char **argv) {
                 std::ofstream::out);
   codesearch::NGramCounter *counter = codesearch::NGramCounter::Instance();
   codesearch::NGramCounts counts = counter->ReverseSortedCounts();
+  counts.set_total_count(counter->TotalCount());
+  counts.set_total_ngrams(counter->TotalNGrams());
   counts.SerializeToOstream(&ngram_counts);
   std::cout << "done indexing" << std::endl;
   return 0;

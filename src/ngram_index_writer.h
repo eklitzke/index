@@ -6,6 +6,7 @@
 
 #include "./autoincrement_index_writer.h"
 #include "./index_writer.h"
+#include "./ngram.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -30,7 +31,7 @@ class NGramIndexWriter {
   AutoIncrementIndexWriter files_index_;
   AutoIncrementIndexWriter lines_index_;
 
-  std::map<std::string, std::vector<std::uint64_t> > lists_;
+  std::map<NGram, std::vector<std::uint64_t> > lists_;
   const std::size_t ngram_size_;
   std::size_t num_vals_;
 
@@ -44,7 +45,7 @@ class NGramIndexWriter {
                      const std::string &dir_name,
                      const std::string &file_name);
 
-  void Add(const std::string &ngram, const std::vector<std::uint64_t> &vals);
+  void Add(const NGram &ngram, const std::vector<std::uint64_t> &vals);
 
   // Estimate the size of the index that will be written
   std::size_t EstimateSize();
