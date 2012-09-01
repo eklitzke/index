@@ -22,7 +22,8 @@ class SSTableReader {
   // should be happening, however.
   SSTableReader(const SSTableReader &other)
       :name_(other.name_), mmap_addr_(other.mmap_addr_), hdr_(other.hdr_),
-       key_size_(other.key_size_), pad_(nullptr) {
+       use_snappy_(other.use_snappy_), key_size_(other.key_size_),
+       pad_(nullptr) {
     pad_ = new char[key_size_];
     memset(pad_, 0, key_size_);
   }

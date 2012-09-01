@@ -323,6 +323,7 @@ bool NGramIndexReader::GetCandidates(const NGram &ngram,
 
   NGramValue ngram_val;
   ngram_val.ParseFromString(db_read);
+  assert(ngram_val.position_ids_size() > 0);
   std::uint64_t posting_val = 0;
   for (int i = 0; i < ngram_val.position_ids_size(); i++) {
     std::uint64_t delta = ngram_val.position_ids(i);
