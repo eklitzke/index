@@ -45,7 +45,6 @@ void IndexWriter::EnsureSSTable() {
     std::string name = GetPathName(
         "shard_" + boost::lexical_cast<std::string>(shard_num_));
     sstable_ = new SSTableWriter(name, key_size_);
-    sstable_->Initialize();
   }
 }
 

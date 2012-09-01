@@ -21,8 +21,9 @@ enum class WriterState : std::uint8_t {
 
 class SSTableWriter {
  public:
-  SSTableWriter(const std::string &name, std::size_t key_size);
-  void Initialize();
+  SSTableWriter(const std::string &name,
+                std::size_t key_size,
+                bool use_snappy = true);
 
   // Add a key/value to the database
   void Add(const std::string &key, const std::string &val);
@@ -42,6 +43,9 @@ class SSTableWriter {
  private:
   // The name of the file
   const std::string name_;
+
+  // Whether or not we're compressing values with snappy.
+  const bool use_snappy_;
 
   // The size of a key in the index. The index is a sequence of
   // (key_size_, sizeof(std::uint64_t)) pairs.

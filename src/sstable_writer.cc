@@ -12,19 +12,17 @@
 
 namespace codesearch {
 SSTableWriter::SSTableWriter(const std::string &name,
-                             std::size_t key_size)
-    :name_(name), state_(WriterState::UNINITIALIZED), index_size_(0),
-     data_size_(0), num_keys_(0) {
+                             std::size_t key_size,
+                             bool use_snappy)
+    :name_(name), use_snappy_(use_snappy), state_(WriterState::UNINITIALIZED),
+     index_size_(0), data_size_(0), num_keys_(0) {
   std::size_t sizediff = key_size % sizeof(std::size_t);
   if (sizediff != 0) {
     key_size += sizeof(std::size_t) - sizediff;
   }
   key_size_ = key_size;
   last_key_ = std::string(key_size, '\0');
-}
 
-void SSTableWriter::Initialize() {
-  assert(state_ == WriterState::UNINITIALIZED);
   idx_out_.open(name_ + ".idx",std::ofstream::binary | std::ofstream::trunc |
                 std::ofstream::out);
   data_out_.open(name_ + ".data", std::ofstream::binary |
@@ -55,12 +53,12 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
   assert(!idx_out_.fail() && !idx_out_.eof());
   index_size_ += key_size_ + sizeof(std::uint64_t);
 
-#ifdef USE_SNAPPY
   std::string compress_data;
-  snappy::Compress(val.c_str(), val.size(), &compress_data);
-#else
-  const std::string &compress_data = val;
-#endif
+  if (use_snappy_) {
+    snappy::Compress(val.c_str(), val.size(), &compress_data);
+  } else {
+    compress_data = val;
+  }
 
   std::string data_size = Uint64ToString(compress_data.size());
   data_out_.write(data_size.c_str(), sizeof(std::uint64_t));
@@ -126,6 +124,7 @@ void SSTableWriter::Merge() {
   header.set_num_keys(num_keys_);
   header.set_index_offset(0);
   header.set_data_offset(0);
+  header.set_uses_snappy(use_snappy_);
 
   std::uint64_t header_size = header.ByteSize();
   std::string header_size_str = Uint64ToString(header_size);
