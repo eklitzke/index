@@ -5,9 +5,7 @@
 #include "./util.h"
 #include "./index.pb.h"
 
-#ifdef USE_SNAPPY
 #include <snappy.h>
-#endif
 #include <cstring>
 
 namespace codesearch {

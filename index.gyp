@@ -36,7 +36,6 @@
                    ],
         'defines': [
             '_GNU_SOURCE',
-            'USE_SNAPPY',
             'USE_THREADS',
             'USE_MADV_RANDOM',
         ],

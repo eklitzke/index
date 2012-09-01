@@ -13,9 +13,7 @@
 #include <memory>
 #include <iostream>
 
-#ifdef USE_SNAPPY
 #include <snappy.h>
-#endif
 #include <sys/mman.h>
 
 namespace codesearch {
@@ -39,6 +37,9 @@ SSTableReader::SSTableReader(const std::string &name)
 
   // point the mmap at the start of the index
   mmap_addr_ += sizeof(std::uint64_t) + hdr_size + padding.size();
+
+  // are we using snappy?
+  use_snappy_ = hdr_.uses_snappy();
 
   key_size_ = hdr_.key_size();
   pad_ = new char[key_size_];
@@ -88,12 +89,12 @@ bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
       const char *data_loc = (reinterpret_cast<const char*>(raw_size) +
                               sizeof(std::uint64_t));
 
-#ifdef USE_SNAPPY
-      assert(snappy::Uncompress(data_loc, data_size, result) == true);
-      assert(result->size() != 0);
-#else
-      result->assign(data_loc, data_size);
-#endif
+      if (use_snappy_) {
+        assert(snappy::Uncompress(data_loc, data_size, result) == true);
+        assert(result->size() != 0);
+      } else {
+        result->assign(data_loc, data_size);
+      }
       return true;
      }
   }

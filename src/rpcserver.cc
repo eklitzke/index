@@ -5,9 +5,7 @@
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 #include <glog/logging.h>
-#ifdef USE_SNAPPY
 #include <snappy.h>
-#endif  // USE_SNAPPY
 
 #include "./ngram_index_reader.h"
 #include "./index.pb.h"
@@ -154,7 +152,9 @@ void IndexReaderConnection::Search(std::size_t size) {
   }
   response.set_time_elapsed(timer.elapsed_ms());
 
-#ifdef USE_SNAPPY
+  // FIXME, the #if is for snappy or no-snappy. It's probably best to
+  // just standardize and say the wire protocol *must* use snappy
+#if 1
   std::string uncompressed_response, compressed_response;
   response.SerializeToString(&uncompressed_response);
   snappy::Compress(uncompressed_response.data(), uncompressed_response.size(),

@@ -79,6 +79,9 @@ class SSTableReader {
   // the header read from the index
   SSTableHeader hdr_;
 
+  // whether or not we're using snappy
+  bool use_snappy_;
+
   // the key size
   std::size_t key_size_;
 
