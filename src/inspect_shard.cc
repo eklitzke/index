@@ -56,10 +56,14 @@ int main(int argc, char **argv) {
   assert(memcmp(
       hdr.min_value().data(), hdr.max_value().data(), hdr.key_size()) <= 0);
 
-  std::cout << "key_size   = " << hdr.key_size() << std::endl;
-  std::cout << "num_keys   = " << hdr.num_keys() << std::endl;
-  std::cout << "index_size = " << hdr.index_size() << std::endl;
-  std::cout << "data_size  = " << hdr.data_size() << std::endl;
+  std::cout << "key_size     = " << hdr.key_size() << "\n";
+  std::cout << "num_keys     = " << hdr.num_keys() << "\n";
+  std::cout << "index_size   = " << hdr.index_size() << "\n";
+  std::cout << "data_size    = " << hdr.data_size() << "\n";
+  std::cout << "index_offset = " << hdr.index_offset() << "\n";
+  std::cout << "data_offset  = " << hdr.data_offset() << "\n";
+  std::cout << "uses_snappy  = " << (hdr.uses_snappy() ? "true" : "false") <<
+      "\n";
 
   // Now try to print the min/max value. To do this correctly we need
   // to read the config file in the containing directory, to get a
@@ -81,12 +85,12 @@ int main(int argc, char **argv) {
     std::array<std::uint8_t, sizeof(std::uint64_t)> min_value, max_value;
     memcpy(min_value.data(), hdr.min_value().data(), 8);
     memcpy(max_value.data(), hdr.max_value().data(), 8);
-    std::cout << "min_value  = " << codesearch::ToUint64(min_value) << "\n";
-    std::cout << "max_value  = " << codesearch::ToUint64(max_value) << "\n";
+    std::cout << "min_value    = " << codesearch::ToUint64(min_value) << "\n";
+    std::cout << "max_value    = " << codesearch::ToUint64(max_value) << "\n";
   } else {
-    std::cout << "min_value  = ";
+    std::cout << "min_value    = ";
     std::cout << codesearch::PrintBinaryString(hdr.min_value()) << std::endl;
-    std::cout << "max_value  = ";
+    std::cout << "max_value    = ";
     std::cout << codesearch::PrintBinaryString(hdr.max_value()) << std::endl;
   }
   return 0;

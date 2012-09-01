@@ -124,18 +124,31 @@ void SSTableWriter::Merge() {
   header.set_max_value(last_key_);
   header.set_key_size(key_size_);
   header.set_num_keys(num_keys_);
+  header.set_index_offset(0);
+  header.set_data_offset(0);
 
   std::uint64_t header_size = header.ByteSize();
   std::string header_size_str = Uint64ToString(header_size);
+
   out.write(header_size_str.c_str(), header_size_str.size());
   header.SerializeToOstream(&out);
+  std::streampos header_end_offset = out.tellp();
+  assert(header_end_offset != -1);
   std::string padding = GetWordPadding(header_size);
   out.write(padding.c_str(), padding.size());
 
-  WriteMergeContents(&idx, &out);
-  WriteMergeContents(&data, &out);
+  std::uint64_t index_offset = WriteMergeContents(&idx, &out);
+  std::uint64_t data_offset = WriteMergeContents(&data, &out);
   assert(boost::filesystem::remove(name_ + ".idx"));
   assert(boost::filesystem::remove(name_ + ".data"));
+
+  header.set_index_offset(index_offset);
+  header.set_data_offset(data_offset);
+  std::uint64_t new_header_size = header.ByteSize();
+  assert(header_size == new_header_size);
+  out.seekp(header_size_str.size(), std::ostream::beg);
+  header.SerializeToOstream(&out);
+  assert(out.tellp() == header_end_offset);
 }
 
 std::uint64_t SSTableWriter::FileSize(std::ifstream *is, std::ofstream *os) {
@@ -145,7 +158,12 @@ std::uint64_t SSTableWriter::FileSize(std::ifstream *is, std::ofstream *os) {
   return file_size;
 }
 
-void SSTableWriter::WriteMergeContents(std::ifstream *is, std::ofstream *os) {
+std::uint64_t SSTableWriter::WriteMergeContents(std::ifstream *is,
+                                                std::ofstream *os) {
+  std::streampos position = os->tellp();
+  assert(position != -1);
+  std::uint64_t offset = static_cast<std::uint64_t>(position);
+
   const std::streamsize buf_size = 1<<20;
   std::unique_ptr<char[]> buf(new char[static_cast<std::size_t>(buf_size)]);
   while (true) {
@@ -156,5 +174,6 @@ void SSTableWriter::WriteMergeContents(std::ifstream *is, std::ofstream *os) {
     }
     assert(!is->fail());
   }
+  return offset;
 }
 }  // namespace codesearch

@@ -73,7 +73,7 @@ class SSTableWriter {
   std::uint64_t num_keys_;
 
   std::uint64_t FileSize(std::ifstream *is, std::ofstream *os);
-  void WriteMergeContents(std::ifstream *is, std::ofstream *os);
+  std::uint64_t WriteMergeContents(std::ifstream *is, std::ofstream *os);
 };
 
 }  // namespace codesearch

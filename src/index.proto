@@ -63,7 +63,7 @@ message IndexConfig {
 //  - data
 //
 // The pad-size is implicit, it's whatever value 8-byte aligns the
-// SSTableHeader. To make sure that the SSTable is "valid",
+// SSTableHeader (). To make sure that the SSTable is "valid",
 // i.e. completely written, you check that the size of the file is 8 +
 // sizeof(SStableHeader) + pad_size + index_size + data_size
 
@@ -74,6 +74,26 @@ message SSTableHeader {
   required bytes max_value = 4;
   required uint64 key_size = 5;
   required uint64 num_keys = 6;
+  required fixed64 index_offset = 7;  // must be fixed to ensure constant header size
+  required fixed64 data_offset = 8;  // must be fixed to ensure constant header size
+  optional bool uses_snappy = 9 [ default = true ];
+}
+
+// A value in the data section of the index is represented by an
+// SSTableValue. The actual format is 8-byte BE integer specifying the
+// size of the SSTableValue message, then the SSTableValue message,
+// and then possibly padding to make things word-aligned (whether
+// padding exists or not is transparent).
+//
+// The data field is the raw data stored as the value, which is
+// presumably a protobuf (the type is unspecified). The optional
+// fields next_field and prev_field point to the next and previous
+// SSTableValues in the index (actually, to the offset of the 8-byte
+// BE integer specifying the size).
+message SSTableValue {
+  required bytes data = 1;
+  optional uint64 next_field = 2;
+  optional uint64 prev_field = 3;
 }
 
 message FileValue {
