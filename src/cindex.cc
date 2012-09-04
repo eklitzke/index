@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   desc.add_options()
       ("help,h", "produce help message")
       ("replace,r", "replace the directory contents")
-      ("ngram-size", po::value<int>()->default_value(3), "ngram size")
+      ("ngram-size", po::value<std::size_t>()->default_value(3), "ngram size")
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
       ("shard-size", po::value<std::size_t>()->default_value(16<<20))
@@ -70,8 +70,7 @@ int main(int argc, char **argv) {
     boost::filesystem::create_directories(db_path);
   }
 
-  std::size_t ngram_size = static_cast<std::size_t>(vm["ngram-size"].as<int>());
-
+  std::size_t ngram_size = vm["ngram-size"].as<std::size_t>();
   std::size_t shard_size = vm["shard-size"].as<std::size_t>();
   std::size_t num_threads = vm["threads"].as<std::size_t>();
 
