@@ -5,12 +5,14 @@
 #define SRC_UTIL_H_
 
 #include <array>
-#include <string>
 #include <cassert>
 #include <chrono>
+#include <string>
 
 #include <endian.h>
 #include <glog/logging.h>
+
+#include "./index.pb.h"
 
 namespace codesearch {
 std::string ConstructShardPath(const std::string &index_directory,
@@ -19,7 +21,14 @@ std::string ConstructShardPath(const std::string &index_directory,
 
 inline std::string Uint64ToString(std::uint64_t val) {
   const std::uint64_t be_val = htobe64(val);
-  return std::string(reinterpret_cast<const char *>(&be_val), 8);
+  return std::string(
+      reinterpret_cast<const char *>(&be_val), sizeof(std::uint64_t));
+}
+
+inline std::string Uint32ToString(std::uint32_t val) {
+  const std::uint32_t be_val = htobe32(val);
+  return std::string(
+      reinterpret_cast<const char *>(&be_val), sizeof(std::uint32_t));
 }
 
 // N.B. using a C-style array or std::array is preferred, because the
@@ -43,6 +52,34 @@ inline std::uint64_t ToUint64(
   return be64toh(*reinterpret_cast<const std::uint64_t*>(arr.data()));
 }
 
+inline std::uint32_t ReadUint32(const char *addr) {
+  std::uint32_t val;
+  memcpy(&val, addr, sizeof(val));
+  return be32toh(val);
+}
+
+inline std::uint64_t ReadUint64(const char *addr) {
+  std::uint64_t val;
+  memcpy(&val, addr, sizeof(val));
+  return be64toh(val);
+}
+
+inline std::uint32_t ReadUint32(std::istream *is) {
+  std::uint32_t val;
+  char buf[sizeof(val)];
+  is->read(buf, sizeof(buf));
+  memcpy(&val, buf, sizeof(buf));
+  return be32toh(val);
+}
+
+inline std::uint64_t ReadUint64(std::istream *is) {
+  std::uint64_t val;
+  char buf[sizeof(val)];
+  is->read(buf, sizeof(buf));
+  memcpy(&val, buf, sizeof(buf));
+  return be64toh(val);
+}
+
 // Get padding to word align something of some size.
 inline std::string GetWordPadding(std::size_t size) {
   std::size_t mantissa = size % 8;
@@ -51,6 +88,14 @@ inline std::string GetWordPadding(std::size_t size) {
   }
   return "";
 }
+
+
+// Get the size of a file
+std::uint64_t FileSize(std::istream *is);
+
+// Read the header out of a shard, and sanity check it.
+SSTableHeader ReadHeader(std::istream *is);
+
 
 // Initialize glog
 inline void InitializeLogging(const char *program_name) {

@@ -133,7 +133,7 @@ std::string GetLineBackwards(const char *buf, std::size_t *position) {
 #if 0
   if (*position == 1) {
     *position = 0;
-    return std::string();
+    return std::string{};
   }
 #endif
   std::string line;

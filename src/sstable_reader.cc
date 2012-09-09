@@ -35,70 +35,12 @@ SSTableReader::SSTableReader(const std::string &name)
   assert(mmap_size == sizeof(std::uint64_t) + hdr_size + padding.size() +
          hdr_.index_size() + hdr_.data_size());
 
-  // point the mmap at the start of the index
-  mmap_addr_ += sizeof(std::uint64_t) + hdr_size + padding.size();
-
   // are we using snappy?
   use_snappy_ = hdr_.uses_snappy();
 
   key_size_ = hdr_.key_size();
   pad_ = new char[key_size_];
   memset(pad_, 0, key_size_);
-}
-
-bool SSTableReader::CheckMinMaxBounds(const char *needle,
-                                      std::size_t *lower_bound) const {
-  // First we check that the needle being searched for is within the
-  // min/max values stored in this SSTable.
-  if (memcmp(static_cast<const void *>(needle),
-             static_cast<const void *>(min_key().data()),
-             key_size_) < 0) {
-    return false;
-  } else if (memcmp(static_cast<const void *>(needle),
-                    static_cast<const void *>(max_key().data()),
-                    key_size_) > 0) {
-    *lower_bound = upper_bound() + 1;
-    return false;
-  }
-  return true;
-}
-
-bool SSTableReader::FindWithBounds(const char *needle, std::string *result,
-                                   std::size_t *lower_bound) const {
-  // Check that the key is within the min/max bounds.
-  if (!CheckMinMaxBounds(needle, lower_bound)) {
-    return false;
-  }
-  std::size_t upper = upper_bound();
-  while (*lower_bound <= upper) {
-    std::size_t pos = (upper + *lower_bound) / 2;
-    const char *key = mmap_addr_ + pos * (key_size_ + sizeof(std::uint64_t));
-    int cmpresult = memcmp(needle, key, key_size_);
-    if (cmpresult < 0) {
-      upper = pos - 1;
-    } else if (cmpresult > 0) {
-      *lower_bound = pos + 1;
-    } else {
-      const std::uint64_t *position = reinterpret_cast<const std::uint64_t*>(
-          key + key_size_);
-      std::uint64_t data_offset = be64toh(*position);
-      const std::uint64_t *raw_size = reinterpret_cast<const std::uint64_t*>(
-          mmap_addr_ + hdr_.index_size() + data_offset);
-      std::uint64_t data_size = be64toh(*raw_size);
-      assert(data_size != 0);
-      const char *data_loc = (reinterpret_cast<const char*>(raw_size) +
-                              sizeof(std::uint64_t));
-
-      if (use_snappy_) {
-        assert(snappy::Uncompress(data_loc, data_size, result) == true);
-        assert(result->size() != 0);
-      } else {
-        result->assign(data_loc, data_size);
-      }
-      return true;
-     }
-  }
-  return false;
 }
 
 bool SSTableReader::FindWithBounds(const char *needle,

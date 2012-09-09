@@ -36,8 +36,8 @@ class SSTableWriter {
   void Merge();
 
   // Get the current size of the table, as if it were merged
-  std::size_t Size() const {
-    return sizeof(std::uint64_t) * 2 + index_size_ + data_size_;
+  std::size_t Size() {
+    return sizeof(std::uint64_t) * 2 + index_size() + data_size();
   }
 
  private:
@@ -67,17 +67,25 @@ class SSTableWriter {
   // user doesn't accidentally write keys out of order.
   std::string last_key_;
 
-  // number of bytes that have been written to the index
-  std::uint64_t index_size_;
-
-  // number of bytes that have been written to the data section
-  std::uint64_t data_size_;
-
   // the numbre of keys in the table
   std::uint64_t num_keys_;
 
-  std::uint64_t FileSize(std::ifstream *is, std::ofstream *os);
-  std::uint64_t WriteMergeContents(std::ifstream *is, std::ofstream *os);
+  std::uint64_t index_size() {
+    std::streampos pos = idx_out_.tellp();
+    assert(pos >= 0);
+    return static_cast<std::uint64_t>(pos);
+  }
+
+  std::uint64_t data_size() {
+    std::streampos pos = data_out_.tellp();
+    assert(pos >= 0);
+    return static_cast<std::uint64_t>(pos);
+  }
+
+  // Write a value out to the data part of the index
+  void AddValue(const std::string &val);
+
+  void WriteMergeContents(std::ifstream *is, std::ofstream *os);
 };
 
 }  // namespace codesearch
