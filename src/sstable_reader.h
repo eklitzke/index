@@ -21,10 +21,11 @@ static_assert(sizeof(std::uint64_t) == 8, "Something's whack with uint64_t");
 namespace codesearch {
 
 // This is an implementation of an extremely immutable string class
-// taht does *not* copy the string data. Also, for extra speed, some
-// bassic assertions about sizes are baked into this. And of course,
-// if the thing owning the string data goes away, the FixedString will
-// no longer be valid. So you must use this class *very* carefully.
+// that does *not* copy the string data. Also, for extra speed, some
+// basic assertions about sizes are not checked unless compiling with
+// ENABLE_SLOW_ASSERTS (which inhibit inlining). And of course, if the
+// thing owning the string data goes away, the FixedString will no
+// longer be valid. So you must use this class *very* carefully.
 //
 // The reason we create this class is because searching the index
 // using the C++ iterator API requires that we create lots of
@@ -37,8 +38,7 @@ namespace codesearch {
 //
 // Since the index is mmapped for the entire of a search (and the
 // strings that get compared to the iterators are already known to be
-// appropriately padded), it's safe to not copy string data, which is
-// why we can use this technique.
+// appropriately padded), it's safe to not copy string data.
 class FixedString {
  public:
   FixedString() = delete;
@@ -77,10 +77,42 @@ class FixedString {
     return memcmp(addr_, other.data(), size_) < 0;
   }
 
+  inline const char* addr() const { return addr_; }
+  inline std::size_t size() const { return size_; }
+
  private:
   const char *addr_;
   std::size_t size_;
 };
+
+// Overloads for comparing std::string to FixedString, when the
+// std::string is the lhs of the comparison expression.
+//
+// This is needed, for instance, to make std::upper_bound work for
+// searching SSTableReader objects, and is generally useful when
+// checking the iterator returned by SSTableReader::lower_bound (e.g.,
+// it allows you to write expected == *it instead of being required to
+// write the expression as *it == expected).
+inline bool operator<(const std::string &lhs, const FixedString &rhs) {
+#ifdef ENABLE_SLOW_ASSERTS
+  assert(lhs.size() == rhs.size());
+#endif
+  return memcmp(lhs.data(), rhs.addr(), lhs.size()) < 0;
+}
+
+inline bool operator==(const std::string &lhs, const FixedString &rhs) {
+#ifdef ENABLE_SLOW_ASSERTS
+  assert(lhs.size() == rhs.size());
+#endif
+  return memcmp(lhs.data(), rhs.addr(), lhs.size()) == 0;
+}
+
+inline bool operator!=(const std::string &lhs, const FixedString &rhs) {
+#ifdef ENABLE_SLOW_ASSERTS
+  assert(lhs.size() == rhs.size());
+#endif
+  return memcmp(lhs.data(), rhs.addr(), lhs.size()) != 0;
+}
 
 class SSTableReader {
  public:
@@ -161,11 +193,9 @@ class SSTableReader {
     return std::lower_bound(lower, upper, key);
   }
 
-#if 0
   const iterator upper_bound(const std::string &key) const {
     return std::upper_bound(begin(), end(), key);
   }
-#endif
 
   inline std::uint64_t num_keys() const { return hdr_.num_keys(); }
 
