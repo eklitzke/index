@@ -1,6 +1,7 @@
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
 #include <boost/asio.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 
@@ -13,6 +14,12 @@
 #include "./util.h"
 
 namespace po = boost::program_options;
+
+void HandleBoostError(const boost::system::error_code &error) {
+  if (error) {
+    throw error;
+  }
+}
 
 int main(int argc, char **argv) {
   // Declare the supported options.
@@ -66,62 +73,67 @@ int main(int argc, char **argv) {
   std::size_t search_count = 0;
   codesearch::Timer total_timer;
 
-  while (true) {
-    std::string line;
-    std::getline(*input, line);
-    if (input->fail() || input->eof()) {
-      break;
-    }
-    if (line.empty() || line[0] == '#') {
-      continue;
-    }
-    for (std::string::size_type i = 1; i <= line.size(); i++) {
-      search_count++;
-      std::string query = line.substr(0, i);
-
-      codesearch::RPCRequest request;
-      codesearch::SearchQueryRequest *search_request;
-      search_request = request.mutable_search_query();
-      search_request->set_query(query);
-      search_request->set_limit(limit);
-
-      std::string serialized_req;
-      request.SerializeToString(&serialized_req);
-
-      std::string request_buf = codesearch::Uint64ToString(
-          serialized_req.size());
-      request_buf += serialized_req;
-
-      if (!quiet) {
-        std::cout << query << " " << std::flush;
+  try {
+    while (true) {
+      std::string line;
+      std::getline(*input, line);
+      if (input->fail() || input->eof()) {
+        break;
       }
+      if (line.empty() || line[0] == '#') {
+        continue;
+      }
+      for (std::string::size_type i = 1; i <= line.size(); i++) {
+        search_count++;
+        std::string query = line.substr(0, i);
 
-      codesearch::Timer timer;
-      boost::system::error_code error;
-      boost::asio::write(socket, boost::asio::buffer(request_buf),
-                         boost::asio::transfer_all(), error);
-      assert(!error);
+        codesearch::RPCRequest request;
+        codesearch::SearchQueryRequest *search_request;
+        search_request = request.mutable_search_query();
+        search_request->set_query(query);
+        search_request->set_limit(limit);
 
-      static char response_size[sizeof(std::uint64_t)];
-      std::size_t bytes_read = socket.read_some(
-          boost::asio::buffer(response_size, sizeof(response_size)), error);
-      assert(!error);
-      assert(bytes_read == sizeof(response_size));
+        std::string serialized_req;
+        request.SerializeToString(&serialized_req);
 
-      std::uint64_t response_size_int = codesearch::ToUint64(
-          std::string(response_size, 8));
+        std::string request_buf = codesearch::Uint64ToString(
+            serialized_req.size());
+        request_buf += serialized_req;
 
-      std::unique_ptr<char[]> full_response(new char[response_size_int]);
-      boost::asio::read(
+        if (!quiet) {
+          std::cout << query << " " << std::flush;
+        }
+
+        codesearch::Timer timer;
+        boost::asio::write(socket, boost::asio::buffer(request_buf),
+                           boost::asio::transfer_all());
+
+        static char response_size[sizeof(std::uint64_t)];
+        std::size_t bytes_read = socket.read_some(
+            boost::asio::buffer(response_size, sizeof(response_size)));
+        assert(bytes_read == sizeof(response_size));
+
+        std::uint64_t response_size_int = codesearch::ToUint64(
+            std::string(response_size, 8));
+
+        std::unique_ptr<char[]> full_response(new char[response_size_int]);
+        boost::asio::read(
           socket, boost::asio::buffer(full_response.get(), response_size_int));
 
-      if (!quiet) {
-        if (show_sizes) {
-          std::cout << response_size_int << " ";
+        if (!quiet) {
+          if (show_sizes) {
+            std::cout << response_size_int << " ";
+          }
+          std::cout << timer.elapsed_ms() << std::endl;
         }
-        std::cout << timer.elapsed_ms() << std::endl;
       }
     }
+  } catch (const boost::system::system_error &error) {
+    if (error.code() == boost::asio::error::eof) {
+      std::cerr << "\nserver unexpectedly closed connection!" << std::endl;
+      return 1;
+    }
+    throw;
   }
 
   long total_ms = total_timer.elapsed_ms();
