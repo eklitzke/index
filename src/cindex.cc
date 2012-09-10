@@ -17,6 +17,23 @@
 
 namespace po = boost::program_options;
 
+namespace {
+struct FileTuple {
+  FileTuple(const std::string &c,
+            const std::string &d,
+            const std::string &f)
+      :canonical(c), dir(d), fname(f) {}
+  std::string canonical;
+  std::string dir;
+  std::string fname;
+
+  bool operator<(const FileTuple &other) const {
+    return std::make_tuple(canonical, dir, fname) <
+      std::make_tuple(other.canonical, other.dir, other.fname);
+  }
+};
+}
+
 int main(int argc, char **argv) {
   // Declare the supported options.
   po::options_description desc("Allowed options");
@@ -80,46 +97,55 @@ int main(int argc, char **argv) {
   }
   const std::vector<std::string> src_dirs = vm["src-dir"].as<
     std::vector<std::string > >();
+  std::vector<FileTuple> to_index;
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str, ngram_size, src_dirs[0], true));
+  std::cout << "collecting paths of files to index..." << std::endl;
+  for (const auto &d : src_dirs) {
+    std::string dir = d.substr(0, d.find_last_not_of('/') + 1);
+    std::string match;
+    for (boost::filesystem::recursive_directory_iterator end, it(dir);
+         it != end; ++it) {
+      if (!boost::filesystem::is_regular_file(it->path())) {
+        continue;
+      }
+      const std::string &filepath = it->path().string();
+      boost::system::error_code ec;
+      const std::string canonical = boost::filesystem::canonical(
+          it->path(), ec).string();
+      if (ec) {
+        continue;
+      }
+      if (!codesearch::IsValidUtf8(canonical)) {
+        // Normally filenames on a modern linux system are utf-8 by
+        // convention, but there's nothing that requires this (they
+        // can essentially be any sequence of non-null
+        // characters). Skip files whose names are not a valid utf-8
+        // sequence.
+        std::cout << it->path() << " is not a valid UTF-8 sequence" <<
+            std::endl;
+        continue;
+      }
+      std::string fname = filepath.substr(dir.size(), std::string::npos);
+      fname = fname.substr(fname.find_first_not_of('/'), std::string::npos);
+      if (codesearch::ShouldIndex(filepath)) {
+        to_index.push_back(FileTuple(canonical, dir, fname));
+      } else {
+        std::cout << "skipping " << fname << "\n";
+      }
+    }
+  }
+  std::cout << "sorting " << to_index.size() << "files..." << std::endl;
+  std::sort(to_index.begin(), to_index.end());
   {
+    std::size_t filenum = 1;
     codesearch::NGramIndexWriter ngram_writer(
         db_path_str, ngram_size, shard_size, num_threads);
-
-    for (const auto &d : src_dirs) {
-      std::string dir = d.substr(0, d.find_last_not_of('/') + 1);
-      std::string match;
-      for (boost::filesystem::recursive_directory_iterator end, it(dir);
-           it != end; ++it) {
-        if (!boost::filesystem::is_regular_file(it->path())) {
-          continue;
-        }
-        const std::string &filepath = it->path().string();
-        boost::system::error_code ec;
-        const std::string canonical = boost::filesystem::canonical(
-            it->path(), ec).string();
-        if (ec) {
-          continue;
-        }
-        if (!codesearch::IsValidUtf8(canonical)) {
-          // Normally filenames on a modern linux system are utf-8 by
-          // convention, but there's nothing that requires this (they
-          // can essentially be any sequence of non-null
-          // characters). Skip files whose names are not a valid utf-8
-          // sequence.
-          std::cout << it->path() << " is not a valid UTF-8 sequence" <<
-              std::endl;
-          continue;
-        }
-        std::string fname = filepath.substr(dir.size(), std::string::npos);
-        fname = fname.substr(fname.find_first_not_of('/'), std::string::npos);
-        if (codesearch::ShouldIndex(filepath)) {
-          std::cout << "indexing " << fname << std::endl;
-          ngram_writer.AddFile(canonical, dir, fname);
-        } else {
-          std::cout << "skipping " << fname << std::endl;
-        }
-      }
+    for (const FileTuple &tuple : to_index) {
+      int pct = 100 * filenum / to_index.size();
+      std::cout << "indexing " << filenum++ << "/" << to_index.size() <<
+          " (" << pct << "%) " << tuple.fname << std::endl;
+      ngram_writer.AddFile(tuple.canonical, tuple.dir, tuple.fname);
     }
     std::cout << "finishing database..." << std::endl;
   }
