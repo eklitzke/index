@@ -56,6 +56,13 @@ class FixedString {
     return memcmp(addr_, other.data(), size_) == 0;
   }
 
+  inline bool operator!=(const std::string &other) const {
+#ifdef ENABLE_SLOW_ASSERTS
+    assert(size_ == other.size());
+#endif
+    return memcmp(addr_, other.data(), size_) != 0;
+  }
+
   inline bool operator<(const FixedString &other) const {
 #ifdef ENABLE_SLOW_ASSERTS
     assert(size_ == other.size_);
@@ -99,10 +106,11 @@ class SSTableReader {
     friend class boost::iterator_core_access;
 
    public:
-    key_iterator() = delete;
+    key_iterator() :reader_(nullptr), offset_(0) {}
     key_iterator(const SSTableReader *reader, std::ptrdiff_t off)
         :reader_(reader), offset_(off) {}
 
+    inline const SSTableReader* reader() const { return reader_; }
     inline std::ptrdiff_t offset() const { return offset_; }
     inline std::string value() const {
       return reader_->ReadVal(offset_ * reader_->key_storage());
@@ -147,26 +155,19 @@ class SSTableReader {
     return std::lower_bound(lower, end(), key);
   }
 
+  const iterator lower_bound(const iterator lower,
+                             const iterator upper,
+                             const std::string &key) const {
+    return std::lower_bound(lower, upper, key);
+  }
+
 #if 0
   const iterator upper_bound(const std::string &key) const {
     return std::upper_bound(begin(), end(), key);
   }
 #endif
 
-  inline bool Find(std::uint64_t needle, std::string *result) const {
-    std::string val = Uint64ToString(needle);
-    PadNeedle(&val);
-    return InnerFind(val, result);
-  }
-
-  inline bool Find(std::string needle, std::string *result) const {
-    PadNeedle(&needle);
-    return InnerFind(needle, result);
-  }
-
-  inline bool Find(const NGram &ngram, std::string *result) const {
-    return InnerFind(ngram.padded_string(), result);
-  }
+  inline std::uint64_t num_keys() const { return hdr_.num_keys(); }
 
   inline std::size_t key_size() const { return key_size_; }
 
@@ -190,6 +191,13 @@ class SSTableReader {
     return name_.substr(pos + 1, std::string::npos);
   }
 
+  // pad a search key
+  inline void PadNeedle(std::string *needle) const {
+    if (needle->size() < key_size_) {
+      needle->insert(needle->begin(), key_size_ - needle->size(), '\0');
+    }
+  }
+
 private:
   // the name of the backing file
   const std::string name_;
@@ -205,24 +213,6 @@ private:
 
   // the key size
   std::size_t key_size_;
-
-  // pad a search key
-  inline void PadNeedle(std::string *needle) const {
-    std::uint64_t key_size = hdr_.key_size();
-    if (needle->size() < key_size) {
-      needle->insert(needle->begin(), key_size - needle->size(), '\0');
-   }
-  }
-
-  inline bool InnerFind(const std::string &needle,
-                        std::string *result_string) const {
-    iterator pos = lower_bound(needle);
-    if (*pos == needle) {
-      *result_string = pos.value();
-      return true;
-    }
-    return false;
-  }
 
   inline std::size_t key_storage() const {
     return key_size_ + sizeof(std::uint64_t);

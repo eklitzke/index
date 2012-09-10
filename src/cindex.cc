@@ -23,6 +23,7 @@ struct FileTuple {
             const std::string &d,
             const std::string &f)
       :canonical(c), dir(d), fname(f) {}
+
   std::string canonical;
   std::string dir;
   std::string fname;

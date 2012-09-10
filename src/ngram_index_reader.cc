@@ -308,25 +308,19 @@ bool NGramIndexReader::GetCandidates(const NGram &ngram,
                                      const SSTableReader &reader,
                                      SSTableReader::iterator *lower_bound) {
   assert(candidates->empty());
-  std::string db_read;
-  bool found = false;
+  const std::string padded = ngram.padded_string();
+
+  SSTableReader::iterator it = reader.lower_bound(*lower_bound, padded);
   if (strategy_ == SearchStrategy::LEXICOGRAPHIC_SORT) {
-    const std::string padded = ngram.padded_string();
-    *lower_bound = reader.lower_bound(*lower_bound, padded);
-    if (*lower_bound != reader.end() && **lower_bound == padded) {
-      found = true;
-      db_read = lower_bound->value();
-    }
-  } else {
-    found = reader.Find(ngram, &db_read);
+    *lower_bound = it;
   }
-  LOG(INFO) << "found " << ngram << " is " << found << "\n";
-  if (!found) {
+  if (it == reader.end() || *it != padded) {
+    LOG(INFO) << "did *not* find ngram " << ngram << "\n";
     return false;
   }
 
   NGramValue ngram_val;
-  ngram_val.ParseFromString(db_read);
+  ngram_val.ParseFromString(it.value());
   assert(ngram_val.position_ids_size() > 0);
   std::uint64_t posting_val = 0;
   for (int i = 0; i < ngram_val.position_ids_size(); i++) {

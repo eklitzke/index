@@ -17,8 +17,8 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
                                    std::size_t max_threads)
     :index_writer_(
         index_directory, "ngrams", sizeof(std::uint64_t), shard_size, false),
-     files_index_(index_directory, "files", shard_size),
-     lines_index_(index_directory, "lines", shard_size),
+     files_index_(index_directory, "files"),
+     lines_index_(index_directory, "lines"),
      ngram_size_(ngram_size), num_vals_(0), max_threads_(max_threads),
      threads_running_(0) {
   assert(ngram_size == NGram::ngram_size);

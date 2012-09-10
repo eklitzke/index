@@ -25,8 +25,8 @@ class IndexWriter {
   //  shard_size: size_t, the max size in bytes of each shard
   IndexWriter(const std::string &index_directory,
               const std::string &name,
-              std::size_t key_size = 8,
-              std::size_t shard_size = 16 << 20,
+              std::size_t key_size,
+              std::size_t shard_size,
               bool auto_rotate = true)
       :index_directory_(index_directory), name_(name), key_size_(key_size),
        shard_size_(shard_size), auto_rotate_(auto_rotate), shard_num_(0),

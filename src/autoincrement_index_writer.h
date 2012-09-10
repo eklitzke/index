@@ -14,7 +14,7 @@ class AutoIncrementIndexWriter {
  public:
   AutoIncrementIndexWriter(const std::string &index_directory,
                            const std::string &name,
-                           std::size_t shard_size = 16 << 20)
+                           std::size_t shard_size = UINT32_MAX)
       :index_writer_(index_directory, name, sizeof(std::uint64_t), shard_size),
        val_(0) {
     index_writer_.Initialize();

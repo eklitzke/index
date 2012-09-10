@@ -5,8 +5,8 @@
 #define SRC_INTEGER_INDEX_READER_H_
 
 #include <map>
-#include <memory>
 #include <string>
+#include <vector>
 
 #include "./sstable_reader.h"
 
@@ -14,7 +14,8 @@ namespace codesearch {
 class IntegerIndexReader {
  public:
   IntegerIndexReader(const std::string &index_directory,
-                     const std::string &name);
+                     const std::string &name,
+                     std::size_t savepoints = 256);
 
   // Find a needle. This searches the shards sequentially, and returns
   // early (i.e. on the first shard with the needle). In general, the
@@ -26,7 +27,12 @@ class IntegerIndexReader {
   bool Find(std::uint64_t needle, std::string *result) const;
 
  private:
-  std::map<std::uint64_t, std::unique_ptr<SSTableReader> > shards_;
+  std::vector<SSTableReader> shards_;
+
+  // This is a map of iterators that we use to optimize the Find()
+  // method... see the comments in the .cc file for details.
+  std::map<std::uint64_t, std::pair<SSTableReader::iterator,
+                                    const SSTableReader*> > savepoints_;
 };
 }
 
