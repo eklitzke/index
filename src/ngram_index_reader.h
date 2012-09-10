@@ -55,7 +55,7 @@ class NGramIndexReader {
   bool GetCandidates(const NGram &ngram,
                      std::vector<std::uint64_t> *candidates,
                      const SSTableReader &reader,
-                     std::size_t *lower_bound);
+                     SSTableReader::iterator *lower_bound);
 
   // Take the candidates list, and trim the list to only those that
   // are real matches, and add them to the SearchResults object. This

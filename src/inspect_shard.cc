@@ -32,29 +32,19 @@ int main(int argc, char **argv) {
   }
 
   std::string shard = vm["shard"].as<std::string>();
-
-  std::array<char, sizeof(std::uint64_t)> hdr_size;
-  std::ifstream ifs(shard, std::ifstream::binary | std::ifstream::in);
-  ifs.read(hdr_size.data(), sizeof(std::uint64_t));
-  assert(!ifs.eof() && !ifs.fail());
-  std::uint64_t hdr_size_val = codesearch::ToUint64(hdr_size);
-  if (hdr_size_val > 8096) {
-    std::cerr << shard << " had implausible hdr_size_val " << hdr_size_val <<
-        ", cowardly aborting" << std::endl;
-    return 1;
-  }
-
-  std::unique_ptr<char []> hdr_data(new char[hdr_size_val]);
-  ifs.read(hdr_data.get(), hdr_size_val);
-  assert(!ifs.eof() && !ifs.fail());
-
-  std::string hdr_string(hdr_data.get(), hdr_size_val);
   codesearch::SSTableHeader hdr;
-  hdr.ParseFromString(hdr_string);
+  std::size_t file_size;
+  {
+    std::ifstream ifs(shard, std::ifstream::in | std::ifstream::binary);
+    hdr = codesearch::ReadHeader(&ifs);
+    file_size = codesearch::FileSize(&ifs);
+  }
   assert(hdr.min_value().size() == hdr.key_size());
   assert(hdr.max_value().size() == hdr.key_size());
   assert(memcmp(
       hdr.min_value().data(), hdr.max_value().data(), hdr.key_size()) <= 0);
+  assert(hdr.index_offset() + hdr.index_size() + hdr.data_size() == file_size);
+  assert(hdr.data_offset() + hdr.data_size() == file_size);
 
   std::cout << "key_size     = " << hdr.key_size() << "\n";
   std::cout << "num_keys     = " << hdr.num_keys() << "\n";

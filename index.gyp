@@ -28,7 +28,7 @@
         'cflags': ['-pedantic',
                    '-Wall',
                    '-std=c++11',
-                   '-O2',
+                   '-O3',
                    '-flto',
                    '-g',
                    # see http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43052
@@ -60,11 +60,20 @@
         {
             'type': 'executable',
             'target_name': 'inspect_shard',
-                    'sources': [
-                        'src/index.pb.cc',
-                        'src/util.cc',
-                        'src/inspect_shard.cc',
-                    ],
+            'sources': [
+                'src/index.pb.cc',
+                'src/util.cc',
+                'src/inspect_shard.cc',
+            ],
+        },
+        {
+            'type': 'executable',
+            'target_name': 'fsck_sst',
+            'sources': [
+                'src/index.pb.cc',
+                'src/util.cc',
+                'src/fsck_sst.cc'
+            ],
         },
         {
             'type': 'executable',

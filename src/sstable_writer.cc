@@ -8,12 +8,20 @@
 #include <snappy.h>
 #include <cstring>
 
+namespace {
+std::uint64_t GetOffset(std::ostream *os) {
+  std::streampos outposition = os->tellp();
+  assert(outposition >= 0); // -1 indicates failure
+  return static_cast<std::uint64_t>(outposition);
+}
+}
+
 namespace codesearch {
 SSTableWriter::SSTableWriter(const std::string &name,
                              std::size_t key_size,
                              bool use_snappy)
     :name_(name), use_snappy_(use_snappy), state_(WriterState::UNINITIALIZED),
-     index_size_(0), data_size_(0), num_keys_(0) {
+     num_keys_(0) {
   std::size_t sizediff = key_size % sizeof(std::size_t);
   if (sizediff != 0) {
     key_size += sizeof(std::size_t) - sizediff;
@@ -28,14 +36,25 @@ SSTableWriter::SSTableWriter(const std::string &name,
   state_ = WriterState::INITIALIZED;
 }
 
+void SSTableWriter::AddValue(const std::string &val) {
+  assert(val.size() <= UINT32_MAX);
+  const std::string data_size = Uint32ToString(val.size());
+  assert(data_size.size() == sizeof(std::uint32_t));
+  data_out_.write(data_size.data(), data_size.size());
+  assert(!data_out_.fail());
+  data_out_.write(val.data(), val.size());
+  assert(!data_out_.fail());
+}
+
 void SSTableWriter::Add(const std::string &key, const std::string &val) {
   assert(state_ == WriterState::INITIALIZED);
   assert(key.size() <= key_size_);
   num_keys_++;
 
-  std::string padded_key = std::string(key_size_ - key.size(), '\0') + key;
+  const std::string padded_key = std::string(
+      key_size_ - key.size(), '\0') + key;
 
-  if (index_size_ == 0) {
+  if (index_size() == 0) {
     min_key_ = padded_key;
   }
 
@@ -46,30 +65,24 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
   idx_out_.write(padded_key.c_str(), key_size_);
   assert(!idx_out_.fail() && !idx_out_.eof());
 
-  std::string offset_str = Uint64ToString(data_size_);
-  idx_out_.write(offset_str.c_str(), sizeof(std::uint64_t));
+  std::uint64_t data_offset = data_size();
+  const std::string offset_str = Uint64ToString(data_offset);
+  assert(offset_str.size() == sizeof(std::uint64_t));
+  idx_out_.write(offset_str.data(), offset_str.size());
   assert(!idx_out_.fail() && !idx_out_.eof());
-  index_size_ += key_size_ + sizeof(std::uint64_t);
 
-  std::string compress_data;
   if (use_snappy_) {
-    snappy::Compress(val.c_str(), val.size(), &compress_data);
+    std::string compress_data;
+    snappy::Compress(val.data(), val.size(), &compress_data);
+    AddValue(compress_data);
   } else {
-    compress_data = val;
+    AddValue(val);
   }
 
-  std::string data_size = Uint64ToString(compress_data.size());
-  data_out_.write(data_size.c_str(), sizeof(std::uint64_t));
-  assert(!data_out_.fail() && !data_out_.eof());
-  data_out_.write(compress_data.c_str(), compress_data.size());
-  assert(!data_out_.fail() && !data_out_.eof());
-  std::string padding = GetWordPadding(compress_data.size());
-  if (padding.empty()) {
-    data_size_ += sizeof(std::uint64_t) + compress_data.size();
-  } else {
+  std::string padding = GetWordPadding(data_out_.tellp());
+  if (!padding.empty()) {
     data_out_.write(padding.c_str(), padding.size());
     assert(!data_out_.fail() && !data_out_.eof());
-    data_size_ += sizeof(std::uint64_t) + compress_data.size() + padding.size();
   }
 }
 
@@ -99,7 +112,11 @@ void SSTableWriter::Add(const google::protobuf::Message &key,
 void SSTableWriter::Merge() {
   assert(state_ == WriterState::INITIALIZED);
   state_ = WriterState::MERGED;
+
+  std::size_t isize = static_cast<std::size_t>(index_size());
   idx_out_.close();
+
+  std::size_t dsize = static_cast<std::size_t>(data_size());
   data_out_.close();
 
   std::ifstream idx(name_ + ".idx", std::ifstream::binary | std::ifstream::in);
@@ -108,21 +125,21 @@ void SSTableWriter::Merge() {
   std::ofstream out(name_ + ".sst", std::ofstream::binary |
                     std::ofstream::trunc | std::ofstream::out);
 
-  assert(index_size_ == FileSize(&idx, &out));
-  assert(data_size_ == FileSize(&data, &out));
+  assert(isize == FileSize(&idx));
+  assert(dsize == FileSize(&data));
   assert(min_key_.size() == key_size_);
   assert(last_key_.size() == key_size_);
 
   SSTableHeader header;
-  header.set_index_size(index_size_);
-  header.set_data_size(data_size_);
+  header.set_index_size(isize);
+  header.set_data_size(dsize);
   header.set_min_value(min_key_);
   header.set_max_value(last_key_);
   header.set_key_size(key_size_);
   header.set_num_keys(num_keys_);
-  header.set_index_offset(0);
-  header.set_data_offset(0);
   header.set_uses_snappy(use_snappy_);
+  header.set_index_offset(0);  // must do this to get header size
+  header.set_data_offset(0);  // must do this to get header size
 
   std::uint64_t header_size = header.ByteSize();
   std::string header_size_str = Uint64ToString(header_size);
@@ -134,13 +151,14 @@ void SSTableWriter::Merge() {
   std::string padding = GetWordPadding(header_size);
   out.write(padding.c_str(), padding.size());
 
-  std::uint64_t index_offset = WriteMergeContents(&idx, &out);
-  std::uint64_t data_offset = WriteMergeContents(&data, &out);
+  header.set_index_offset(GetOffset(&out));
+  WriteMergeContents(&idx, &out);
   assert(boost::filesystem::remove(name_ + ".idx"));
+
+  header.set_data_offset(GetOffset(&out));
+  WriteMergeContents(&data, &out);
   assert(boost::filesystem::remove(name_ + ".data"));
 
-  header.set_index_offset(index_offset);
-  header.set_data_offset(data_offset);
   std::uint64_t new_header_size = header.ByteSize();
   assert(header_size == new_header_size);
   out.seekp(header_size_str.size(), std::ostream::beg);
@@ -148,18 +166,11 @@ void SSTableWriter::Merge() {
   assert(out.tellp() == header_end_offset);
 }
 
-std::uint64_t SSTableWriter::FileSize(std::ifstream *is, std::ofstream *os) {
-  is->seekg(0, std::ifstream::end);
-  std::uint64_t file_size = static_cast<std::uint64_t>(is->tellg());
-  is->seekg(0, std::ifstream::beg);
-  return file_size;
-}
-
-std::uint64_t SSTableWriter::WriteMergeContents(std::ifstream *is,
-                                                std::ofstream *os) {
+void SSTableWriter::WriteMergeContents(std::ifstream *is,
+                                       std::ofstream *os) {
+  is->seekg(0);
   std::streampos position = os->tellp();
   assert(position != -1);
-  std::uint64_t offset = static_cast<std::uint64_t>(position);
 
   const std::streamsize buf_size = 1<<20;
   std::unique_ptr<char[]> buf(new char[static_cast<std::size_t>(buf_size)]);
@@ -169,8 +180,7 @@ std::uint64_t SSTableWriter::WriteMergeContents(std::ifstream *is,
     if (is->eof()) {
       break;
     }
-    assert(!is->fail());
+    assert(!is->fail() && !os->fail());
   }
-  return offset;
 }
 }  // namespace codesearch
