@@ -21,7 +21,7 @@ IntegerIndexReader::IntegerIndexReader(const std::string &index_directory,
   for (std::size_t i = 0; i < index_config.num_shards(); i++) {
     std::string shard_name = (index_directory + "/" + name + "/shard_" +
                               boost::lexical_cast<std::string>(i) + ".sst");
-    shards_.push_back(SSTableReader(shard_name));
+    shards_.push_back(SSTableReader<std::uint64_t>(shard_name));
   }
 
   // Now, we slice up all of the "lines" (or whatever the integer
@@ -42,7 +42,8 @@ IntegerIndexReader::IntegerIndexReader(const std::string &index_directory,
   // The Find() method will then use this savepoints_ map to optimize
   // lookups, see the comment there to see how that works.
   std::uint64_t total_lines = 0;
-  std::map<std::uint64_t, const SSTableReader*> line_offset_to_shard;
+  std::map<std::uint64_t, const SSTableReader<std::uint64_t>*>
+    line_offset_to_shard;
   for (const auto &shard : shards_) {
     line_offset_to_shard.insert(std::make_pair(total_lines, &shard));
     total_lines += shard.num_keys();
@@ -58,7 +59,7 @@ IntegerIndexReader::IntegerIndexReader(const std::string &index_directory,
     }
 
     std::size_t line_offset = s->first;
-    const SSTableReader *reader = s->second;
+    const SSTableReader<std::uint64_t> *reader = s->second;
 
     auto it = reader->begin() + (absolute_line - line_offset);
     savepoints_.insert(
@@ -100,29 +101,27 @@ bool IntegerIndexReader::Find(std::uint64_t needle, std::string *result) const {
     hi++;  // we didn't decrement lo, we increment up
   }
   assert(lo->first <= needle);
-  const SSTableReader *reader = lo->second.second;
-  SSTableReader::iterator lower = lo->second.first;
+  const SSTableReader<std::uint64_t> *reader = lo->second.second;
+  SSTableReader<std::uint64_t>::iterator lower = lo->second.first;
 
-  SSTableReader::iterator pos;
-  std::string val = Uint64ToString(needle);
-  reader->PadNeedle(&val);
+  SSTableReader<std::uint64_t>::iterator pos;
 
   if (hi == savepoints_.end()) {
     // edge case, lo was the last entry in savepoints_
-    pos = reader->lower_bound(lower, reader->end(), val);
+    pos = reader->lower_bound(lower, reader->end(), needle);
   } else {
     assert(hi->first > needle);
-    SSTableReader::iterator upper = hi->second.first;
+    SSTableReader<std::uint64_t>::iterator upper = hi->second.first;
     if (lower.reader() == upper.reader()) {
       // the usual case, lo/hi are for the same shard
-      pos = reader->lower_bound(lower, upper, val);
+      pos = reader->lower_bound(lower, upper, needle);
     } else {
       // edge case, lo/hi straddled two different shards
-      pos = reader->lower_bound(lower, reader->end(), val);
+      pos = reader->lower_bound(lower, reader->end(), needle);
     }
   }
 
-  if (pos == reader->end() || *pos != val) {
+  if (pos == reader->end() || *pos != needle) {
     return false;
   }
   *result = pos.value();

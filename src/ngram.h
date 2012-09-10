@@ -22,6 +22,8 @@
 
 #include <endian.h>
 
+#include "./util.h"
+
 static_assert(sizeof(std::uint32_t) == 4, "this check is really pointless");
 
 namespace codesearch {
@@ -156,7 +158,7 @@ static_assert(sizeof(NGram) == sizeof(std::uint32_t),
 
 namespace std {
 inline ostream& operator<<(ostream &os, const codesearch::NGram &ngram) {
-  os << ngram.string();
+  os << codesearch::PrintBinaryString(ngram.string());
   return os;
 }
 }  // namespace std

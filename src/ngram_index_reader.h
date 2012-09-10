@@ -35,7 +35,7 @@ class NGramIndexReader {
   const std::size_t ngram_size_;
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
-  std::vector<SSTableReader> shards_;
+  std::vector<SSTableReader<NGram> > shards_;
   SearchStrategy strategy_;
 
   std::mutex mut_;
@@ -49,13 +49,13 @@ class NGramIndexReader {
 
   void FindShard(const std::string &query,
                  const std::vector<NGram> &ngrams,
-                 const SSTableReader &reader,
+                 const SSTableReader<NGram> &reader,
                  SearchResults *results);
 
   bool GetCandidates(const NGram &ngram,
                      std::vector<std::uint64_t> *candidates,
-                     const SSTableReader &reader,
-                     SSTableReader::iterator *lower_bound);
+                     const SSTableReader<NGram> &reader,
+                     SSTableReader<NGram>::iterator *lower_bound);
 
   // Take the candidates list, and trim the list to only those that
   // are real matches, and add them to the SearchResults object. This

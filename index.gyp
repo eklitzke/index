@@ -11,7 +11,6 @@
             'src/integer_index_reader.cc',
             'src/ngram_index_reader.cc',
             'src/search_results.cc',
-            'src/sstable_reader.cc',
         ],
         'writer_sources': [
             'src/file_util.cc',
@@ -36,6 +35,7 @@
                    ],
         'defines': [
             '_GNU_SOURCE',
+            'ENABLE_SLOW_ASSERTS',
             'USE_THREADS',
             'USE_MADV_RANDOM',
         ],

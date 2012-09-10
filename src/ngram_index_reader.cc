@@ -70,7 +70,7 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
   for (std::size_t i = 0; i < index_config.num_shards(); i++) {
     std::string shard_name = (index_directory + "/ngrams/shard_" +
                               boost::lexical_cast<std::string>(i) + ".sst");
-    shards_.push_back(SSTableReader(shard_name));
+    shards_.push_back(SSTableReader<NGram>(shard_name));
   }
   LOG(INFO) << "initialized NGramIndexReader for directory " <<
       index_directory << " using strategy " << strategy << "\n";
@@ -241,11 +241,11 @@ void NGramIndexReader::FindSmall(const std::string &query,
 
 void NGramIndexReader::FindShard(const std::string &query,
                                  const std::vector<NGram> &ngrams,
-                                 const SSTableReader &reader,
+                                 const SSTableReader<NGram> &reader,
                                  SearchResults *results) {
   Timer timer;
   CondNotifier notifier(mut_, cond_, running_threads_);
-  SSTableReader::iterator lower_bound = reader.begin();
+  SSTableReader<NGram>::iterator lower_bound = reader.begin();
   std::vector<std::uint64_t> candidates;
   std::vector<std::uint64_t> intersection;
 
@@ -305,16 +305,15 @@ void NGramIndexReader::FindShard(const std::string &query,
 // does the SST lookup.
 bool NGramIndexReader::GetCandidates(const NGram &ngram,
                                      std::vector<std::uint64_t> *candidates,
-                                     const SSTableReader &reader,
-                                     SSTableReader::iterator *lower_bound) {
+                                     const SSTableReader<NGram> &reader,
+                                     SSTableReader<NGram>::iterator *lower_bound) {
   assert(candidates->empty());
-  const std::string padded = ngram.padded_string();
 
-  SSTableReader::iterator it = reader.lower_bound(*lower_bound, padded);
+  SSTableReader<NGram>::iterator it = reader.lower_bound(*lower_bound, ngram);
   if (strategy_ == SearchStrategy::LEXICOGRAPHIC_SORT) {
     *lower_bound = it;
   }
-  if (it == reader.end() || *it != padded) {
+  if (it == reader.end() || *it != ngram) {
     LOG(INFO) << "did *not* find ngram " << ngram << "\n";
     return false;
   }

@@ -7,6 +7,8 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <iomanip>
+#include <sstream>
 #include <string>
 
 #include <endian.h>
@@ -89,7 +91,6 @@ inline std::string GetWordPadding(std::size_t size) {
   return "";
 }
 
-
 // Get the size of a file
 std::uint64_t FileSize(std::istream *is);
 
@@ -104,7 +105,19 @@ inline void InitializeLogging(const char *program_name) {
 }
 
 // Format a binary string (to be C-escaped).
-std::string PrintBinaryString(const std::string &str);
+inline std::string PrintBinaryString(const std::string &str) {
+  std::stringstream ss;
+  for (const auto &c : str) {
+    if (isgraph(c)) {
+      ss << static_cast<char>(c);
+    } else {
+      ss << "\\x";
+      ss << std::setfill('0') << std::setw(2) << std::hex <<
+        (static_cast<int>(c) & 0xff);
+    }
+  }
+  return ss.str();
+}
 
 // Returns true if src is valid UTF-8, false otherwise (and empty
 // strings are considered valid).
