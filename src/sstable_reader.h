@@ -29,19 +29,9 @@ class SSTableReader {
   // should be happening, however.
   SSTableReader(const SSTableReader &other)
       :name_(other.name_), mmap_addr_(other.mmap_addr_), hdr_(other.hdr_),
-       use_snappy_(other.use_snappy_), key_size_(other.key_size_),
-       pad_(nullptr) {
-    pad_ = new char[key_size_];
-    memset(pad_, 0, key_size_);
-  }
+       use_snappy_(other.use_snappy_), key_size_(other.key_size_) {}
 
   SSTableReader& operator=(const SSTableReader &other) = delete;
-
-  ~SSTableReader() { delete[] pad_; }
-
-  // Checks that a given needle is within the min/max bounds for this table.
-  bool CheckMinMaxBounds(const char *needle, std::size_t *lower) const;
-
 
   typedef std::pair<std::string, std::string> value_type;
 
@@ -76,7 +66,9 @@ class SSTableReader {
     inline void advance(std::ptrdiff_t n) { offset_ += n; }
 
     inline std::ptrdiff_t distance_to(const key_iterator &other) const {
+#ifdef ENABLE_SLOW_ASSERTS
       assert(reader_->mmap_addr_ == other.reader_->mmap_addr_);
+#endif
       return other.offset_ - offset_;
     }
 
@@ -95,22 +87,29 @@ class SSTableReader {
     return std::lower_bound(begin(), end(), key);
   }
 
+  const iterator lower_bound(const iterator lower,
+                             const std::string &key) const {
+    return std::lower_bound(lower, end(), key);
+  }
+
   const iterator upper_bound(const std::string &key) const {
     return std::upper_bound(begin(), end(), key);
   }
 
-  bool Find(std::uint64_t needle, std::string *result) const;
-  bool Find(std::string needle, std::string *result) const;
-  bool Find(const NGram &ngram, std::string *result) const;
+  inline bool Find(std::uint64_t needle, std::string *result) const {
+    std::string val = Uint64ToString(needle);
+    PadNeedle(&val);
+    return InnerFind(val, result);
+  }
 
-  // When searching for multiple needles (e.g. as in a SQL "IN"
-  // query), an optimization that can be done is to search for the
-  // terms in sorted order, and for each successive term save the
-  // lower bound from the previous term. This optimization is applied
-  // in index_reader.cc, and is the motivation for the FindWithBounds
-  // methods.
-  bool FindWithBounds(const char *needle, std::size_t needle_size,
-                      std::string *result, std::size_t *lower_bound) const;
+  inline bool Find(std::string needle, std::string *result) const {
+    PadNeedle(&needle);
+    return InnerFind(needle, result);
+  }
+
+  inline bool Find(const NGram &ngram, std::string *result) const {
+    return InnerFind(ngram.padded_string(), result);
+  }
 
   inline std::size_t key_size() const { return key_size_; }
 
@@ -150,25 +149,22 @@ private:
   // the key size
   std::size_t key_size_;
 
-  // the pad; concurrent access to this makes this class not thread-safe
-  char *pad_;
-
   // pad a search key
-  void PadNeedle(std::string *needle) const;
+  inline void PadNeedle(std::string *needle) const {
+    std::uint64_t key_size = hdr_.key_size();
+    if (needle->size() < key_size) {
+      needle->insert(needle->begin(), key_size - needle->size(), '\0');
+   }
+  }
 
-  // The internal version of FindWithBounds; since the needle has to
-  // be properly padded, this version is made private (i.e. purely to
-  // ensure that proper padding has been done).
-  bool FindWithBounds(const char *needle, std::string *result,
-                      std::size_t *lower) const {
-    std::string n(needle, key_size_);
-    const iterator lb = lower_bound(n);
-    if (lb != end() && *lb == n) {
-      *result = lb.value();
+  inline bool InnerFind(const std::string &needle,
+                        std::string *result_string) const {
+    iterator pos = lower_bound(needle);
+    if (*pos == needle) {
+      *result_string = pos.value();
       return true;
-    } else {
-      return false;
     }
+    return false;
   }
 
   inline std::size_t key_storage() const {
@@ -176,8 +172,10 @@ private:
   }
 
   inline std::string read_key(std::ptrdiff_t index_offset) const {
+#ifdef ENABLE_SLOW_ASSERTS
     assert(index_offset >= 0 &&
            index_offset < static_cast<std::ptrdiff_t>(hdr_.index_size()));
+#endif
     std::string key(
         mmap_addr_ + hdr_.index_offset() + index_offset, key_size_);
     return key;

@@ -245,7 +245,7 @@ void NGramIndexReader::FindShard(const std::string &query,
                                  SearchResults *results) {
   Timer timer;
   CondNotifier notifier(mut_, cond_, running_threads_);
-  std::size_t lower_bound = 0;
+  SSTableReader::iterator lower_bound = reader.begin();
   std::vector<std::uint64_t> candidates;
   std::vector<std::uint64_t> intersection;
 
@@ -306,13 +306,17 @@ void NGramIndexReader::FindShard(const std::string &query,
 bool NGramIndexReader::GetCandidates(const NGram &ngram,
                                      std::vector<std::uint64_t> *candidates,
                                      const SSTableReader &reader,
-                                     std::size_t *lower_bound) {
+                                     SSTableReader::iterator *lower_bound) {
   assert(candidates->empty());
   std::string db_read;
-  bool found;
+  bool found = false;
   if (strategy_ == SearchStrategy::LEXICOGRAPHIC_SORT) {
-    found = reader.FindWithBounds(
-        ngram.data(), ngram.ngram_size, &db_read, lower_bound);
+    const std::string padded = ngram.padded_string();
+    *lower_bound = reader.lower_bound(*lower_bound, padded);
+    if (*lower_bound != reader.end() && padded == **lower_bound) {
+      found = true;
+      db_read = lower_bound->value();
+    }
   } else {
     found = reader.Find(ngram, &db_read);
   }

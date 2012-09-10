@@ -130,10 +130,16 @@ class NGram {
   }
 
   // Accessors
-  const char* data() const { return data_.buf; }
-  const char* c_str() const { return data_.buf; }
-  std::string string() const { return std::string(data_.buf, ngram_size); }
-  std::uint32_t num() const { return be32toh(data_.num); }
+  inline const char* data() const { return data_.buf; }
+  inline const char* c_str() const { return data_.buf; }
+  inline std::string string() const {
+    return std::string(data_.buf, ngram_size);
+  }
+  inline std::string padded_string(std::size_t size = 8) const {
+    return std::string(size - ngram_size, '\0') +
+        std::string(data_.buf, ngram_size);
+  }
+  inline std::uint32_t num() const { return be32toh(data_.num); }
 
  private:
   union {

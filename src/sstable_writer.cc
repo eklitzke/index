@@ -79,13 +79,11 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
     AddValue(val);
   }
 
-#if 0
-  std::string padding = GetWordPadding(compress_data.size());
+  std::string padding = GetWordPadding(data_out_.tellp());
   if (!padding.empty()) {
     data_out_.write(padding.c_str(), padding.size());
     assert(!data_out_.fail() && !data_out_.eof());
   }
-#endif
 }
 
 void SSTableWriter::Add(const std::uint64_t key,
