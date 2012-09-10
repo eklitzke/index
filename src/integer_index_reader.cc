@@ -86,37 +86,46 @@ bool IntegerIndexReader::Find(std::uint64_t needle, std::string *result) const {
   // last item in the map, etc. which accounts for most of the
   // complexity below.
 
-  auto it = savepoints_.lower_bound(needle);
-  if (it == savepoints_.end() || it->first > needle) {
-    assert(it != savepoints_.begin());
-    it--;
-    assert(it->first <= needle);
+  auto lo = savepoints_.lower_bound(needle);
+  auto hi = lo;
+  if (lo == savepoints_.end()) {
+    // the needle was bigger than any integer in the index
+    return false;
   }
-  assert(it->first <= needle);
-  const SSTableReader *reader = it->second.second;
-  SSTableReader::iterator lower = it->second.first;
+  if (lo->first > needle) {
+    assert(lo != savepoints_.begin());
+    lo--;
+    assert(lo->first <= needle);
+  } else {
+    hi++;  // we didn't decrement lo, we increment up
+  }
+  assert(lo->first <= needle);
+  const SSTableReader *reader = lo->second.second;
+  SSTableReader::iterator lower = lo->second.first;
 
   SSTableReader::iterator pos;
   std::string val = Uint64ToString(needle);
   reader->PadNeedle(&val);
 
-  auto up = it;
-  up++;
-  if (up == savepoints_.end()) {
+  if (hi == savepoints_.end()) {
+    // edge case, lo was the last entry in savepoints_
     pos = reader->lower_bound(lower, reader->end(), val);
   } else {
-    SSTableReader::iterator upper = up->second.first;
+    assert(hi->first > needle);
+    SSTableReader::iterator upper = hi->second.first;
     if (lower.reader() == upper.reader()) {
+      // the usual case, lo/hi are for the same shard
       pos = reader->lower_bound(lower, upper, val);
     } else {
+      // edge case, lo/hi straddled two different shards
       pos = reader->lower_bound(lower, reader->end(), val);
     }
   }
 
-  if (*pos == val) {
-    *result = pos.value();
-    return true;
+  if (pos == reader->end() || *pos != val) {
+    return false;
   }
-  return false;
+  *result = pos.value();
+  return true;
 }
 }
