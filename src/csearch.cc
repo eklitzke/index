@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
       ("limit", po::value<std::size_t>()->default_value(10))
       ("within-file-limit", po::value<std::size_t>()->default_value(10))
       ("offset", po::value<std::size_t>()->default_value(0))
+      ("threads,t", po::value<std::size_t>()->default_value(0))
       ("no-print", "suppress printing")
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
@@ -59,7 +60,8 @@ int main(int argc, char **argv) {
   std::string db_path_str = vm["db-path"].as<std::string>();
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str));
-  codesearch::NGramIndexReader reader(db_path_str, strategy);
+  codesearch::NGramIndexReader reader(
+      db_path_str, strategy, vm["threads"].as<std::size_t>());
 
 #if 0
   // This causes valgrind to report memory leaks (which apparently are

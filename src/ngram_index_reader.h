@@ -20,7 +20,8 @@ namespace codesearch {
 class NGramIndexReader {
  public:
   NGramIndexReader(const std::string &index_directory,
-                   SearchStrategy strategy);
+                   SearchStrategy strategy,
+                   std::size_t threads = 0);
 
   NGramIndexReader(const NGramIndexReader &other) = delete;
   NGramIndexReader& operator=(const NGramIndexReader &other) = delete;

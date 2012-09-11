@@ -35,7 +35,7 @@
                    ],
         'defines': [
             '_GNU_SOURCE',
-            'ENABLE_SLOW_ASSERTS',
+            #'ENABLE_SLOW_ASSERTS',
             'USE_THREADS',
             'USE_MADV_RANDOM',
         ],

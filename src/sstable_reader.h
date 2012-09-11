@@ -147,7 +147,7 @@ class SSTableReader {
     // are we using snappy?
     use_snappy_ = hdr_.uses_snappy();
 
-    key_size_ = hdr_.key_size();
+    assert(hdr_.key_size() == key_size);
   }
 
   // We implement a copy constructor so we can create a std::vector of
@@ -160,7 +160,8 @@ class SSTableReader {
   SSTableReader& operator=(const SSTableReader &other) = delete;
 
   enum {
-    key_storage = sizeof(std::uint64_t) + sizeof(std::uint64_t)
+    key_size    = sizeof(std::uint64_t),
+    key_storage = key_size + sizeof(std::uint64_t)
   };
 
   class key_iterator :
@@ -256,19 +257,19 @@ private:
   // whether or not we're using snappy
   bool use_snappy_;
 
-  // the key size
-  std::size_t key_size_;
-
   T ReadKey(std::ptrdiff_t index_offset) const;
 
   inline std::string ReadVal(std::ptrdiff_t index_offset) const {
     assert(index_offset >= 0 &&
            index_offset < static_cast<std::ptrdiff_t>(hdr_.index_size()));
     std::uint64_t data_offset = ReadUint64(
-        mmap_addr_ + hdr_.index_offset() + index_offset + key_size_);
+        mmap_addr_ + hdr_.index_offset() + index_offset + key_size);
     assert(data_offset < UINT32_MAX);  // sanity check
     const char *val_data = mmap_addr_ + hdr_.data_offset() + data_offset;
     std::uint32_t data_size = ReadUint32(val_data);
+#ifdef ENABLE_SLOW_ASSERTS
+    assert(data_size > 0);
+#endif
     std::string data(val_data + sizeof(data_size), data_size);
     if (use_snappy_) {
       std::string uncompressed_data;
@@ -290,6 +291,7 @@ inline std::uint64_t SSTableReader<std::uint64_t>::ReadKey(
   return ReadUint64(mmap_addr_ + hdr_.index_offset() + index_offset);
 }
 
+#if 0
 template<>
 inline std::uint32_t SSTableReader<std::uint32_t>::ReadKey(
     std::ptrdiff_t index_offset) const {
@@ -299,6 +301,7 @@ inline std::uint32_t SSTableReader<std::uint32_t>::ReadKey(
 #endif
   return ReadUint32(mmap_addr_ + hdr_.index_offset() + index_offset);
 }
+#endif
 
 template<>
 inline NGram SSTableReader<NGram>::ReadKey(std::ptrdiff_t index_offset) const {
@@ -306,12 +309,8 @@ inline NGram SSTableReader<NGram>::ReadKey(std::ptrdiff_t index_offset) const {
   assert(index_offset >= 0 &&
          index_offset < static_cast<std::ptrdiff_t>(hdr_.index_size()));
 #endif
-  // XXX: FIXME
-  NGram n = NGram(mmap_addr_ + hdr_.index_offset() + index_offset +
-                  sizeof(std::uint32_t) + 1);
-  std::string b(mmap_addr_ + hdr_.index_offset() + index_offset, 8);
-  LOG(INFO) << "addr = " << PrintBinaryString(b) << ", n = \"" << n << "\"\n";
-  return n;
+  return NGram(mmap_addr_ + hdr_.index_offset() + index_offset +
+               key_size - NGram::ngram_size);
 }
 }  // namespace codesearch
 #endif

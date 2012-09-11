@@ -56,11 +56,12 @@ inline std::size_t concurrency() { return std::thread::hardware_concurrency(); }
 
 namespace codesearch {
 NGramIndexReader::NGramIndexReader(const std::string &index_directory,
-                                   SearchStrategy strategy)
+                                   SearchStrategy strategy,
+                                   std::size_t threads)
     :ctx_(Context::Acquire(index_directory)),
      ngram_size_(ctx_->ngram_size()), files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines"), strategy_(strategy),
-     running_threads_(0), parallelism_(concurrency()) {
+     running_threads_(0), parallelism_(threads == 0 ? concurrency() : threads) {
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config(config_name.c_str(),
                        std::ifstream::binary | std::ifstream::in);

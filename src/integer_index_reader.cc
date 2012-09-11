@@ -90,10 +90,8 @@ bool IntegerIndexReader::Find(std::uint64_t needle, std::string *result) const {
   auto lo = savepoints_.lower_bound(needle);
   auto hi = lo;
   if (lo == savepoints_.end()) {
-    // the needle was bigger than any integer in the index
-    return false;
-  }
-  if (lo->first > needle) {
+    lo--;
+  } else if (lo->first > needle) {
     assert(lo != savepoints_.begin());
     lo--;
     assert(lo->first <= needle);
