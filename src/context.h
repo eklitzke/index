@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "./frozen_map.h"
 #include "./ngram.h"
 
 namespace codesearch {
@@ -48,7 +49,7 @@ class Context {
 
   void InitializeFileOffsets();
 
-  const std::map<std::uint32_t, std::uint32_t> &file_offsets() const {
+  const FrozenMap<std::uint32_t, std::uint32_t> &file_offsets() const {
     return file_offsets_;
   }
 
@@ -64,10 +65,10 @@ class Context {
   std::size_t sorted_ngrams_size_;
 
   // maps ngram to count
-  std::map<NGram, std::size_t> ngram_counts_;
+  FrozenMap<NGram, std::size_t> ngram_counts_;
 
   // a "map" of file_id -> id of the first line in the file
-  std::map<std::uint32_t, std::uint32_t> file_offsets_;
+  FrozenMap<std::uint32_t, std::uint32_t> file_offsets_;
 
   const std::size_t ngram_size_;
   std::mutex mut_;

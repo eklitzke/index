@@ -36,8 +36,9 @@
         'defines': [
             '_GNU_SOURCE',
             #'ENABLE_SLOW_ASSERTS',
-            'USE_THREADS',
+            'USE_FROZEN_MAP',
             'USE_MADV_RANDOM',
+            'USE_THREADS',
         ],
         'libraries': [
             '-pthread',

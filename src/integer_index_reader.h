@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "./frozen_map.h"
 #include "./sstable_reader.h"
 
 namespace codesearch {
@@ -29,11 +30,12 @@ class IntegerIndexReader {
  private:
   std::vector<SSTableReader<std::uint64_t> > shards_;
 
+  typedef std::pair<SSTableReader<std::uint64_t>::iterator,
+                    const SSTableReader<std::uint64_t> *> map_val;
+
   // This is a map of iterators that we use to optimize the Find()
   // method... see the comments in the .cc file for details.
-  std::map<std::uint64_t,
-           std::pair<SSTableReader<std::uint64_t>::iterator,
-                     const SSTableReader<std::uint64_t> *> > savepoints_;
+  FrozenMap<std::uint64_t, map_val> savepoints_;
 };
 }
 

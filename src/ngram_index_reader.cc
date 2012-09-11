@@ -3,6 +3,7 @@
 
 #include "./bounded_map.h"
 #include "./context.h"
+#include "./frozen_map.h"
 #include "./index.pb.h"
 #include "./ngram.h"
 #include "./ngram_index_reader.h"
@@ -345,7 +346,7 @@ std::size_t NGramIndexReader::TrimCandidates(
   // do the full lookup of all of the lines.
 
   Context *ctx = GetContext();
-  const std::map<std::uint32_t, std::uint32_t> &offsets = ctx->file_offsets();
+  const FrozenMap<std::uint32_t, std::uint32_t> &offsets = ctx->file_offsets();
   const bool use_offsets = !offsets.empty();
 
   std::size_t lines_added = 0;
