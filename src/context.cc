@@ -153,6 +153,19 @@ void Context::InitializeSortedNGrams() {
     initialization_timer.elapsed_ms() << " ms\n";
 }
 
+void Context::InitializeFileOffsets() {
+  std::ifstream ifs(index_directory_ + "/file_start_lines",
+                    std::ifstream::binary | std::ifstream::in);
+  assert(file_offsets_.empty());
+  FileStartLines lines;
+  lines.ParseFromIstream(&ifs);
+
+  for (const auto &start_line : lines.start_lines()) {
+    file_offsets_.insert(std::make_pair(start_line.first_line(),
+                                        start_line.file_id()));
+  }
+}
+
 Context::~Context() {
   UnmapFiles();
   google::protobuf::ShutdownProtobufLibrary();

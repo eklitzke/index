@@ -54,12 +54,14 @@ inline std::uint64_t ToUint64(
   return be64toh(*reinterpret_cast<const std::uint64_t*>(arr.data()));
 }
 
+// memcpy seems to be faster than casting to a std::uint32*
 inline std::uint32_t ReadUint32(const char *addr) {
   std::uint32_t val;
   memcpy(&val, addr, sizeof(val));
   return be32toh(val);
 }
 
+// memcpy seems to be faster than casting to a std::uint64*
 inline std::uint64_t ReadUint64(const char *addr) {
   std::uint64_t val;
   memcpy(&val, addr, sizeof(val));

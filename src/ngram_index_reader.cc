@@ -344,19 +344,43 @@ std::size_t NGramIndexReader::TrimCandidates(
   // To do the trimming/sorting for consistent results, we're going to
   // do the full lookup of all of the lines.
 
+  Context *ctx = GetContext();
+  const std::map<std::uint32_t, std::uint32_t> &offsets = ctx->file_offsets();
+  const bool use_offsets = !offsets.empty();
+
   std::size_t lines_added = 0;
   std::uint64_t max_file_id = UINT64_MAX;
   for (const auto &candidate : candidates) {
     PositionValue pos;
     std::string value;
-    assert(lines_index_.Find(candidate, &value));
-    pos.ParseFromString(value);
+    std::uint64_t file_id;
 
-    // Check that it's going to be possible to insert with this file
-    // id -- no mutexes need to be accessed for this check!
-    std::uint64_t file_id = pos.file_id();
-    if (file_id >= max_file_id) {
-      continue;
+    if (use_offsets) {
+      auto it = offsets.lower_bound(candidate);
+      if (it == offsets.end()) {
+        it--;
+        file_id = it->second;
+      } else if (it->first == candidate) {
+        file_id = it->second;
+      } else {
+        file_id = it->second - 1;
+      }
+      if (file_id >= max_file_id) {
+        continue;
+      }
+      assert(lines_index_.Find(candidate, &value));
+      pos.ParseFromString(value);
+      assert(file_id == pos.file_id());
+    } else {
+      assert(lines_index_.Find(candidate, &value));
+      pos.ParseFromString(value);
+
+      // Check that it's going to be possible to insert with this file
+      // id -- no mutexes need to be accessed for this check!
+      file_id = pos.file_id();
+      if (file_id >= max_file_id) {
+        continue;
+      }
     }
 
     // Ensure that the text really matches our query

@@ -35,11 +35,15 @@ class NGramIndexWriter {
   const std::size_t ngram_size_;
   std::size_t num_vals_;
 
+  const std::string index_directory_;
   const std::size_t max_threads_;
   std::size_t threads_running_;
   std::condition_variable cond_;
   std::mutex threads_running_mut_;
   std::mutex ngrams_mut_;
+
+  // a map of file id to starting line in the file
+  FileStartLines file_start_lines_;
 
   void AddFileThread(const std::string &canonical_name,
                      const std::string &dir_name,

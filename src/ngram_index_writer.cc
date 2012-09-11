@@ -19,8 +19,8 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
         index_directory, "ngrams", sizeof(std::uint64_t), shard_size, false),
      files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines"),
-     ngram_size_(ngram_size), num_vals_(0), max_threads_(max_threads),
-     threads_running_(0) {
+     ngram_size_(ngram_size), num_vals_(0), index_directory_(index_directory),
+     max_threads_(max_threads), threads_running_(0) {
   assert(ngram_size == NGram::ngram_size);
   index_writer_.Initialize();
   index_writer_.SetKeyType(IndexConfig_KeyType_STRING);
@@ -63,6 +63,7 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
   // Collect all of the lines
   std::map<uint64_t, std::string> positions_map;
   {
+    bool first_line = true;
     std::ifstream ifs(canonical_name.c_str(), std::ifstream::in);
     std::string line;
     std::size_t linenum = 0;
@@ -90,6 +91,14 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
       // lines index.
       std::uint64_t line_id = lines_index_.Add(val);
       positions_map.insert(std::make_pair(line_id, line));
+
+      // Note the first line in the file
+      if (first_line) {
+        first_line = false;
+        FileStartLine *start_line  = file_start_lines_.add_start_lines();
+        start_line->set_file_id(file_id);
+        start_line->set_first_line(line_id);
+      }
     }
   }
 
@@ -201,5 +210,8 @@ NGramIndexWriter::~NGramIndexWriter() {
   if (num_vals_ || !lists_.empty()) {
     MaybeRotate(true);
   }
+  std::ofstream ofs(index_directory_ + "/file_start_lines",
+                    std::ofstream::binary | std::ofstream::out);
+  file_start_lines_.SerializeToOstream(&ofs);
 }
 }

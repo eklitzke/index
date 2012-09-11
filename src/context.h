@@ -46,6 +46,12 @@ class Context {
   // a small ngram).
   void InitializeSortedNGrams();
 
+  void InitializeFileOffsets();
+
+  const std::map<std::uint32_t, std::uint32_t> &file_offsets() const {
+    return file_offsets_;
+  }
+
  private:
   Context(const std::string &index_directory,
           std::size_t ngram_size,
@@ -59,6 +65,9 @@ class Context {
 
   // maps ngram to count
   std::map<NGram, std::size_t> ngram_counts_;
+
+  // a "map" of file_id -> id of the first line in the file
+  std::map<std::uint32_t, std::uint32_t> file_offsets_;
 
   const std::size_t ngram_size_;
   std::mutex mut_;

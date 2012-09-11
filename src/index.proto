@@ -135,6 +135,15 @@ message PositionValue {
   required string line = 4;
 }
 
+message FileStartLine {
+  required uint64 file_id = 1;
+  required uint64 first_line = 2;
+}
+
+message FileStartLines {
+  repeated FileStartLine start_lines = 1;
+}
+
 message SearchResult {
   optional string filename = 1;
   required uint64 line_num = 2;

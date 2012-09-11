@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str));
   ctx->InitializeSortedNGrams();
+  ctx->InitializeFileOffsets();
 
   codesearch::IndexReaderServer server(
       db_path_str, &io_service, endpoint, strategy);
