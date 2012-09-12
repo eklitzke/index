@@ -48,7 +48,9 @@ IntegerIndexReader::IntegerIndexReader(const std::string &index_directory,
     line_offset_to_shard.insert(std::make_pair(total_lines, &shard));
     total_lines += shard.num_keys();
   }
+
   savepoints = std::min(savepoints, total_lines);
+  FrozenMapBuilder<std::uint64_t, map_val> builder;
   for (std::size_t i = 0; i < savepoints; i++) {
     std::uint64_t absolute_line = i * total_lines / savepoints;
     auto s = line_offset_to_shard.lower_bound(absolute_line);
@@ -62,9 +64,9 @@ IntegerIndexReader::IntegerIndexReader(const std::string &index_directory,
     const SSTableReader<std::uint64_t> *reader = s->second;
 
     auto it = reader->begin() + (absolute_line - line_offset);
-    savepoints_.insert(
-        std::make_pair(absolute_line, std::make_pair(it, reader)));
+    builder.insert(absolute_line, std::make_pair(it, reader));
   }
+  savepoints_ = builder;
 }
 
 bool IntegerIndexReader::Find(std::uint64_t needle, std::string *result) const {

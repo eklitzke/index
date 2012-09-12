@@ -146,13 +146,14 @@ int main(int argc, char **argv) {
   }
 
   long total_ms = total_timer.elapsed_ms();
-  std::size_t avg_ms = total_ms / search_count;
+  double avg_ms = static_cast<double>(total_ms) / search_count;
 
   double secs = static_cast<double>(total_ms) / 1000.0;
-  double qps = search_count / secs;
+  std::size_t qps = search_count / secs;
 
+  std::cout << std::fixed << std::setprecision(1);
   std::cout << "\n" << search_count << " total searches in " <<
-      total_timer.elapsed_ms() << " ms (avg " << avg_ms << " ms per query / " <<
+      total_timer.elapsed_ms() << " ms (" << avg_ms << " ms per query / " <<
       qps << " qps)" << std::endl;
   return 0;
 }

@@ -104,7 +104,7 @@ void Context::SortNGrams(std::vector<NGram> *ngrams) {
   std::vector<NGramFrequency> frequencies;
   frequencies.reserve(ngrams->size());
   for (const auto &ngram : *ngrams) {
-    auto it = ngram_counts_.find(ngram);
+    auto it = ngram_counts_.lower_bound(ngram);
     if (it == ngram_counts_.end()) {
       frequencies.push_back(NGramFrequency(ngram, 0));
     } else {
@@ -141,14 +141,16 @@ void Context::InitializeSortedNGrams() {
   sorted_ngrams_ = std::unique_ptr<char[]>(new char[sorted_ngrams_size_]);
   assert(sorted_ngrams_size_ > 0);
 
+  FrozenMapBuilder<NGram, std::size_t> counts_builder;
   char *offset = sorted_ngrams_.get();
   for (const auto &ngram : ngram_counts_proto.ngram_counts()) {
     const std::string &ngram_str = ngram.ngram();
     assert(ngram_str.size() == ngram_size_);
     memcpy(offset, ngram_str.data(), ngram_str.size());
     offset += ngram_str.size();
-    ngram_counts_.insert(std::make_pair(NGram(ngram_str), ngram.count()));
+    counts_builder.insert(NGram(ngram_str), ngram.count());
   }
+  ngram_counts_ = counts_builder;
   LOG(INFO) << "initialized sorted ngrams list in " <<
     initialization_timer.elapsed_ms() << " ms\n";
 }
@@ -160,10 +162,11 @@ void Context::InitializeFileOffsets() {
   FileStartLines lines;
   lines.ParseFromIstream(&ifs);
 
+  FrozenMapBuilder<std::uint32_t, std::uint32_t> offsets;
   for (const auto &start_line : lines.start_lines()) {
-    file_offsets_.insert(std::make_pair(start_line.first_line(),
-                                        start_line.file_id()));
+    offsets.insert(start_line.first_line(), start_line.file_id());
   }
+  file_offsets_ = offsets;
 }
 
 Context::~Context() {

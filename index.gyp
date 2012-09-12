@@ -36,8 +36,8 @@
         'defines': [
             '_GNU_SOURCE',
             #'ENABLE_SLOW_ASSERTS',
-            'USE_THREADS',
             'USE_MADV_RANDOM',
+            'USE_THREADS',
         ],
         'libraries': [
             '-pthread',
@@ -86,11 +86,11 @@
         },
         {
             'type': 'executable',
-                    'target_name': 'bench',
-                    'sources': [
-                        'src/config.cc',
-                        'src/bench.cc',
-                    ],
+            'target_name': 'bench',
+            'sources': [
+                'src/config.cc',
+                'src/bench.cc',
+            ],
         },
         {
             'type': 'executable',

@@ -1,6 +1,6 @@
 CC := g++
-CFLAGS := -O3 -flto -Wall -pedantic
-TARGETS = assignment fault overloading
+CFLAGS := -O3 -std=c++11 -flto -Wall -pedantic
+TARGETS = assignment fault frozen_map overloading
 
 .PHONY: all
 all: $(TARGETS)
