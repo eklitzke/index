@@ -92,7 +92,7 @@ private:
     return key_iterator(&vec_, vec_.size());
   }
 
-  key_iterator key_lower_bound(const K &key) const {
+  inline key_iterator key_lower_bound(const K &key) const {
     return std::lower_bound(key_begin(), key_end(), key);
   }
 
