@@ -36,7 +36,6 @@
         'defines': [
             '_GNU_SOURCE',
             #'ENABLE_SLOW_ASSERTS',
-            'USE_FROZEN_MAP',
             'USE_MADV_RANDOM',
             'USE_THREADS',
         ],
@@ -87,11 +86,11 @@
         },
         {
             'type': 'executable',
-                    'target_name': 'bench',
-                    'sources': [
-                        'src/config.cc',
-                        'src/bench.cc',
-                    ],
+            'target_name': 'bench',
+            'sources': [
+                'src/config.cc',
+                'src/bench.cc',
+            ],
         },
         {
             'type': 'executable',
