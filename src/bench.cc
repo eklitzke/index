@@ -15,12 +15,6 @@
 
 namespace po = boost::program_options;
 
-void HandleBoostError(const boost::system::error_code &error) {
-  if (error) {
-    throw error;
-  }
-}
-
 int main(int argc, char **argv) {
   // Declare the supported options.
   po::options_description desc("Allowed options");
