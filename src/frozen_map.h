@@ -47,10 +47,9 @@ public:
     explicit key_iterator(const vector_type *vec, std::ptrdiff_t offset)
       :vector_(vec), offset_(offset) {}
 
-    inline iterator iter() const { return vector_->cbegin() + offset_; }
-
   private:
     friend class boost::iterator_core_access;
+    friend class FrozenMap<K, V>;
 
     inline const K& dereference() const { return (*vector_)[offset_].first; }
     inline void increment() { offset_++; }
@@ -103,7 +102,7 @@ public:
   inline iterator end() const { return vec_.cend(); }
 
   inline iterator lower_bound(const K &key) const {
-    return key_lower_bound(key).iter();
+    return vec_.cbegin() + key_lower_bound(key).offset_;
   }
 
 private:
