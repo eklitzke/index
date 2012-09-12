@@ -47,12 +47,12 @@ public:
     explicit key_iterator(const vector_type *vec, std::ptrdiff_t offset)
       :vector_(vec), offset_(offset) {}
 
-    inline std::ptrdiff_t offset() const { return offset_; }
+    inline iterator iter() const { return vector_->cbegin() + offset_; }
 
   private:
     friend class boost::iterator_core_access;
 
-    const K& dereference() const { return (*vector_)[offset_].first; }
+    inline const K& dereference() const { return (*vector_)[offset_].first; }
     inline void increment() { offset_++; }
     inline void decrement() { offset_--; }
     inline void advance(std::ptrdiff_t n) { offset_ += n; }
@@ -62,7 +62,11 @@ public:
     }
 
     inline bool equal(const key_iterator &other) const {
-      return vector_ == other.vector_ && offset_ == other.offset;
+#if 0
+      return vector_ == other.vector_ && offset_ == other.offset_;
+#else
+      return offset_ == other.offset_;
+#endif
     }
 
     const vector_type *vector_;
@@ -99,7 +103,7 @@ public:
   inline iterator end() const { return vec_.cend(); }
 
   inline iterator lower_bound(const K &key) const {
-    return vec_.cbegin() + key_lower_bound(key).offset();
+    return key_lower_bound(key).iter();
   }
 
 private:
