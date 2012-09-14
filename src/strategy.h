@@ -40,7 +40,7 @@ class SearchStrategy {
   // the other, slow ngrams.
   //
   // To use the FREQUENCY_SORT strategy requires building the sorted
-  // list of ngrams as a std::map, which is a one-time cost that can
+  // list of ngrams as a FrozenMap, which is a one-time cost that can
   // take a while; it also uses a bit more memory.
   static const std::uint8_t FREQUENCY_SORT     = 2;
 

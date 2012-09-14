@@ -13,7 +13,7 @@
 namespace codesearch {
 template <typename K, typename V>
 class FrozenMapBuilder {
-public:
+ public:
   FrozenMapBuilder() {}
 
   void insert(const K &key, const V &val) {
@@ -25,29 +25,29 @@ public:
     return vec_;
   }
 
-private:
+ private:
   std::vector<std::pair<K, V> > vec_;
 };
 
 template <typename K, typename V>
 class FrozenMap {
 
-public:
+ public:
   typedef typename std::vector<std::pair<K, V> >::const_iterator iterator;
 
  private:
   typedef typename std::vector<std::pair<K, V> > vector_type;
 
   class key_iterator :
-    public boost::iterator_facade<key_iterator,
-                                  const K,
-                                  std::random_access_iterator_tag,
-                                  const K&> {
-  public:
+      public boost::iterator_facade<key_iterator,
+                                    const K,
+                                    std::random_access_iterator_tag,
+                                    const K&> {
+   public:
     explicit key_iterator(const vector_type *vec, std::ptrdiff_t offset)
-      :vector_(vec), offset_(offset) {}
+        :vector_(vec), offset_(offset) {}
 
-  private:
+   private:
     friend class boost::iterator_core_access;
     friend class FrozenMap<K, V>;
 
@@ -72,7 +72,7 @@ public:
     std::ptrdiff_t offset_;
   };
 
-public:
+ public:
   explicit FrozenMap() {}
   explicit FrozenMap(const vector_type &vec) :vec_(vec) {}
   explicit FrozenMap(FrozenMapBuilder<K, V> &builder) :vec_(builder.vector()) {}
@@ -82,7 +82,7 @@ public:
     return *this;
   }
 
-private:
+ private:
   inline key_iterator key_begin() const {
     return key_iterator(&vec_, 0);
   }
@@ -95,7 +95,7 @@ private:
     return std::lower_bound(key_begin(), key_end(), key);
   }
 
-public:
+ public:
   inline std::size_t size() const { return vec_.size(); }
   inline bool empty() const { return vec_.empty(); }
   inline iterator begin() const { return vec_.cbegin(); }
@@ -105,7 +105,7 @@ public:
     return vec_.cbegin() + key_lower_bound(key).offset_;
   }
 
-private:
+ private:
   vector_type vec_;
 };
 }  // namespace codesearch
