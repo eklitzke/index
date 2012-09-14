@@ -134,6 +134,8 @@ class Timer {
   Timer() :start_time_(clock_type::now()) {}
   virtual ~Timer() {};
 
+  void reset() { start_time_ = clock_type::now(); }
+
   long elapsed_s() { return elapsed_count<std::chrono::seconds>(); }
   long elapsed_ms() { return elapsed_count<std::chrono::milliseconds>(); }
   long elapsed_us() { return elapsed_count<std::chrono::microseconds>(); }
