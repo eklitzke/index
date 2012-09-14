@@ -186,6 +186,8 @@ int main(int argc, char **argv) {
   QueryGenerator generator(vm["file"].as<std::string>(), iterations);
   std::vector<std::pair<QueryThread *, std::thread> > threads;
   std::size_t concurrency = vm["concurrency"].as<std::size_t>();
+
+  codesearch::Timer timer;
   for (std::size_t i = 0; i < concurrency; i++) {
     QueryThread *qt = new QueryThread(&generator,
                                       vm.count("verbose"),
@@ -196,7 +198,6 @@ int main(int argc, char **argv) {
   }
 
   std::vector<TimingData> timings;
-  codesearch::Timer timer;
   for (auto &pair : threads) {
     pair.second.join();
     timings.push_back(pair.first->timing());
