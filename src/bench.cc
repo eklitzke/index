@@ -41,7 +41,7 @@ public:
   }
 
   const std::string& Next() {
-
+    std::lock_guard<std::mutex> guard(mut_);
     if (generated_++ >= limit_) {
       throw QueryGeneratorExhausted();
     }
