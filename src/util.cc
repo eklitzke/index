@@ -71,5 +71,4 @@ bool IsValidUtf8(const std::string &src) {
   }
   return n == 0;
 }
-
 }

@@ -8,6 +8,7 @@
 #include <cassert>
 #include <chrono>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -163,6 +164,53 @@ class ScopedTimer : public Timer {
   }
  private:
   const std::string msg_;
+};
+
+// Get the next power of 2 that is >= val
+template <typename T>
+T NextPowerOf2(T val) {
+  if (!val) {
+    return 0;
+  }
+
+  T a = val, b = val & (val - 1);
+  while (b) {
+    a = b;
+    b &= b - 1;
+  }
+  if (val == a) {
+    return val;
+  } else {
+    return a << 1;
+  }
+}
+
+// Like a std::unique_ptr, but with facilities for resizing the
+// internal buffer.
+class ExpandableBuffer {
+ public:
+  explicit ExpandableBuffer(std::size_t size = 0)
+      :size_(size), buf_(nullptr) {
+    resize(size);
+  }
+
+  inline void resize(std::size_t new_size) {
+    if (new_size) {
+      std::size_t size = NextPowerOf2<std::size_t>(new_size);
+      if (size > size_) {
+        buf_.reset(new char[size]);
+        size_ = size;
+      }
+    }
+  }
+
+  inline char* get() const {
+    return buf_.get();
+  }
+
+ private:
+  std::size_t size_;
+  std::unique_ptr<char[]> buf_;
 };
 }  // namespace codesearch
 #endif  // SRC_UTIL_H_

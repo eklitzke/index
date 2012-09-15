@@ -20,9 +20,9 @@ namespace po = boost::program_options;
 class QueryGeneratorExhausted : public std::exception {};
 
 class QueryGenerator {
-public:
+ public:
   QueryGenerator(const std::string &queries, std::size_t limit = 0)
-    :generated_(0), limit_(limit) {
+      :generated_(0), limit_(limit) {
     std::ifstream input(queries);
     while (true) {
       std::string line;
@@ -52,7 +52,7 @@ public:
     return *it_;
   }
 
-private:
+ private:
   std::vector<std::string> queries_;
   std::vector<std::string>::const_iterator it_;
   std::mutex mut_;
@@ -70,13 +70,13 @@ struct TimingData {
 
 
 class QueryThread {
-public:
+ public:
   QueryThread(QueryGenerator *generator,
               bool verbose,
               std::size_t query_limit,
               int port)
-    :generator_(generator), verbose_(verbose), query_limit_(query_limit),
-     port_(port) {}
+      :generator_(generator), verbose_(verbose), query_limit_(query_limit),
+       port_(port) {}
 
   void Run() {
     codesearch::Timer connect_timer;
@@ -94,10 +94,11 @@ public:
     codesearch::Timer query_timer;
     codesearch::Timer total_timer;
     char response_size[sizeof(std::uint64_t)];
+    codesearch::ExpandableBuffer full_response;
     try {
       codesearch::RPCRequest request;
       codesearch::SearchQueryRequest *search_request =\
-        request.mutable_search_query();
+          request.mutable_search_query();
       search_request->set_limit(query_limit_);
       while (true) {
         search_request->set_query(generator_->Next());
@@ -120,23 +121,24 @@ public:
         std::uint64_t response_size_int = codesearch::ToUint64(
             std::string(response_size, 8));
 
-        std::unique_ptr<char[]> full_response(new char[response_size_int]);
+        full_response.resize(response_size_int);
         boost::asio::read(socket,
                           boost::asio::buffer(full_response.get(),
                                               response_size_int));
         if (verbose_) {
           std::stringstream ss;
           ss << std::left << std::setw(3) << query_timer.elapsed_ms() <<
-            search_request->query() << "\n";
+              search_request->query() << "\n";
           std::cout << ss.str() << std::flush;
         }
         timing_.query_count++;
       }
     } catch (const boost::system::system_error &error) {
       if (error.code() == boost::asio::error::eof) {
-        std::cerr << "\nserver unexpectedly closed connection!" << std::endl;
+        std::cerr << "server unexpectedly closed connection!" << std::endl;
+      } else {
+        throw;
       }
-      throw;
     } catch (const QueryGeneratorExhausted &error) { }
 
     timing_.query_ms = total_timer.elapsed_ms();
@@ -144,7 +146,7 @@ public:
 
   TimingData timing() const { return timing_; }
 
-private:
+ private:
   QueryGenerator *generator_;
   bool verbose_;
   std::size_t query_limit_;
@@ -203,24 +205,35 @@ int main(int argc, char **argv) {
     timings.push_back(pair.first->timing());
     delete pair.first;
   }
-
   long total_ms = timer.elapsed_ms();
-  double avg_ms = 0;
+  std::size_t total_searches = 0;
 
   for (const auto &timing : timings) {
-    double weight =  static_cast<double>(timing.query_count) /
-      static_cast<double>(iterations);
-
-    avg_ms += static_cast<double>(timing.query_ms) /
-      static_cast<double>(timing.query_count) *
-      weight;
+    total_searches += timing.query_count;
   }
-  double qps = static_cast<double>(iterations) / total_ms * 1000;
 
-  std::cout << std::fixed << std::setprecision(1);
-  std::cout << iterations << " total searches in " << std::setprecision(3) <<
-    (static_cast<double>(total_ms) / 1000.0) << " sec (" << avg_ms <<
-    " ms per query / " << std::setprecision(0) << qps << " qps)" << std::endl;
+  std::cout << std::fixed;
+  if (total_searches == 0) {
+    std::cout << "0 searches in " << std::setprecision(3) <<
+        (static_cast<double>(total_ms) / 1000.0) << " sec\n";
+  } else {
+    double avg_ms = 0;
+    for (const auto &timing : timings) {
+      double weight =  static_cast<double>(timing.query_count) /
+          static_cast<double>(iterations);
+
+      if (timing.query_count) {
+        avg_ms += static_cast<double>(timing.query_ms) /
+            static_cast<double>(timing.query_count) *
+            weight;
+      }
+    }
+    double qps = static_cast<double>(total_searches) / total_ms * 1000;
+    std::cout << total_searches << " total searches in " <<
+        std::setprecision(3) << (static_cast<double>(total_ms) / 1000.0) <<
+        " sec (" << avg_ms << " ms per query / " << std::setprecision(0) <<
+        qps << " qps)\n";
+  }
 
   return 0;
 }

@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
   std::string last_key;
   std::size_t uncompressed_size = 0;
   std::size_t compressed_size = 0;
+  codesearch::ExpandableBuffer valdata;
   for (std::size_t i = 0; i < hdr.num_keys(); i++) {
     std::streampos keyoffset = ifs.tellg();
     ifs.read(key_data.get(), key_size);
@@ -79,7 +80,7 @@ int main(int argc, char **argv) {
     assert(val_size < (16 << 20));  // sanity check
     uncompressed_size += val_size;
     if (hdr.uses_snappy()) {
-      std::unique_ptr<char[]> valdata(new char[val_size]);
+      valdata.resize(val_size);
       ifs.read(valdata.get(), val_size);
       if (i != hdr.num_keys() - 1) {
         assert(!ifs.eof());
