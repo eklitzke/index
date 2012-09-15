@@ -4,8 +4,8 @@
 #ifndef SRC_NGRAM_INDEX_WRTITER_H_
 #define SRC_NGRAM_INDEX_WRTITER_H_
 
-#include "./autoincrement_index_writer.h"
 #include "./index_writer.h"
+#include "./integer_index_writer.h"
 #include "./ngram.h"
 
 #include <condition_variable>
@@ -28,8 +28,8 @@ class NGramIndexWriter {
 
  private:
   IndexWriter index_writer_;
-  AutoIncrementIndexWriter files_index_;
-  AutoIncrementIndexWriter lines_index_;
+  IntegerIndexWriter files_index_;
+  IntegerIndexWriter lines_index_;
 
   std::map<NGram, std::vector<std::uint64_t> > lists_;
   const std::size_t ngram_size_;
