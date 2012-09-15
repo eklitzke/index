@@ -13,6 +13,7 @@
 #include <cassert>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include <boost/iterator/iterator_facade.hpp>
@@ -154,6 +155,12 @@ private:
   // whether or not we're using snappy
   bool use_snappy_;
 
+  // buffer to hold snappy data
+  mutable std::string snappy_data_;
+
+  // and a mutex to lock access
+  mutable std::mutex snappy_data_mut_;
+
   T ReadKey(std::ptrdiff_t index_offset) const;
 
   inline std::string ReadVal(std::ptrdiff_t index_offset) const {
@@ -169,9 +176,9 @@ private:
 #endif
     std::string data(val_data + sizeof(data_size), data_size);
     if (use_snappy_) {
-      std::string uncompressed_data;
-      assert(snappy::Uncompress(data.data(), data.size(), &uncompressed_data));
-      return uncompressed_data;
+      std::lock_guard<std::mutex> guard(snappy_data_mut_);
+      assert(snappy::Uncompress(data.data(), data.size(), &snappy_data_));
+      return snappy_data_;
     } else {
       return data;
     }
