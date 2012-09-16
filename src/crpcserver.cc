@@ -17,7 +17,8 @@ int main(int argc, char **argv) {
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
       ("strategy", po::value<std::string>()->default_value(
-          codesearch::default_strategy))
+          codesearch::default_strategy),
+       "specify \"lexicographic\" or \"frequency\"")
       ;
 
   po::variables_map vm;
