@@ -87,16 +87,54 @@ Context* Context::Acquire(const std::string &db_path,
 std::string Context::FindBestNGram(const std::string &fragment,
                                    std::size_t *offset) {
   InitializeSortedNGrams();
-  char *p = sorted_ngrams_.get() + *offset;
-  while (p < sorted_ngrams_.get() + sorted_ngrams_size_) {
-    void *data = memmem(p, ngram_size_, fragment.data(), fragment.size());
-    *offset += ngram_size_;
-    if (data != nullptr) {
-      return std::string(p, ngram_size_);
-    }
-    p = sorted_ngrams_.get() + *offset;
+  if (*offset >= sorted_ngrams_size_) {
+    return "";
   }
-  return "";
+
+  char *data;
+  std::size_t off, extra;
+  while (true) {
+    if (fragment.size() == 1) {
+      data = static_cast<char*>(
+          memchr(sorted_ngrams_.get() + *offset,
+                 *fragment.begin(),
+                 sorted_ngrams_size_ - *offset));
+    } else {
+      data = static_cast<char*>(
+          memmem(sorted_ngrams_.get() + *offset,
+                 sorted_ngrams_size_ - *offset,
+                 fragment.data(),
+                 fragment.size()));
+    }
+
+    if (data == nullptr) {
+      *offset = sorted_ngrams_size_;
+      return "";
+    }
+
+    // For this data pointer, figure out where the boundaries for the
+    // ngram actually are -- off will be the number of bytes past the
+    // start of the sorted ngrams array, and extra will be the number
+    // of bytes past the logical ngram. For instance, if off is 100,
+    // then the ngram is really composed of the bytes in the range
+    // [99, 101], so extra will be 1 here.
+    off = data - sorted_ngrams_.get();
+    extra = off % NGram::ngram_size;
+
+    // Update the offset pointer to be one past our current position.
+    *offset = off + 1;
+
+    // If we're searching for a bigram, we could have split ngrams, in
+    // which case we need to keep searching.
+    if (extra + fragment.size() > NGram::ngram_size) {
+      continue;
+    }
+    break;
+  }
+
+  std::string result(sorted_ngrams_.get() + off - extra, NGram::ngram_size);
+  assert(result.find(fragment) != std::string::npos);
+  return result;
 }
 
 void Context::SortNGrams(std::vector<NGram> *ngrams) {

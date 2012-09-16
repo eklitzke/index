@@ -50,7 +50,6 @@ class NGramIndexReader {
   friend class NGramReaderWorker;
 
   Context *ctx_;
-  const std::size_t ngram_size_;
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
   std::vector<SSTableReader<NGram> > shards_;
@@ -65,6 +64,12 @@ class NGramIndexReader {
   // Find an ngram smaller than the ngram_size_
   void FindSmall(const std::string &query,
                  SearchResults *results);
+
+  // Find according to a list of ngrams. This is the thing that looks
+  // up each ngram, and then intersects the results from each ngram query.
+  void FindNGrams(const std::string &query,
+                  const std::vector<NGram> ngrams,
+                  SearchResults *results);
 };
 
 }  // codesearch

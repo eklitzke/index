@@ -255,7 +255,7 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
                                    SearchStrategy strategy,
                                    std::size_t threads)
     :ctx_(Context::Acquire(index_directory)),
-     ngram_size_(ctx_->ngram_size()), files_index_(index_directory, "files"),
+     files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines"), strategy_(strategy),
      parallelism_(threads == 0 ? concurrency() : threads) {
   std::string config_name = index_directory + "/ngrams/config";
@@ -301,18 +301,17 @@ NGramIndexReader::~NGramIndexReader() {
 
 void NGramIndexReader::Find(const std::string &query,
                             SearchResults *results) {
-  if (query.size() < ngram_size_) {
+  if (query.size() < NGram::ngram_size) {
     FindSmall(query, results);
     return;
   }
 
-  Timer timer;
-
   // split the query into its constituent ngrams
   std::vector<NGram> ngrams;
   std::set<NGram> ngrams_set;
-  for (std::string::size_type i = 0; i <= query.length() - ngram_size_; i++) {
-    ngrams_set.insert(NGram(query.substr(i, ngram_size_)));
+  for (std::string::size_type i = 0;
+       i <= query.length() - NGram::ngram_size; i++) {
+    ngrams_set.insert(NGram(query.substr(i, NGram::ngram_size)));
   }
   assert(!ngrams_set.empty());
   ngrams.insert(ngrams.begin(), ngrams_set.begin(), ngrams_set.end());
@@ -326,27 +325,7 @@ void NGramIndexReader::Find(const std::string &query,
     default:
       assert(false);  // not reached
   }
-
-  QueryRequest req(query, ngrams, results);
-
-  for (const auto &shard : shards_) {
-    if (free_workers_.empty()) {
-      free_workers_.push_back(response_queue_.pop());
-    }
-    if (results->IsFull()) {
-      break;
-    }
-
-    NGramReaderWorker *worker = free_workers_.back();
-    free_workers_.pop_back();
-    worker->SendRequest(&req, &shard);
-  }
-
-  // wait for all of the pending workers to finish
-  while (free_workers_.size() < parallelism_) {
-    free_workers_.push_back(response_queue_.pop());
-  }
-  LOG(INFO) << "done with Find() after " << timer.elapsed_us() << " us\n";
+  FindNGrams(query, ngrams, results);
 }
 
 void NGramIndexReader::FindSmall(const std::string &query,
@@ -358,12 +337,40 @@ void NGramIndexReader::FindSmall(const std::string &query,
   while (true) {
     std::string ngram = ctx_->FindBestNGram(query, &offset);
     if (ngram.empty()) {
-        break;
+      break;
     }
-    Find(ngram, results);
+    std::vector<NGram> ngrams{NGram(ngram)};
+    FindNGrams(query, ngrams, results);
     if (results->IsFull()) {
       break;
     }
   }
 }
+
+void NGramIndexReader::FindNGrams(const std::string &query,
+                                  const std::vector<NGram> ngrams,
+                                  SearchResults *results) {
+
+  Timer timer;
+  QueryRequest req(query, ngrams, results);
+
+  for (const auto &shard : shards_) {
+    if (free_workers_.empty()) {
+      free_workers_.push_back(response_queue_.pop());
+    }
+    if (results->IsFull()) {
+      break;
+    }
+    NGramReaderWorker *worker = free_workers_.back();
+    free_workers_.pop_back();
+    worker->SendRequest(&req, &shard);
+  }
+
+  // wait for all of the pending workers to finish
+  while (free_workers_.size() < parallelism_) {
+    free_workers_.push_back(response_queue_.pop());
+  }
+  LOG(INFO) << "done with FindNGrams() after " << timer.elapsed_us() << " us\n";
+}
+
 }  // namespace codesearch
