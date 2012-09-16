@@ -92,7 +92,6 @@ class NGramReaderWorker {
   std::mutex mut_;
   std::condition_variable cond_;
 
-
   void FindShard() {
     Timer timer;
     SSTableReader<NGram>::iterator lower_bound = shard_->begin();
@@ -141,7 +140,7 @@ class NGramReaderWorker {
     // We are going to construct a map of filename -> [(line num,
     // offset, line)].
     Timer trim_candidates_timer;
-    std::size_t lines_added = TrimCandidates(shard_->shard_name(), candidates);
+    std::size_t lines_added = TrimCandidates(candidates);
 
     LOG(INFO) << "shard " << shard_->shard_name() <<
         " searched query \"" << req_->query << "\" to add " << lines_added <<
@@ -180,8 +179,7 @@ class NGramReaderWorker {
     return true;
   }
 
-  std::size_t TrimCandidates(const std::string &shard_name,
-                             const std::vector<std::uint64_t> &candidates) {
+  std::size_t TrimCandidates(const std::vector<std::uint64_t> &candidates) {
 
     // The candidates vector contains the ids of rows in the "lines"
     // index that are candidates. We need to check each candidate to
@@ -190,9 +188,8 @@ class NGramReaderWorker {
     // To do the trimming/sorting for consistent results, we're going to
     // do the full lookup of all of the lines.
 
-    Context *ctx = GetContext();
     const FrozenMap<std::uint32_t, std::uint32_t> &offsets =\
-        ctx->file_offsets();
+        index_reader_->ctx_->file_offsets();
     const bool use_offsets = !offsets.empty();
 
     std::size_t lines_added = 0;
@@ -272,17 +269,17 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
                               boost::lexical_cast<std::string>(i) + ".sst");
     shards_.push_back(SSTableReader<NGram>(shard_name));
   }
-  LOG(INFO) << "initialized NGramIndexReader for directory " <<
-      index_directory << " using strategy " << strategy << "\n";
 
   for (std::size_t i = 0; i < parallelism_; i++) {
-    LOG(INFO) << "creating worker using this = " << this << "\n";
     NGramReaderWorker *worker = new NGramReaderWorker(
         &response_queue_, &terminate_response_queue_, this);
     std::thread thr(&NGramReaderWorker::Run, worker);
     thr.detach();
     free_workers_.push_back(worker);
   }
+
+  LOG(INFO) << "initialized NGramIndexReader for directory " <<
+      index_directory << " using strategy " << strategy << "\n";
 }
 
 NGramIndexReader::~NGramIndexReader() {
@@ -308,6 +305,8 @@ void NGramIndexReader::Find(const std::string &query,
     FindSmall(query, results);
     return;
   }
+
+  Timer timer;
 
   // split the query into its constituent ngrams
   std::vector<NGram> ngrams;
@@ -347,8 +346,7 @@ void NGramIndexReader::Find(const std::string &query,
   while (free_workers_.size() < parallelism_) {
     free_workers_.push_back(response_queue_.pop());
   }
-
-  LOG(INFO) << "done with find\n";
+  LOG(INFO) << "done with Find() after " << timer.elapsed_us() << " us\n";
 }
 
 void NGramIndexReader::FindSmall(const std::string &query,
