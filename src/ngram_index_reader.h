@@ -4,24 +4,39 @@
 #ifndef SRC_NGRAM_INDEX_READER_H_
 #define SRC_NGRAM_INDEX_READER_H_
 
-#include <condition_variable>
-#include <set>
 #include <string>
+#include <vector>
 
 #include "./bounded_map.h"
 #include "./context.h"
 #include "./integer_index_reader.h"
 #include "./ngram.h"
+#include "./queue.h"
 #include "./search_results.h"
 #include "./strategy.h"
 
 namespace codesearch {
+
+class NGramReaderWorker;
+
+struct QueryRequest {
+  QueryRequest(const std::string &q,
+               const std::vector<NGram> &n,
+               SearchResults *r)
+      :query(q), ngrams(n), results(r) {}
+
+  const std::string &query;
+  const std::vector<NGram> &ngrams;
+  SearchResults *results;
+};
+
 
 class NGramIndexReader {
  public:
   NGramIndexReader(const std::string &index_directory,
                    SearchStrategy strategy,
                    std::size_t threads = 0);
+  ~NGramIndexReader();
 
   NGramIndexReader(const NGramIndexReader &other) = delete;
   NGramIndexReader& operator=(const NGramIndexReader &other) = delete;
@@ -32,6 +47,8 @@ class NGramIndexReader {
   void Find(const std::string &query, SearchResults *results);
 
  private:
+  friend class NGramReaderWorker;
+
   Context *ctx_;
   const std::size_t ngram_size_;
   const IntegerIndexReader files_index_;
@@ -39,41 +56,17 @@ class NGramIndexReader {
   std::vector<SSTableReader<NGram> > shards_;
   SearchStrategy strategy_;
 
-  std::mutex mut_;
-  std::condition_variable cond_;
-  std::size_t running_threads_;
   const std::size_t parallelism_;
+
+  Queue<NGramReaderWorker*> response_queue_;
+  Queue<NGramReaderWorker*> terminate_response_queue_;
+  std::vector<NGramReaderWorker*> free_workers_;
 
   // Find an ngram smaller than the ngram_size_
   void FindSmall(const std::string &query,
                  SearchResults *results);
-
-  void FindShard(const std::string &query,
-                 const std::vector<NGram> &ngrams,
-                 const SSTableReader<NGram> &reader,
-                 SearchResults *results);
-
-  bool GetCandidates(const NGram &ngram,
-                     std::vector<std::uint64_t> *candidates,
-                     const SSTableReader<NGram> &reader,
-                     SSTableReader<NGram>::iterator *lower_bound);
-
-  // Take the candidates list, and trim the list to only those that
-  // are real matches, and add them to the SearchResults object. This
-  // returns a guess of how many lines it inserted into the
-  // SearchResults object, which will usually be an overestimate
-  // (since due to ordering constraints, anything added can be removed
-  // later).
-  std::size_t TrimCandidates(const std::string &query,
-                             const std::string &shard_name,
-                             const std::vector<std::uint64_t> &candidates,
-                             SearchResults *results);
-
-  // Wait until there are at most target threads running, and then
-  // return the number of currently running threads.
-  std::size_t WaitForThreads(std::size_t target);
-
 };
+
 }  // codesearch
 
 #endif  // SRC_NGRAM_INDEX_READER_H_

@@ -12,6 +12,7 @@
 #include "./util.h"
 
 #include <iomanip>
+#include <set>
 #include <string>
 #include <thread>
 
@@ -25,7 +26,8 @@ namespace codesearch {
 class IndexReaderConnection {
  public:
   IndexReaderConnection(const std::string &db_path, SearchStrategy strategy)
-      :started_(false), reader_(db_path, strategy), socket_(io_service_) {}
+      :started_(false),  socket_(io_service_), db_path_(db_path),
+       strategy_(strategy), reader_(nullptr) {}
 
   // Start an IndexReaderConnection's io loop.
   void Start();
@@ -45,9 +47,11 @@ class IndexReaderConnection {
   boost::asio::io_service io_service_;
   std::array<char, sizeof(std::uint64_t)> size_buffer_;
   boost::asio::streambuf data_buffer_;
-
-  NGramIndexReader reader_;
   boost::asio::ip::tcp::socket socket_;
+
+  const std::string &db_path_;
+  SearchStrategy strategy_;
+  std::unique_ptr<NGramIndexReader> reader_;
 
   void Search(std::size_t size);
 
@@ -127,6 +131,10 @@ void IndexReaderConnection::Search(std::size_t size) {
   response.set_request_num(request.request_num());
   SearchQueryResponse *resp;
 
+  if (reader_.get() == nullptr) {
+    reader_.reset(new NGramIndexReader(db_path_, strategy_));
+  }
+
   if (request.has_search_query()) {
     const SearchQueryRequest &search_query = request.search_query();
     LOG(INFO) << this << " doing search query, request_num = " <<
@@ -139,7 +147,7 @@ void IndexReaderConnection::Search(std::size_t size) {
                           search_query.within_file_limit()
                           //search_query.offset()
                           );
-    reader_.Find(search_query.query(), &results);
+    reader_->Find(search_query.query(), &results);
 
     resp = response.mutable_search_response();
     for (const auto &result : results.contextual_results()) {

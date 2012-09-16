@@ -44,7 +44,7 @@ class SearchStrategy {
   // take a while; it also uses a bit more memory.
   static const std::uint8_t FREQUENCY_SORT     = 2;
 
-  inline bool operator==(std::uint8_t value) { return value_ == value; }
+  inline bool operator==(std::uint8_t value) const { return value_ == value; }
   inline std::uint8_t value() const { return value_; }
 
   inline std::string name() const {
