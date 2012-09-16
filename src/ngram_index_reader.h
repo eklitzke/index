@@ -17,19 +17,8 @@
 
 namespace codesearch {
 
+class QueryRequest;
 class NGramReaderWorker;
-
-struct QueryRequest {
-  QueryRequest(const std::string &q,
-               const std::vector<NGram> &n,
-               SearchResults *r)
-      :query(q), ngrams(n), results(r) {}
-
-  const std::string &query;
-  const std::vector<NGram> &ngrams;
-  SearchResults *results;
-};
-
 
 class NGramIndexReader {
  public:
@@ -70,6 +59,50 @@ class NGramIndexReader {
   void FindNGrams(const std::string &query,
                   const std::vector<NGram> ngrams,
                   SearchResults *results);
+};
+
+
+class NGramReaderWorker {
+ public:
+  NGramReaderWorker(Queue<NGramReaderWorker*> *responses,
+                    Queue<NGramReaderWorker*> *terminate_responses,
+                    NGramIndexReader *index_reader);
+
+  void Run();  // run in a loop
+  void Stop();  // stop running
+  void SendRequest(const QueryRequest *req, const SSTableReader<NGram> *shard);
+
+ private:
+  Queue<NGramReaderWorker*> *responses_;
+  Queue<NGramReaderWorker*> *terminate_responses_;
+  const NGramIndexReader *index_reader_;
+  bool keep_going_;
+
+  const QueryRequest* req_;
+  const SSTableReader<NGram> *shard_;
+
+  std::mutex mut_;
+  std::condition_variable cond_;
+
+  // The wrapper function that coordinates the logic for searching a
+  // single SSTableReader<NGram> (i.e. a single SSTable file).
+  void FindShard();
+
+  // Given an ngram, a result list, an "ngram" reader shard, and a
+  // lower bound, fill in the result list with all of the positions in
+  // the posting list for that ngram. This is the function that
+  // actually does the posting-list lookup in the "ngrams" SSTable.
+  bool GetCandidates(const NGram &ngram,
+                     std::vector<std::uint64_t> *candidates,
+                     SSTableReader<NGram>::iterator *lower_bound,
+                     NGramValue *ngram_Val);
+
+
+  // Given a vector of candidate position ids, this function actually
+  // looks up the position data to see if the positions are true
+  // matches, and fills in the SearchResults object. This method does
+  // quries agains the "lines" and "files" SSTables.
+  std::size_t TrimCandidates(const std::vector<std::uint64_t> &candidates);
 };
 
 }  // codesearch

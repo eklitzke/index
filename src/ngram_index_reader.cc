@@ -39,217 +39,212 @@ namespace codesearch {
 // to optimize for the pathological case.
 inline std::size_t concurrency() { return std::thread::hardware_concurrency(); }
 
-class NGramReaderWorker {
- public:
-  NGramReaderWorker(Queue<NGramReaderWorker*> *responses,
-                    Queue<NGramReaderWorker*> *terminate_responses,
-                    NGramIndexReader *index_reader)
-      :responses_(responses), terminate_responses_(terminate_responses),
-       index_reader_(index_reader), keep_going_(true), req_(nullptr),
-       shard_(nullptr) {}
+struct QueryRequest {
+  QueryRequest(const std::string &q,
+               const std::vector<NGram> &n,
+               SearchResults *r)
+      :query(q), ngrams(n), results(r) {}
 
-  void Run() {
-    std::unique_lock<std::mutex> lock(mut_);
-    while (true) {
-      cond_.wait(lock, [=](){ return !keep_going_ || req_ != nullptr; });
-      if (!keep_going_) {
-        break;
-      }
+  const std::string &query;
+  const std::vector<NGram> &ngrams;
+  SearchResults *results;
+};
 
-      FindShard();
-      req_ = nullptr;
-      shard_ = nullptr;
-      responses_->push(this);
+NGramReaderWorker::NGramReaderWorker(Queue<NGramReaderWorker*> *responses,
+                                     Queue<NGramReaderWorker*> *terminate_responses,
+                                     NGramIndexReader *index_reader)
+    :responses_(responses), terminate_responses_(terminate_responses),
+     index_reader_(index_reader), keep_going_(true), req_(nullptr),
+     shard_(nullptr) {}
+
+void NGramReaderWorker::Run() {
+  std::unique_lock<std::mutex> lock(mut_);
+  while (true) {
+    cond_.wait(lock, [=](){ return !keep_going_ || req_ != nullptr; });
+    if (!keep_going_) {
+      break;
     }
-    terminate_responses_->push(this);
+
+    FindShard();
+    req_ = nullptr;
+    shard_ = nullptr;
+    responses_->push(this);
+  }
+  terminate_responses_->push(this);
+}
+
+void NGramReaderWorker::Stop() {
+  std::unique_lock<std::mutex> lock(mut_);
+  keep_going_ = false;
+  cond_.notify_all();
+}
+
+void NGramReaderWorker::SendRequest(const QueryRequest *req,
+                                    const SSTableReader<NGram> *shard) {
+  std::unique_lock<std::mutex> lock(mut_);
+  cond_.wait(lock, [=]() { return req_ == nullptr; });
+  assert(req_ == nullptr);
+  req_ = req;
+  shard_ = shard;
+  cond_.notify_all();
+}
+
+void NGramReaderWorker::FindShard() {
+  Timer timer;
+  SSTableReader<NGram>::iterator lower_bound = shard_->begin();
+  std::vector<std::uint64_t> candidates;
+  std::vector<std::uint64_t> intersection;
+
+  NGramValue ngram_val;
+  std::vector<NGram>::const_iterator ngrams_iter = req_->ngrams.cbegin();
+
+  // Get all of the candidates -- that is, all of the lines/positions
+  // who have all of the ngrams. To do this we populate the candidates
+  // vector, and successively check the remaining ngrams (in
+  // lexicographical order), taking the intersection of the candidates.
+  if (!GetCandidates(*ngrams_iter, &candidates, &lower_bound, &ngram_val)) {
+    return;
   }
 
-  void Stop() {
-    std::unique_lock<std::mutex> lock(mut_);
-    keep_going_ = false;
-    cond_.notify_all();
-  }
-
-  void SendRequest(const QueryRequest *req, const SSTableReader<NGram> *shard) {
-    std::unique_lock<std::mutex> lock(mut_);
-    cond_.wait(lock, [=]() { return req_ == nullptr; });
-    assert(req_ == nullptr);
-    req_ = req;
-    shard_ = shard;
-    cond_.notify_all();
-  }
+#if 0
+  intersection.reserve(candidates.size());
+#endif
 
 
- private:
-  Queue<NGramReaderWorker*> *responses_;
-  Queue<NGramReaderWorker*> *terminate_responses_;
-  const NGramIndexReader *index_reader_;
-  bool keep_going_;
-
-  const QueryRequest* req_;
-  const SSTableReader<NGram> *shard_;
-
-  std::mutex mut_;
-  std::condition_variable cond_;
-
-  void FindShard() {
-    Timer timer;
-    SSTableReader<NGram>::iterator lower_bound = shard_->begin();
-    std::vector<std::uint64_t> candidates;
-    std::vector<std::uint64_t> intersection;
-
-    std::vector<NGram>::const_iterator ngrams_iter = req_->ngrams.cbegin();
-
-    // Get all of the candidates -- that is, all of the lines/positions
-    // who have all of the ngrams. To do this we populate the candidates
-    // vector, and successively check the remaining ngrams (in
-    // lexicographical order), taking the intersection of the candidates.
-    if (!GetCandidates(*ngrams_iter, &candidates, &lower_bound)) {
+ ngrams_iter++;
+  for (; ngrams_iter != req_->ngrams.end() &&
+           candidates.size() > req_->results->max_keys();
+       ++ngrams_iter) {
+    std::vector<std::uint64_t> new_candidates;
+    if (!GetCandidates(
+            *ngrams_iter, &new_candidates, &lower_bound, &ngram_val)) {
       return;
     }
 
-#if 0
-    intersection.reserve(candidates.size());
-#endif
+    // Do the actual set intersection, storing the result into the
+    // "intersection" vector. Then swap out the contents into our
+    // "candidates" vector.
+    std::set_intersection(
+        candidates.begin(), candidates.end(),
+        new_candidates.begin(), new_candidates.end(),
+        std::back_inserter(intersection));
+    std::swap(candidates, intersection);
+    intersection.clear();  // reset for the next loop iteration
+  }
+  LOG(INFO) << "shard " << shard_->shard_name() <<
+      " finished SST lookups and set intersections after " <<
+      timer.elapsed_us() << " us" <<
+      (ngrams_iter != req_->ngrams.end() ? " (and aborted early)" : "") <<
+      ", final size is " << candidates.size() << "\n";
 
-    ngrams_iter++;
-    for (; ngrams_iter != req_->ngrams.end() &&
-             candidates.size() > req_->results->max_keys();
-         ++ngrams_iter) {
-      std::vector<std::uint64_t> new_candidates;
-      if (!GetCandidates(*ngrams_iter, &new_candidates, &lower_bound)) {
-        return;
-      }
+  // We are going to construct a map of filename -> [(line num,
+  // offset, line)].
+  Timer trim_candidates_timer;
+  std::size_t lines_added = TrimCandidates(candidates);
 
-      // Do the actual set intersection, storing the result into the
-      // "intersection" vector. Then swap out the contents into our
-      // "candidates" vector.
-      std::set_intersection(
-          candidates.begin(), candidates.end(),
-          new_candidates.begin(), new_candidates.end(),
-          std::back_inserter(intersection));
-      std::swap(candidates, intersection);
-      intersection.clear();  // reset for the next loop iteration
-    }
-    LOG(INFO) << "shard " << shard_->shard_name() <<
-        " finished SST lookups and set intersections after " <<
-        timer.elapsed_us() << " us" <<
-        (ngrams_iter != req_->ngrams.end() ? " (and aborted early)" : "") <<
-        ", final size is " << candidates.size() << "\n";
+  LOG(INFO) << "shard " << shard_->shard_name() <<
+      " searched query \"" << req_->query << "\" to add " << lines_added <<
+      " lines in " << timer.elapsed_us() << " us (trim took " <<
+      trim_candidates_timer.elapsed_us() << " us)\n";
+}
 
-    // We are going to construct a map of filename -> [(line num,
-    // offset, line)].
-    Timer trim_candidates_timer;
-    std::size_t lines_added = TrimCandidates(candidates);
+bool NGramReaderWorker::GetCandidates(const NGram &ngram,
+                                      std::vector<std::uint64_t> *candidates,
+                                      SSTableReader<NGram>::iterator *lower_bound,
+                                      NGramValue *ngram_val) {
+  assert(candidates->empty());
 
-    LOG(INFO) << "shard " << shard_->shard_name() <<
-        " searched query \"" << req_->query << "\" to add " << lines_added <<
-        " lines in " << timer.elapsed_us() << " us (trim took " <<
-        trim_candidates_timer.elapsed_us() << " us)\n";
+  SSTableReader<NGram>::iterator it = shard_->lower_bound(
+      *lower_bound, ngram);
+  if (index_reader_->strategy_ == SearchStrategy::LEXICOGRAPHIC_SORT) {
+    *lower_bound = it;
+  }
+  if (it == shard_->end() || *it != ngram) {
+    LOG(INFO) << "did *not* find ngram " << ngram << "\n";
+    return false;
   }
 
-  // Given an ngram, a result list, an "ngram" reader shard, and a
-  // lower bound, fill in the result list with all of the positions in
-  // the posting list for that ngram. This is the function that actually
-  // does the SST lookup.
-  bool GetCandidates(const NGram &ngram,
-                     std::vector<std::uint64_t> *candidates,
-                     SSTableReader<NGram>::iterator *lower_bound) {
-    assert(candidates->empty());
-
-    SSTableReader<NGram>::iterator it = shard_->lower_bound(
-        *lower_bound, ngram);
-    if (index_reader_->strategy_ == SearchStrategy::LEXICOGRAPHIC_SORT) {
-      *lower_bound = it;
-    }
-    if (it == shard_->end() || *it != ngram) {
-      LOG(INFO) << "did *not* find ngram " << ngram << "\n";
-      return false;
-    }
-
-    NGramValue ngram_val;
-    ngram_val.ParseFromString(it.value());
-    assert(ngram_val.position_ids_size() > 0);
-    std::uint64_t posting_val = 0;
-    for (int i = 0; i < ngram_val.position_ids_size(); i++) {
-      std::uint64_t delta = ngram_val.position_ids(i);
-      posting_val += delta;
-      candidates->push_back(posting_val);
-    }
-    return true;
+  ngram_val->ParseFromString(it.value());
+  assert(ngram_val->position_ids_size() > 0);
+  std::uint64_t posting_val = 0;
+  for (const auto &delta : ngram_val->position_ids()) {
+    posting_val += delta;
+    candidates->push_back(posting_val);
   }
+  return true;
+}
 
-  std::size_t TrimCandidates(const std::vector<std::uint64_t> &candidates) {
+std::size_t NGramReaderWorker::TrimCandidates(
+    const std::vector<std::uint64_t> &candidates) {
 
-    // The candidates vector contains the ids of rows in the "lines"
-    // index that are candidates. We need to check each candidate to
-    // make sure it really is a match.
-    //
-    // To do the trimming/sorting for consistent results, we're going to
-    // do the full lookup of all of the lines.
+  // The candidates vector contains the ids of rows in the "lines"
+  // index that are candidates. We need to check each candidate to
+  // make sure it really is a match.
+  //
+  // To do the trimming/sorting for consistent results, we're going to
+  // do the full lookup of all of the lines.
 
-    const FrozenMap<std::uint32_t, std::uint32_t> &offsets =\
-        index_reader_->ctx_->file_offsets();
-    const bool use_offsets = !offsets.empty();
+  const FrozenMap<std::uint32_t, std::uint32_t> &offsets =\
+      index_reader_->ctx_->file_offsets();
+  const bool use_offsets = !offsets.empty();
 
-    std::size_t lines_added = 0;
-    std::uint64_t max_file_id = UINT64_MAX;
-    PositionValue pos;
-    std::string value;
-    for (const auto &candidate : candidates) {
-      std::uint64_t file_id;
-      if (use_offsets) {
-        auto it = offsets.lower_bound(candidate);
-        if (it == offsets.end()) {
-          it--;
-          file_id = it->second;
-        } else if (it->first == candidate) {
-          file_id = it->second;
-        } else {
-          file_id = it->second - 1;
-        }
-        if (file_id >= max_file_id) {
-          continue;
-        }
-        assert(index_reader_->lines_index_.Find(candidate, &value));
-        pos.ParseFromString(value);
-        assert(file_id == pos.file_id());
+  std::size_t lines_added = 0;
+  std::uint64_t max_file_id = UINT64_MAX;
+  PositionValue pos;
+  std::string value;
+  for (const auto &candidate : candidates) {
+    std::uint64_t file_id;
+    if (use_offsets) {
+      auto it = offsets.lower_bound(candidate);
+      if (it == offsets.end()) {
+        it--;
+        file_id = it->second;
+      } else if (it->first == candidate) {
+        file_id = it->second;
       } else {
-        assert(index_reader_->lines_index_.Find(candidate, &value));
-        pos.ParseFromString(value);
-
-        // Check that it's going to be possible to insert with this file
-        // id -- no mutexes need to be accessed for this check!
-        file_id = pos.file_id();
-        if (file_id >= max_file_id) {
-          continue;
-        }
+        file_id = it->second - 1;
       }
-
-      // Ensure that the text really matches our query
-      if (pos.line().find(req_->query) == std::string::npos) {
+      if (file_id >= max_file_id) {
         continue;
       }
+      assert(index_reader_->lines_index_.Find(candidate, &value));
+      pos.ParseFromString(value);
+      assert(file_id == pos.file_id());
+    } else {
+      assert(index_reader_->lines_index_.Find(candidate, &value));
+      pos.ParseFromString(value);
 
-      index_reader_->files_index_.Find(file_id, &value);
-      FileValue fileval;
-      fileval.ParseFromString(value);
-      FileKey filekey(file_id, fileval.filename());
-
-      BoundedMapInsertionResult status = req_->results->insert(
-          filekey, FileResult(pos.file_offset(), pos.file_line()));
-      if (status == BoundedMapInsertionResult::INSERT_SUCCESSFUL) {
-        lines_added++;
-      } else if (status == BoundedMapInsertionResult::KEY_TOO_LARGE) {
-        // We failed to insert the file data, because the file_id was
-        // too big. Track this file_id, so we can avoid trying to insert
-        // with file ids >= this one in the future.
-        max_file_id = file_id;
+      // Check that it's going to be possible to insert with this file
+      // id -- no mutexes need to be accessed for this check!
+      file_id = pos.file_id();
+      if (file_id >= max_file_id) {
+        continue;
       }
     }
-    return lines_added;
+
+    // Ensure that the text really matches our query
+    if (pos.line().find(req_->query) == std::string::npos) {
+      continue;
+    }
+
+    index_reader_->files_index_.Find(file_id, &value);
+    FileValue fileval;
+    fileval.ParseFromString(value);
+    FileKey filekey(file_id, fileval.filename());
+
+    BoundedMapInsertionResult status = req_->results->insert(
+        filekey, FileResult(pos.file_offset(), pos.file_line()));
+    if (status == BoundedMapInsertionResult::INSERT_SUCCESSFUL) {
+      lines_added++;
+    } else if (status == BoundedMapInsertionResult::KEY_TOO_LARGE) {
+      // We failed to insert the file data, because the file_id was
+      // too big. Track this file_id, so we can avoid trying to insert
+      // with file ids >= this one in the future.
+      max_file_id = file_id;
+    }
   }
-};
+  return lines_added;
+}
 
 NGramIndexReader::NGramIndexReader(const std::string &index_directory,
                                    SearchStrategy strategy,
