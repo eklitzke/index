@@ -37,19 +37,15 @@ NGramTableReader::NGramTableReader(const std::string &index_directory,
 
 bool NGramTableReader::Find(const NGram &ngram,
                             std::vector<std::uint64_t> *candidates) const {
-  LOG(INFO) << "finding ngram " << ngram << "\n";
   auto lo = savepoints_.lower_bound(ngram);
   auto hi = lo;
   if (lo == savepoints_.end()) {
-    LOG(INFO) << "case 1\n";
     lo--;
   } else if (lo->first > ngram) {
-    LOG(INFO) << "case 2\n";
     assert(lo != savepoints_.begin());
     lo--;
     assert(lo->first <= ngram);
   } else {
-    LOG(INFO) << "case 3\n";
     hi++;  // we didn't decrement lo, we increment up
   }
   assert(lo->first <= ngram);
@@ -64,13 +60,9 @@ bool NGramTableReader::Find(const NGram &ngram,
     assert(hi->first > ngram);
     SSTableReader<NGram>::iterator upper = reader_.begin() + hi->second;
     assert(lower.reader() == upper.reader());
-    LOG(INFO) << "lower.offset() = " << lower.offset() << ", upper.offset() = "
-              << upper.offset() << ", end.offset() = " << reader_.end().offset()
-              << ", reader_.num_keys() = " << reader_.num_keys() << "\n";
     pos = reader_.lower_bound(lower, upper, ngram);
   }
 
-  LOG(INFO) << "pos.offset() = " << pos.offset() << "\n";
   if (pos == reader_.end() || *pos != ngram) {
     return false;
   }
