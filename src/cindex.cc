@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
       }
     }
   }
-  std::cout << "sorting " << to_index.size() << "files..." << std::endl;
+  std::cout << "sorting " << to_index.size() << " files..." << std::endl;
   std::sort(to_index.begin(), to_index.end());
   {
     std::size_t filenum = 1;
