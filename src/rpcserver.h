@@ -17,9 +17,11 @@ class IndexReaderServer {
  public:
   IndexReaderServer(const std::string &db_path,
                     boost::asio::io_service* io_service,
-                    const boost::asio::ip::tcp::endpoint &endpoint)
+                    const boost::asio::ip::tcp::endpoint &endpoint,
+                    std::size_t threads = 0)
       :db_path_(db_path), io_service_(io_service),
-       acceptor_(*io_service, endpoint), conn_(nullptr), conn_count_(0) {}
+       acceptor_(*io_service, endpoint), conn_(nullptr), conn_count_(0),
+       threads_(threads) {}
   IndexReaderServer(const IndexReaderServer &other) = delete;
   IndexReaderServer& operator=(const IndexReaderServer &other) = delete;
 
@@ -30,11 +32,14 @@ class IndexReaderServer {
   ~IndexReaderServer();
 
  private:
+  friend class IndexReaderConnection;
+
   std::string db_path_;
   boost::asio::io_service *io_service_;
   boost::asio::ip::tcp::acceptor acceptor_;
   IndexReaderConnection *conn_;
   std::size_t conn_count_;
+  std::size_t threads_;
 
   void StartAccept();
 

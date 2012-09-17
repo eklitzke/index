@@ -16,6 +16,8 @@ int main(int argc, char **argv) {
       ("port,p", po::value<int>()->default_value(codesearch::default_rpc_port))
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
+      ("threads,t", po::value<std::size_t>()->default_value(0),
+       "number of threads to use per index reader")
       ;
 
   po::variables_map vm;
@@ -33,13 +35,15 @@ int main(int argc, char **argv) {
   boost::asio::io_service io_service;
   boost::asio::ip::tcp::endpoint endpoint(
       boost::asio::ip::address::from_string("127.0.0.1"), vm["port"].as<int>());
+  std::size_t threads = vm["threads"].as<std::size_t>();
 
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str));
   ctx->InitializeSortedNGrams();
   ctx->InitializeFileOffsets();
 
-  codesearch::IndexReaderServer server(db_path_str, &io_service, endpoint);
+  codesearch::IndexReaderServer server(
+      db_path_str, &io_service, endpoint, threads);
   server.Start();
   io_service.run();
 
