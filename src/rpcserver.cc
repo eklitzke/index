@@ -25,9 +25,9 @@ namespace codesearch {
 
 class IndexReaderConnection {
  public:
-  IndexReaderConnection(const std::string &db_path, SearchStrategy strategy)
+  IndexReaderConnection(const std::string &db_path)
       :started_(false),  socket_(io_service_), db_path_(db_path),
-       strategy_(strategy), reader_(nullptr) {}
+       reader_(nullptr) {}
 
   // Start an IndexReaderConnection's io loop.
   void Start();
@@ -50,7 +50,6 @@ class IndexReaderConnection {
   boost::asio::ip::tcp::socket socket_;
 
   const std::string &db_path_;
-  SearchStrategy strategy_;
   std::unique_ptr<NGramIndexReader> reader_;
 
   void Search(std::size_t size);
@@ -132,7 +131,7 @@ void IndexReaderConnection::Search(std::size_t size) {
   SearchQueryResponse *resp;
 
   if (reader_.get() == nullptr) {
-    reader_.reset(new NGramIndexReader(db_path_, strategy_));
+    reader_.reset(new NGramIndexReader(db_path_));
   }
 
   if (request.has_search_query()) {
@@ -223,9 +222,9 @@ IndexReaderConnection::~IndexReaderConnection() {
 
 namespace {
 codesearch::IndexReaderConnection* NewConnection(
-    const std::string &db_path, codesearch::SearchStrategy strategy) {
+    const std::string &db_path) {
   codesearch::IndexReaderConnection *conn;
-  conn = new codesearch::IndexReaderConnection(db_path, strategy);
+  conn = new codesearch::IndexReaderConnection(db_path);
   std::lock_guard<std::mutex> guard(conns_mut);
   conns.insert(conn);
   return conn;
@@ -267,7 +266,7 @@ void IndexReaderServer::Start() {
 }
 
 void IndexReaderServer::StartAccept() {
-  conn_ = NewConnection(db_path_, strategy_);
+  conn_ = NewConnection(db_path_);
   acceptor_.async_accept(
       *conn_->socket(),
       std::bind(&IndexReaderServer::HandleAccept, this,

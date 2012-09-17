@@ -16,7 +16,7 @@ class IntegerIndexReader {
  public:
   IntegerIndexReader(const std::string &index_directory,
                      const std::string &name,
-                     std::size_t savepoints = 256);
+                     std::size_t savepoints = 2048);
 
   // Find a needle. This searches the shards sequentially, and returns
   // early (i.e. on the first shard with the needle). In general, the

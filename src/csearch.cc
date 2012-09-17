@@ -7,7 +7,6 @@
 #include "./context.h"
 #include "./file_util.h"
 #include "./ngram_index_reader.h"
-#include "./strategy.h"
 #include "./util.h"
 
 #include <string>
@@ -28,8 +27,6 @@ int main(int argc, char **argv) {
           codesearch::default_index_directory))
       ("query,q", po::value<std::string>(),
        "(positional) the search query, mandatory")
-      ("strategy", po::value<std::string>()->default_value(
-          codesearch::default_strategy))
       ;
 
   // all positional arguments are source dirs
@@ -46,22 +43,13 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  bool strategy_error;
-  codesearch::SearchStrategy strategy = codesearch::InterpretStrategy(
-      vm["strategy"].as<std::string>(), &strategy_error);
-  if (strategy_error == true) {
-    std::cerr << "ERROR: --strategy must be one of " <<
-        "(lexicographic, frequency)\n";
-    return 1;
-  }
-
   codesearch::InitializeLogging(argv[0]);
 
   std::string db_path_str = vm["db-path"].as<std::string>();
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str));
   codesearch::NGramIndexReader reader(
-      db_path_str, strategy, vm["threads"].as<std::size_t>());
+      db_path_str, vm["threads"].as<std::size_t>());
 
 #if 0
   // This causes valgrind to report memory leaks (which apparently are

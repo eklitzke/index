@@ -25,9 +25,12 @@ namespace codesearch {
 template <typename T>
 class SSTableReader {
  public:
+  SSTableReader()
+      :mmap_addr_(nullptr), mmap_size_(0), use_snappy_(false) {}
+
   explicit SSTableReader(const std::string &name) :name_(name) {
     std::pair<std::size_t, const char *> mmap_data = GetMmapForFile(name);
-    std::size_t mmap_size = mmap_data.first;
+    mmap_size_ = mmap_data.first;
     mmap_addr_ = mmap_data.second;
     std::array<std::uint8_t, 8> hdr_size_data;
     memcpy(hdr_size_data.data(), mmap_addr_, sizeof(std::uint64_t));
@@ -39,7 +42,8 @@ class SSTableReader {
     hdr_.ParseFromString(hdr_string);
     std::string padding = GetWordPadding(hdr_size);
 
-    assert(mmap_size == sizeof(std::uint64_t) + hdr_size + padding.size() +
+    assert(hdr_.index_offset() < 1024); // sanity check
+    assert(mmap_size_ == sizeof(std::uint64_t) + hdr_size + padding.size() +
            hdr_.index_size() + hdr_.data_size());
 
     // are we using snappy?
@@ -52,7 +56,10 @@ class SSTableReader {
   // SSTableReader objects in the NGramIndexReader. No other copying
   // should be happening, however.
   SSTableReader(const SSTableReader<T> &other)
-      :name_(other.name_), mmap_addr_(other.mmap_addr_), hdr_(other.hdr_),
+      :name_(other.name_),
+       mmap_addr_(other.mmap_addr_),
+       mmap_size_(other.mmap_size_),
+       hdr_(other.hdr_),
        use_snappy_(other.use_snappy_) {}
 
   SSTableReader& operator=(const SSTableReader &other) = delete;
@@ -132,7 +139,9 @@ class SSTableReader {
   }
 #endif
 
-  inline std::uint64_t num_keys() const { return hdr_.num_keys(); }
+  const SSTableHeader& hdr() const { return hdr_; }
+  const std::string& name() const { return name_; }
+  std::uint64_t num_keys() const { return hdr_.num_keys(); }
 
   std::string shard_name() const {
     std::string::size_type pos = name_.find_last_of('/');
@@ -148,6 +157,7 @@ private:
 
   // this address points to the start of the mmaped index
   const char *mmap_addr_;
+  std::size_t mmap_size_;
 
   // the header read from the index
   SSTableHeader hdr_;

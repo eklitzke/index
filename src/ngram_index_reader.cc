@@ -10,7 +10,6 @@
 #include "./queue.h"
 #include "./util.h"
 
-#include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
 
 #include <fstream>
@@ -80,7 +79,7 @@ void NGramReaderWorker::Stop() {
 }
 
 void NGramReaderWorker::SendRequest(const QueryRequest *req,
-                                    const SSTableReader<NGram> *shard) {
+                                    const NGramTableReader *shard) {
   std::unique_lock<std::mutex> lock(mut_);
   cond_.wait(lock, [=]() { return req_ == nullptr; });
   assert(req_ == nullptr);
@@ -91,7 +90,6 @@ void NGramReaderWorker::SendRequest(const QueryRequest *req,
 
 void NGramReaderWorker::FindShard() {
   Timer timer;
-  SSTableReader<NGram>::iterator lower_bound = shard_->begin();
   std::vector<std::uint64_t> candidates;
   std::vector<std::uint64_t> intersection;
 
@@ -101,8 +99,9 @@ void NGramReaderWorker::FindShard() {
   // Get all of the candidates -- that is, all of the lines/positions
   // who have all of the ngrams. To do this we populate the candidates
   // vector, and successively check the remaining ngrams (in
-  // lexicographical order), taking the intersection of the candidates.
-  if (!GetCandidates(*ngrams_iter, &candidates, &lower_bound, &ngram_val)) {
+  // lexicographical order), taking the intersection of the
+  // candidates.
+  if (!shard_->Find(*ngrams_iter, &candidates)) {
     return;
   }
 
@@ -111,13 +110,12 @@ void NGramReaderWorker::FindShard() {
 #endif
 
 
- ngrams_iter++;
+  ngrams_iter++;
   for (; ngrams_iter != req_->ngrams.end() &&
            candidates.size() > req_->results->max_keys();
        ++ngrams_iter) {
     std::vector<std::uint64_t> new_candidates;
-    if (!GetCandidates(
-            *ngrams_iter, &new_candidates, &lower_bound, &ngram_val)) {
+    if (!shard_->Find(*ngrams_iter, &new_candidates)) {
       return;
     }
 
@@ -148,42 +146,14 @@ void NGramReaderWorker::FindShard() {
       trim_candidates_timer.elapsed_us() << " us)\n";
 }
 
-bool NGramReaderWorker::GetCandidates(const NGram &ngram,
-                                      std::vector<std::uint64_t> *candidates,
-                                      SSTableReader<NGram>::iterator *lower_bound,
-                                      NGramValue *ngram_val) {
-  assert(candidates->empty());
-
-  SSTableReader<NGram>::iterator it = shard_->lower_bound(
-      *lower_bound, ngram);
-  if (index_reader_->strategy_ == SearchStrategy::LEXICOGRAPHIC_SORT) {
-    *lower_bound = it;
-  }
-  if (it == shard_->end() || *it != ngram) {
-    LOG(INFO) << "did *not* find ngram " << ngram << "\n";
-    return false;
-  }
-
-  ngram_val->ParseFromString(it.value());
-  assert(ngram_val->position_ids_size() > 0);
-  std::uint64_t posting_val = 0;
-  for (const auto &delta : ngram_val->position_ids()) {
-    posting_val += delta;
-    candidates->push_back(posting_val);
-  }
-  return true;
-}
-
 std::size_t NGramReaderWorker::TrimCandidates(
     const std::vector<std::uint64_t> &candidates) {
-
   // The candidates vector contains the ids of rows in the "lines"
   // index that are candidates. We need to check each candidate to
   // make sure it really is a match.
   //
   // To do the trimming/sorting for consistent results, we're going to
   // do the full lookup of all of the lines.
-
   const FrozenMap<std::uint32_t, std::uint32_t> &offsets =\
       index_reader_->ctx_->file_offsets();
   const bool use_offsets = !offsets.empty();
@@ -247,11 +217,10 @@ std::size_t NGramReaderWorker::TrimCandidates(
 }
 
 NGramIndexReader::NGramIndexReader(const std::string &index_directory,
-                                   SearchStrategy strategy,
                                    std::size_t threads)
     :ctx_(Context::Acquire(index_directory)),
      files_index_(index_directory, "files"),
-     lines_index_(index_directory, "lines"), strategy_(strategy),
+     lines_index_(index_directory, "lines"),
      parallelism_(threads == 0 ? concurrency() : threads) {
   std::string config_name = index_directory + "/ngrams/config";
   std::ifstream config(config_name.c_str(),
@@ -260,9 +229,7 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
   IndexConfig index_config;
   index_config.ParseFromIstream(&config);
   for (std::size_t i = 0; i < index_config.num_shards(); i++) {
-    std::string shard_name = (index_directory + "/ngrams/shard_" +
-                              boost::lexical_cast<std::string>(i) + ".sst");
-    shards_.push_back(SSTableReader<NGram>(shard_name));
+    shards_.push_back(NGramTableReader(index_directory, i));
   }
 
   for (std::size_t i = 0; i < parallelism_; i++) {
@@ -274,7 +241,7 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
   }
 
   LOG(INFO) << "initialized NGramIndexReader for directory " <<
-      index_directory << " using strategy " << strategy << "\n";
+      index_directory << "\n";
 }
 
 NGramIndexReader::~NGramIndexReader() {
@@ -310,16 +277,7 @@ void NGramIndexReader::Find(const std::string &query,
   }
   assert(!ngrams_set.empty());
   ngrams.insert(ngrams.begin(), ngrams_set.begin(), ngrams_set.end());
-  switch (strategy_.value()) {
-    case SearchStrategy::LEXICOGRAPHIC_SORT:
-      std::sort(ngrams.begin(), ngrams.end());
-      break;
-    case SearchStrategy::FREQUENCY_SORT:
-      ctx_->SortNGrams(&ngrams);
-      break;
-    default:
-      assert(false);  // not reached
-  }
+  ctx_->SortNGrams(&ngrams);
   FindNGrams(query, ngrams, results);
 }
 

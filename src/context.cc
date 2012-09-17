@@ -189,11 +189,12 @@ void Context::InitializeSortedNGrams() {
     counts_builder.insert(NGram(ngram_str), ngram.count());
   }
   ngram_counts_ = counts_builder;
-  LOG(INFO) << "initialized sorted ngrams list in " <<
-    initialization_timer.elapsed_ms() << " ms\n";
+  LOG(INFO) << "initialized sorted ngrams map in " <<
+      initialization_timer.elapsed_ms() << " ms\n";
 }
 
 void Context::InitializeFileOffsets() {
+  Timer initialization_timer;
   std::ifstream ifs(index_directory_ + "/file_start_lines",
                     std::ifstream::binary | std::ifstream::in);
   assert(file_offsets_.empty());
@@ -205,6 +206,8 @@ void Context::InitializeFileOffsets() {
     offsets.insert(start_line.first_line(), start_line.file_id());
   }
   file_offsets_ = offsets;
+  LOG(INFO) << "initialized file offsets map in " <<
+      initialization_timer.elapsed_ms() << " ms\n";
 }
 
 Context::~Context() {
