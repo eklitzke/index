@@ -25,7 +25,8 @@ IntegerIndexReader::IntegerIndexReader(const std::string &index_directory,
   }
 }
 
-bool IntegerIndexReader::Find(std::uint64_t needle, std::string *result) const {
+bool IntegerIndexReader::Find(std::uint64_t needle,
+                              google::protobuf::MessageLite *msg) const {
   for (const auto &shard : shards_) {
     std::uint64_t min_key = ToUint64(shard.hdr().min_value());
     std::uint64_t max_key = ToUint64(shard.hdr().max_value());
@@ -33,7 +34,7 @@ bool IntegerIndexReader::Find(std::uint64_t needle, std::string *result) const {
       std::uint64_t delta = needle - min_key;
       SSTableReader<std::uint64_t>::iterator pos = shard.begin() + delta;
       assert(*pos == needle);
-      *result = pos.value();
+      pos.parse_protobuf(msg);
       return true;
     }
   }

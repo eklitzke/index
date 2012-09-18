@@ -11,12 +11,13 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstring>
 #include <memory>
 #include <mutex>
 #include <string>
 
 #include <boost/iterator/iterator_facade.hpp>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/message_lite.h>
 
 static_assert(sizeof(std::uint64_t) == 8, "Something's whack with uint64_t");
 
@@ -63,6 +64,11 @@ class SSTableReader {
     key_storage = key_size + sizeof(std::uint64_t)
   };
 
+  class key_iterator;
+ private:
+  friend class key_iterator;
+ public:
+
   class key_iterator :
       public boost::iterator_facade<key_iterator,
                                     const T,
@@ -78,8 +84,31 @@ class SSTableReader {
 
     inline const SSTableReader* reader() const { return reader_; }
     inline std::ptrdiff_t offset() const { return offset_; }
-    inline std::string value() const {
-      return reader_->ReadVal(offset_ * key_storage);
+
+    // Parse a ProtocolBuffer from the data section of the index
+    inline void parse_protobuf(google::protobuf::MessageLite *msg) const {
+      std::ptrdiff_t index_offset = offset_ * key_storage;
+#ifdef ENABLE_SLOW_ASSERTS
+      assert(index_offset >= 0 &&
+          index_offset < static_cast<std::ptrdiff_t>(
+      reader_->hdr_.index_size()));
+#endif
+      std::uint64_t data_offset = ReadUint64(
+          reader_->mmap_addr_ +
+          reader_->hdr_.index_offset() +
+          index_offset + key_size);
+#ifdef ENABLE_SLOW_ASSERTS
+      assert(data_offset < UINT32_MAX);  // sanity check
+#endif
+      const char *val_data = (
+          reader_->mmap_addr_ + reader_->hdr_.data_offset() + data_offset);
+      std::uint32_t data_size = ReadUint32(val_data);
+#ifdef ENABLE_SLOW_ASSERTS
+      assert(data_size > 0);
+#endif
+      google::protobuf::io::ArrayInputStream array_stream(
+          val_data + sizeof(data_size), data_size);
+      msg->ParseFromZeroCopyStream(&array_stream);
     }
 
    private:
@@ -157,20 +186,6 @@ private:
   SSTableHeader hdr_;
 
   T ReadKey(std::ptrdiff_t index_offset) const;
-
-  inline std::string ReadVal(std::ptrdiff_t index_offset) const {
-    assert(index_offset >= 0 &&
-           index_offset < static_cast<std::ptrdiff_t>(hdr_.index_size()));
-    std::uint64_t data_offset = ReadUint64(
-        mmap_addr_ + hdr_.index_offset() + index_offset + key_size);
-    assert(data_offset < UINT32_MAX);  // sanity check
-    const char *val_data = mmap_addr_ + hdr_.data_offset() + data_offset;
-    std::uint32_t data_size = ReadUint32(val_data);
-#ifdef ENABLE_SLOW_ASSERTS
-    assert(data_size > 0);
-#endif
-    return std::string(val_data + sizeof(data_size), data_size);
-  }
 };
 
 template<>

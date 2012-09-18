@@ -161,7 +161,6 @@ std::size_t NGramReaderWorker::TrimCandidates(
   std::size_t lines_added = 0;
   std::uint64_t max_file_id = UINT64_MAX;
   PositionValue pos;
-  std::string value;
   for (const auto &candidate : candidates) {
     std::uint64_t file_id;
     if (use_offsets) {
@@ -177,12 +176,10 @@ std::size_t NGramReaderWorker::TrimCandidates(
       if (file_id >= max_file_id) {
         continue;
       }
-      assert(index_reader_->lines_index_.Find(candidate, &value));
-      pos.ParseFromString(value);
+      assert(index_reader_->lines_index_.Find(candidate, &pos));
       assert(file_id == pos.file_id());
     } else {
-      assert(index_reader_->lines_index_.Find(candidate, &value));
-      pos.ParseFromString(value);
+      assert(index_reader_->lines_index_.Find(candidate, &pos));
 
       // Check that it's going to be possible to insert with this file
       // id -- no mutexes need to be accessed for this check!
@@ -197,9 +194,8 @@ std::size_t NGramReaderWorker::TrimCandidates(
       continue;
     }
 
-    index_reader_->files_index_.Find(file_id, &value);
     FileValue fileval;
-    fileval.ParseFromString(value);
+    index_reader_->files_index_.Find(file_id, &fileval);
     FileKey filekey(file_id, fileval.filename());
 
     BoundedMapInsertionResult status = req_->results->insert(
