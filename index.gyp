@@ -10,6 +10,7 @@
             'src/file_util.cc',
             'src/integer_index_reader.cc',
             'src/ngram_index_reader.cc',
+            'src/ngram_table_reader.cc',
             'src/search_results.cc',
         ],
         'writer_sources': [
@@ -28,6 +29,7 @@
                    '-Wall',
                    '-std=c++11',
                    '-O3',
+                   #'-finstrument-functions',
                    '-flto',
                    '-g',
                    # see http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43052

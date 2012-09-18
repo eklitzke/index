@@ -11,9 +11,9 @@
 #include "./context.h"
 #include "./integer_index_reader.h"
 #include "./ngram.h"
+#include "./ngram_table_reader.h"
 #include "./queue.h"
 #include "./search_results.h"
-#include "./strategy.h"
 
 namespace codesearch {
 
@@ -23,7 +23,6 @@ class NGramReaderWorker;
 class NGramIndexReader {
  public:
   NGramIndexReader(const std::string &index_directory,
-                   SearchStrategy strategy,
                    std::size_t threads = 0);
   ~NGramIndexReader();
 
@@ -41,8 +40,7 @@ class NGramIndexReader {
   Context *ctx_;
   const IntegerIndexReader files_index_;
   const IntegerIndexReader lines_index_;
-  std::vector<SSTableReader<NGram> > shards_;
-  SearchStrategy strategy_;
+  std::vector<NGramTableReader> shards_;
 
   const std::size_t parallelism_;
 
@@ -70,7 +68,7 @@ class NGramReaderWorker {
 
   void Run();  // run in a loop
   void Stop();  // stop running
-  void SendRequest(const QueryRequest *req, const SSTableReader<NGram> *shard);
+  void SendRequest(const QueryRequest *req, const NGramTableReader *shard);
 
  private:
   Queue<NGramReaderWorker*> *responses_;
@@ -79,7 +77,7 @@ class NGramReaderWorker {
   bool keep_going_;
 
   const QueryRequest* req_;
-  const SSTableReader<NGram> *shard_;
+  const NGramTableReader *shard_;
 
   std::mutex mut_;
   std::condition_variable cond_;
@@ -87,16 +85,6 @@ class NGramReaderWorker {
   // The wrapper function that coordinates the logic for searching a
   // single SSTableReader<NGram> (i.e. a single SSTable file).
   void FindShard();
-
-  // Given an ngram, a result list, an "ngram" reader shard, and a
-  // lower bound, fill in the result list with all of the positions in
-  // the posting list for that ngram. This is the function that
-  // actually does the posting-list lookup in the "ngrams" SSTable.
-  bool GetCandidates(const NGram &ngram,
-                     std::vector<std::uint64_t> *candidates,
-                     SSTableReader<NGram>::iterator *lower_bound,
-                     NGramValue *ngram_Val);
-
 
   // Given a vector of candidate position ids, this function actually
   // looks up the position data to see if the positions are true

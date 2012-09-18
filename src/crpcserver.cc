@@ -16,9 +16,8 @@ int main(int argc, char **argv) {
       ("port,p", po::value<int>()->default_value(codesearch::default_rpc_port))
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
-      ("strategy", po::value<std::string>()->default_value(
-          codesearch::default_strategy),
-       "specify \"lexicographic\" or \"frequency\"")
+      ("threads,t", po::value<std::size_t>()->default_value(0),
+       "number of threads to use per index reader")
       ;
 
   po::variables_map vm;
@@ -36,15 +35,7 @@ int main(int argc, char **argv) {
   boost::asio::io_service io_service;
   boost::asio::ip::tcp::endpoint endpoint(
       boost::asio::ip::address::from_string("127.0.0.1"), vm["port"].as<int>());
-
-  bool strategy_error;
-  codesearch::SearchStrategy strategy = codesearch::InterpretStrategy(
-      vm["strategy"].as<std::string>(), &strategy_error);
-  if (strategy_error == true) {
-    std::cerr << "ERROR: --strategy must be one of " <<
-        "(lexicographic, frequency)\n";
-    return 1;
-  }
+  std::size_t threads = vm["threads"].as<std::size_t>();
 
   std::unique_ptr<codesearch::Context> ctx(
       codesearch::Context::Acquire(db_path_str));
@@ -52,7 +43,7 @@ int main(int argc, char **argv) {
   ctx->InitializeFileOffsets();
 
   codesearch::IndexReaderServer server(
-      db_path_str, &io_service, endpoint, strategy);
+      db_path_str, &io_service, endpoint, threads);
   server.Start();
   io_service.run();
 

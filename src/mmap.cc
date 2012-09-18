@@ -16,21 +16,49 @@ namespace {
 std::mutex m_;
 std::map<std::string, std::pair<std::size_t, const char*> > mapping_;
 
+class FILEWrapper {
+ public:
+  FILEWrapper() = delete;
+  FILEWrapper(const std::string &name, const std::string &mode)
+      :f_(nullptr) {
+    f_ = fopen(name.c_str(), mode.c_str());
+  }
+  FILEWrapper(const FILEWrapper &other) = delete;
+  FILEWrapper& operator=(const FILEWrapper &other) = delete;
+  ~FILEWrapper() {
+    if (f_ != nullptr) {
+      fclose(f_);
+    }
+  }
+
+  bool fail() const { return f_ == nullptr; }
+
+  int fileno() const {
+    assert(f_ != nullptr);
+    return ::fileno(f_);
+  }
+
+  std::size_t size() {
+    std::size_t s = lseek(fileno(), 0, SEEK_END);
+    rewind(f_);
+    return s;
+  }
+
+ private:
+  FILE* f_;
+};
+
 std::pair<std::size_t, void*> DoMmap(const std::string &name) {
-  FILE *f = fopen(name.c_str(), "r");
-  if (f == nullptr) {
+  FILEWrapper f(name, "r");
+  if (f.fail()) {
     throw std::invalid_argument("failed to mmap(2) file: " + name);
   }
-  int fd = fileno(f);
-
-  std::size_t size = lseek(fd, 0, SEEK_END);
-  rewind(f);
-
-  void *addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+  std::size_t size = f.size();
+  void *addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, f.fileno(), 0);
+  assert(addr != MAP_FAILED);
 #ifdef USE_MADV_RANDOM
-  madvise(addr, size, MADV_RANDOM);
+  assert(madvise(addr, size, MADV_RANDOM) == 0);
 #endif
-  fclose(f);
   return std::make_pair(size, addr);
 }
 }
@@ -62,8 +90,9 @@ std::pair<std::size_t, const char*> GetMmapForFile(const std::string &name) {
 void UnmapFiles() {
   std::lock_guard<std::mutex> guard(m_);
   for (const auto &p : mapping_) {
-    munmap(reinterpret_cast<void *>(
-        const_cast<char *>(p.second.second)), p.second.first);
+    void *void_addr = reinterpret_cast<void *>(
+        const_cast<char *>(p.second.second));
+    assert(munmap(void_addr, p.second.first) == 0);
   }
   mapping_.clear();
 }
