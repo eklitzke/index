@@ -12,7 +12,6 @@ std::string NameForShard(const std::string &index_directory,
   reader_name << index_directory << "/ngrams/shard_" << shard_num
               << ".sst";
   std::string name = reader_name.str();
-  LOG(INFO) << "name is " << name << "\n";
   return name;
 }
 }
