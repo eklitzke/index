@@ -37,6 +37,7 @@ bool IntegerIndexReader::Find(std::uint64_t needle, std::string *result) const {
       return true;
     }
   }
+  assert(false);  // should never happen
   return false;
 }
 }

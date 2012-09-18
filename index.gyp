@@ -50,8 +50,6 @@
             '-lboost_program_options',
             '-lglog',
             '-lprotobuf',
-            '-lsnappy',
-            #'../libre2.a',
         ],
         'sources': [
             'src/index.pb.cc',

@@ -17,7 +17,6 @@
 #include <string>
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <snappy.h>
 
 static_assert(sizeof(std::uint64_t) == 8, "Something's whack with uint64_t");
 
@@ -25,8 +24,7 @@ namespace codesearch {
 template <typename T>
 class SSTableReader {
  public:
-  SSTableReader()
-      :mmap_addr_(nullptr), mmap_size_(0), use_snappy_(false) {}
+  SSTableReader() :mmap_addr_(nullptr), mmap_size_(0) {}
 
   explicit SSTableReader(const std::string &name) :name_(name) {
     std::pair<std::size_t, const char *> mmap_data = GetMmapForFile(name);
@@ -46,9 +44,6 @@ class SSTableReader {
     assert(mmap_size_ == sizeof(std::uint64_t) + hdr_size + padding.size() +
            hdr_.index_size() + hdr_.data_size());
 
-    // are we using snappy?
-    use_snappy_ = hdr_.uses_snappy();
-
     assert(hdr_.key_size() == key_size);
   }
 
@@ -59,8 +54,7 @@ class SSTableReader {
       :name_(other.name_),
        mmap_addr_(other.mmap_addr_),
        mmap_size_(other.mmap_size_),
-       hdr_(other.hdr_),
-       use_snappy_(other.use_snappy_) {}
+       hdr_(other.hdr_) {}
 
   SSTableReader& operator=(const SSTableReader &other) = delete;
 
@@ -162,15 +156,6 @@ private:
   // the header read from the index
   SSTableHeader hdr_;
 
-  // whether or not we're using snappy
-  bool use_snappy_;
-
-  // buffer to hold snappy data
-  mutable std::string snappy_data_;
-
-  // and a mutex to lock access
-  mutable std::mutex snappy_data_mut_;
-
   T ReadKey(std::ptrdiff_t index_offset) const;
 
   inline std::string ReadVal(std::ptrdiff_t index_offset) const {
@@ -184,14 +169,7 @@ private:
 #ifdef ENABLE_SLOW_ASSERTS
     assert(data_size > 0);
 #endif
-    std::string data(val_data + sizeof(data_size), data_size);
-    if (use_snappy_) {
-      std::lock_guard<std::mutex> guard(snappy_data_mut_);
-      assert(snappy::Uncompress(data.data(), data.size(), &snappy_data_));
-      return snappy_data_;
-    } else {
-      return data;
-    }
+    return std::string(val_data + sizeof(data_size), data_size);
   }
 };
 

@@ -52,8 +52,6 @@ int main(int argc, char **argv) {
   std::cout << "data_size    = " << hdr.data_size() << "\n";
   std::cout << "index_offset = " << hdr.index_offset() << "\n";
   std::cout << "data_offset  = " << hdr.data_offset() << "\n";
-  std::cout << "uses_snappy  = " << (hdr.uses_snappy() ? "true" : "false") <<
-      "\n";
 
   // Now try to print the min/max value. To do this correctly we need
   // to read the config file in the containing directory, to get a

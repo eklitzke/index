@@ -76,7 +76,6 @@ message SSTableHeader {
   required uint64 num_keys = 6;
   required fixed64 index_offset = 7;  // must be fixed to ensure constant header size
   required fixed64 data_offset = 8;  // must be fixed to ensure constant header size
-  optional bool uses_snappy = 9 [ default = true ];
 }
 
 // A value in the data section of the index is represented by an
