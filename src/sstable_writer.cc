@@ -5,7 +5,6 @@
 #include "./util.h"
 #include "./index.pb.h"
 
-#include <snappy.h>
 #include <cstring>
 
 namespace {
@@ -18,9 +17,9 @@ std::uint64_t GetOffset(std::ostream *os) {
 
 namespace codesearch {
 SSTableWriter::SSTableWriter(const std::string &name,
-                             std::size_t key_size,
-                             bool use_snappy)
-    :name_(name), use_snappy_(use_snappy), state_(WriterState::UNINITIALIZED),
+                             std::size_t key_size)
+    :name_(name),
+     state_(WriterState::UNINITIALIZED),
      num_keys_(0) {
   std::size_t sizediff = key_size % sizeof(std::size_t);
   if (sizediff != 0) {
@@ -71,13 +70,7 @@ void SSTableWriter::Add(const std::string &key, const std::string &val) {
   idx_out_.write(offset_str.data(), offset_str.size());
   assert(!idx_out_.fail() && !idx_out_.eof());
 
-  if (use_snappy_) {
-    std::string compress_data;
-    snappy::Compress(val.data(), val.size(), &compress_data);
-    AddValue(compress_data);
-  } else {
-    AddValue(val);
-  }
+  AddValue(val);
 
   std::string padding = GetWordPadding(data_out_.tellp());
   if (!padding.empty()) {
@@ -137,7 +130,6 @@ void SSTableWriter::Merge() {
   header.set_max_value(last_key_);
   header.set_key_size(key_size_);
   header.set_num_keys(num_keys_);
-  header.set_uses_snappy(use_snappy_);
   header.set_index_offset(0);  // must do this to get header size
   header.set_data_offset(0);  // must do this to get header size
 

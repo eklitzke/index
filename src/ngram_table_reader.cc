@@ -11,8 +11,7 @@ std::string NameForShard(const std::string &index_directory,
   std::stringstream reader_name;
   reader_name << index_directory << "/ngrams/shard_" << shard_num
               << ".sst";
-  std::string name = reader_name.str();
-  return name;
+  return reader_name.str();
 }
 }
 
@@ -67,7 +66,7 @@ bool NGramTableReader::Find(const NGram &ngram,
   }
 
   NGramValue val;
-  val.ParseFromString(pos.value());
+  pos.parse_protobuf(&val);
   assert(val.position_ids_size() > 0);
   std::uint64_t posting_val = 0;
   for (const auto &delta : val.position_ids()) {

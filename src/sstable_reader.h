@@ -11,13 +11,13 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstring>
 #include <memory>
 #include <mutex>
 #include <string>
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <snappy.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/message_lite.h>
 
 static_assert(sizeof(std::uint64_t) == 8, "Something's whack with uint64_t");
 
@@ -25,8 +25,7 @@ namespace codesearch {
 template <typename T>
 class SSTableReader {
  public:
-  SSTableReader()
-      :mmap_addr_(nullptr), mmap_size_(0), use_snappy_(false) {}
+  SSTableReader() :mmap_addr_(nullptr), mmap_size_(0) {}
 
   explicit SSTableReader(const std::string &name) :name_(name) {
     std::pair<std::size_t, const char *> mmap_data = GetMmapForFile(name);
@@ -46,9 +45,6 @@ class SSTableReader {
     assert(mmap_size_ == sizeof(std::uint64_t) + hdr_size + padding.size() +
            hdr_.index_size() + hdr_.data_size());
 
-    // are we using snappy?
-    use_snappy_ = hdr_.uses_snappy();
-
     assert(hdr_.key_size() == key_size);
   }
 
@@ -59,8 +55,7 @@ class SSTableReader {
       :name_(other.name_),
        mmap_addr_(other.mmap_addr_),
        mmap_size_(other.mmap_size_),
-       hdr_(other.hdr_),
-       use_snappy_(other.use_snappy_) {}
+       hdr_(other.hdr_) {}
 
   SSTableReader& operator=(const SSTableReader &other) = delete;
 
@@ -68,6 +63,11 @@ class SSTableReader {
     key_size    = sizeof(std::uint64_t),
     key_storage = key_size + sizeof(std::uint64_t)
   };
+
+  class key_iterator;
+ private:
+  friend class key_iterator;
+ public:
 
   class key_iterator :
       public boost::iterator_facade<key_iterator,
@@ -84,8 +84,31 @@ class SSTableReader {
 
     inline const SSTableReader* reader() const { return reader_; }
     inline std::ptrdiff_t offset() const { return offset_; }
-    inline std::string value() const {
-      return reader_->ReadVal(offset_ * key_storage);
+
+    // Parse a ProtocolBuffer from the data section of the index
+    inline void parse_protobuf(google::protobuf::MessageLite *msg) const {
+      std::ptrdiff_t index_offset = offset_ * key_storage;
+#ifdef ENABLE_SLOW_ASSERTS
+      assert(index_offset >= 0 &&
+          index_offset < static_cast<std::ptrdiff_t>(
+      reader_->hdr_.index_size()));
+#endif
+      std::uint64_t data_offset = ReadUint64(
+          reader_->mmap_addr_ +
+          reader_->hdr_.index_offset() +
+          index_offset + key_size);
+#ifdef ENABLE_SLOW_ASSERTS
+      assert(data_offset < UINT32_MAX);  // sanity check
+#endif
+      const char *val_data = (
+          reader_->mmap_addr_ + reader_->hdr_.data_offset() + data_offset);
+      std::uint32_t data_size = ReadUint32(val_data);
+#ifdef ENABLE_SLOW_ASSERTS
+      assert(data_size > 0);
+#endif
+      google::protobuf::io::ArrayInputStream array_stream(
+          val_data + sizeof(data_size), data_size);
+      msg->ParseFromZeroCopyStream(&array_stream);
     }
 
    private:
@@ -162,37 +185,7 @@ private:
   // the header read from the index
   SSTableHeader hdr_;
 
-  // whether or not we're using snappy
-  bool use_snappy_;
-
-  // buffer to hold snappy data
-  mutable std::string snappy_data_;
-
-  // and a mutex to lock access
-  mutable std::mutex snappy_data_mut_;
-
   T ReadKey(std::ptrdiff_t index_offset) const;
-
-  inline std::string ReadVal(std::ptrdiff_t index_offset) const {
-    assert(index_offset >= 0 &&
-           index_offset < static_cast<std::ptrdiff_t>(hdr_.index_size()));
-    std::uint64_t data_offset = ReadUint64(
-        mmap_addr_ + hdr_.index_offset() + index_offset + key_size);
-    assert(data_offset < UINT32_MAX);  // sanity check
-    const char *val_data = mmap_addr_ + hdr_.data_offset() + data_offset;
-    std::uint32_t data_size = ReadUint32(val_data);
-#ifdef ENABLE_SLOW_ASSERTS
-    assert(data_size > 0);
-#endif
-    std::string data(val_data + sizeof(data_size), data_size);
-    if (use_snappy_) {
-      std::lock_guard<std::mutex> guard(snappy_data_mut_);
-      assert(snappy::Uncompress(data.data(), data.size(), &snappy_data_));
-      return snappy_data_;
-    } else {
-      return data;
-    }
-  }
 };
 
 template<>

@@ -3,8 +3,6 @@
 #include <iostream>
 #include <fstream>
 
-#include <snappy.h>
-
 #include "./index.pb.h"
 #include "./util.h"
 
@@ -47,8 +45,6 @@ int main(int argc, char **argv) {
   std::unique_ptr<char[]> key_data(new char[key_size]);
   std::string key;
   std::string last_key;
-  std::size_t uncompressed_size = 0;
-  std::size_t compressed_size = 0;
   codesearch::ExpandableBuffer valdata;
   for (std::size_t i = 0; i < hdr.num_keys(); i++) {
     std::streampos keyoffset = ifs.tellg();
@@ -78,32 +74,9 @@ int main(int argc, char **argv) {
 
     std::uint32_t val_size = codesearch::ReadUint32(&ifs);
     assert(val_size < (16 << 20));  // sanity check
-    uncompressed_size += val_size;
-    if (hdr.uses_snappy()) {
-      valdata.resize(val_size);
-      ifs.read(valdata.get(), val_size);
-      if (i != hdr.num_keys() - 1) {
-        assert(!ifs.eof());
-      }
-      std::string uncompressed;
-      bool status = snappy::Uncompress(valdata.get(), val_size, &uncompressed);
-      assert(status);
-      compressed_size += uncompressed.size();
-      if (verbose) {
-        std::cout << "val: " << val_size << " bytes (offset: " <<
-            (hdr.data_offset() + data_offset) << ", uncompressed size: " <<
-            uncompressed.size() << " bytes)\n" << std::endl;
-      }
-    } else if (verbose) {
-      std::cout << "val: " << val_size << "bytes (offset: " <<
-          (hdr.data_offset() + data_offset) << ")\n" << std::endl;
-    }
+    std::cout << "val: " << val_size << "bytes (offset: " <<
+        (hdr.data_offset() + data_offset) << ")\n" << std::endl;
     ifs.seekg(p);
-  }
-  if (verbose && hdr.uses_snappy()) {
-    std::cout << "compression speedup: " <<
-        (static_cast<double>(uncompressed_size) /
-         static_cast<double>(compressed_size)) << std::endl;
   }
   return 0;
 }

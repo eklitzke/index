@@ -19,10 +19,15 @@ IndexWriter::IndexWriter(const std::string &index_directory,
                          std::size_t key_size,
                          std::size_t shard_size,
                          bool auto_rotate)
-    :index_directory_(index_directory), name_(name), key_size_(key_size),
-     shard_size_(shard_size), auto_rotate_(auto_rotate), shard_num_(0),
+    :index_directory_(index_directory),
+     name_(name),
+     key_size_(key_size),
+     shard_size_(shard_size),
+     auto_rotate_(auto_rotate),
+     shard_num_(0),
      key_type_(IndexConfig_KeyType_NUMERIC),
-     state_(IndexConfig_DatabaseState_EMPTY), sstable_(nullptr) {
+     state_(IndexConfig_DatabaseState_EMPTY),
+  sstable_(nullptr) {
   boost::filesystem::path p(GetPathName(""));
   assert(!boost::filesystem::is_directory(p));
   boost::filesystem::create_directories(p);

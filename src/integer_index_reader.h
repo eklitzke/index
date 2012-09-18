@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <google/protobuf/message_lite.h>
+
 #include "./frozen_map.h"
 #include "./sstable_reader.h"
 
@@ -25,7 +27,7 @@ class IntegerIndexReader {
   // header (which is read into memory when the reader is created),
   // and therefore searching an SSTable without the needle is very,
   // very cheap.
-  bool Find(std::uint64_t needle, std::string *result) const;
+  bool Find(std::uint64_t needle, google::protobuf::MessageLite *msg) const;
 
  private:
   std::vector<SSTableReader<std::uint64_t> > shards_;

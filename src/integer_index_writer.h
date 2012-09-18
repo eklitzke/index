@@ -13,8 +13,8 @@ namespace codesearch {
 class IntegerIndexWriter {
  public:
   IntegerIndexWriter(const std::string &index_directory,
-                           const std::string &name,
-                           std::size_t shard_size = UINT32_MAX)
+                     const std::string &name,
+                     std::size_t shard_size = UINT32_MAX)
       :index_writer_(index_directory, name, sizeof(std::uint64_t), shard_size),
        next_key_(0) {}
 

@@ -5,7 +5,6 @@
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
 #include <glog/logging.h>
-#include <snappy.h>
 
 #include "./ngram_index_reader.h"
 #include "./index.pb.h"
@@ -159,36 +158,14 @@ void IndexReaderConnection::Search(std::size_t size) {
   }
   response.set_time_elapsed(timer.elapsed_ms());
 
-  // FIXME, the #if is for snappy or no-snappy. It's probably best to
-  // just standardize and say the wire protocol *must* use snappy
-#if 1
-  std::string uncompressed_response, compressed_response;
-  response.SerializeToString(&uncompressed_response);
-  snappy::Compress(uncompressed_response.data(), uncompressed_response.size(),
-                   &compressed_response);
-  double speedup = static_cast<double>(uncompressed_response.size()) /
-      static_cast<double>(compressed_response.size());
+  std::string size_header = Uint64ToString(response.ByteSize());
+  assert(size_header.size() == sizeof(std::uint64_t));
 
-  std::string size_header = Uint64ToString(compressed_response.size());
   std::ostream os(&data_buffer_);
-  os << size_header << compressed_response;
-
-  LOG(INFO) << this << " sending response of size " <<
-      compressed_response.size() << " (speedup " <<
-      std::setiosflags(std::ios::fixed) << std::setprecision(2) << speedup <<
-      "x)" << " after " << response.time_elapsed() << " ms\n";
-
-#else
-   std::string size_header = Uint64ToString(response.ByteSize());
-   assert(size_header.size() == sizeof(std::uint64_t));
-
-   std::ostream os(&data_buffer_);
-   os << size_header;
-   response.SerializeToOstream(&os);
-   LOG(INFO) << this << " sending response of size " << response.ByteSize() <<
-       " after " << resp->time_elapsed() << " ms\n";
-
-#endif
+  os << size_header;
+  response.SerializeToOstream(&os);
+  LOG(INFO) << this << " sending response of size " << response.ByteSize() <<
+      " after " << response.time_elapsed() << " ms\n";
 
   boost::asio::async_write(
       socket_, data_buffer_,
