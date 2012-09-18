@@ -29,13 +29,6 @@ class IntegerIndexReader {
 
  private:
   std::vector<SSTableReader<std::uint64_t> > shards_;
-
-  typedef std::pair<SSTableReader<std::uint64_t>::iterator,
-                    const SSTableReader<std::uint64_t> *> map_val;
-
-  // This is a map of iterators that we use to optimize the Find()
-  // method... see the comments in the .cc file for details.
-  FrozenMap<std::uint64_t, map_val> savepoints_;
 };
 }
 
