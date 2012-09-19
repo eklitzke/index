@@ -15,8 +15,8 @@ template <typename K, typename V>
 class FrozenMapBuilder {
  public:
   FrozenMapBuilder() {}
-
-  void insert(const K &key, const V &val) {
+  void
+  insert(const K &key, const V &val) {
     vec_.push_back(std::make_pair(key, val));
   }
 
@@ -24,6 +24,9 @@ class FrozenMapBuilder {
     std::sort(vec_.begin(), vec_.end());
     return vec_;
   }
+
+  const std::pair<K, V>& front() const { return vec_.front(); }
+  const std::pair<K, V>& back() const { return vec_.back(); }
 
  private:
   std::vector<std::pair<K, V> > vec_;

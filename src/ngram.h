@@ -158,7 +158,7 @@ static_assert(sizeof(NGram) == sizeof(std::uint32_t),
 
 namespace std {
 inline ostream& operator<<(ostream &os, const codesearch::NGram &ngram) {
-  os << codesearch::PrintBinaryString(ngram.string());
+  os << '"' << codesearch::PrintBinaryString(ngram.string()) << '"';
   return os;
 }
 }  // namespace std

@@ -46,6 +46,7 @@ class SSTableReader {
            hdr_.index_size() + hdr_.data_size());
 
     assert(hdr_.key_size() == key_size);
+    LOG(INFO) << "created a not-copy, name_ = " << name_ << "\n";
   }
 
   // We implement a copy constructor so we can create a std::vector of
@@ -55,7 +56,9 @@ class SSTableReader {
       :name_(other.name_),
        mmap_addr_(other.mmap_addr_),
        mmap_size_(other.mmap_size_),
-       hdr_(other.hdr_) {}
+       hdr_(other.hdr_) {
+    LOG(INFO) << "created a copy, name_ = " << name_ << "\n";
+  }
 
   SSTableReader& operator=(const SSTableReader &other) = delete;
 
@@ -81,6 +84,12 @@ class SSTableReader {
     key_iterator() :reader_(nullptr), offset_(0) {}
     key_iterator(const SSTableReader *reader, std::ptrdiff_t off)
         :reader_(reader), offset_(off) {}
+#if 0
+    key_iterator(const SSTableReader<T>::key_iterator &other)
+        :reader_(other.reader_), offset_(other.offset_) {
+      LOG(INFO) << "creating a copy of iterator\n";
+    }
+#endif
 
     inline const SSTableReader* reader() const { return reader_; }
     inline std::ptrdiff_t offset() const { return offset_; }

@@ -26,8 +26,8 @@ class NGramTableReader {
  private:
   SSTableReader<NGram> reader_;
   std::string name_;
-  //FrozenMap<NGram, SSTableReader<NGram>::iterator> savepoints_;
-  FrozenMap<NGram, std::size_t> savepoints_;
+  FrozenMap<NGram, SSTableReader<NGram>::iterator> savepoints_;
+  //FrozenMap<NGram, std::size_t> savepoints_;
 };
 }
 

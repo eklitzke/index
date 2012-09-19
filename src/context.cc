@@ -94,6 +94,7 @@ std::string Context::FindBestNGram(const std::string &fragment,
   char *data;
   std::size_t off, extra;
   while (true) {
+    assert(*offset % 3 == 0);
     if (fragment.size() == 1) {
       data = static_cast<char*>(
           memchr(sorted_ngrams_.get() + *offset,
@@ -121,8 +122,9 @@ std::string Context::FindBestNGram(const std::string &fragment,
     off = data - sorted_ngrams_.get();
     extra = off % NGram::ngram_size;
 
-    // Update the offset pointer to be one past our current position.
-    *offset = off + 1;
+    // Update the offset pointer to point to the next ngram
+    *offset = off - extra + NGram::ngram_size;
+    assert(*offset % 3 == 0);
 
     // If we're searching for a bigram, we could have split ngrams, in
     // which case we need to keep searching.

@@ -28,7 +28,7 @@
         'cflags': ['-pedantic',
                    '-Wall',
                    '-std=c++11',
-                   '-O3',
+                   '-O0',
                    #'-finstrument-functions',
                    '-flto',
                    '-g',

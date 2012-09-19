@@ -71,6 +71,11 @@ void IndexReaderConnection::Start() {
   assert(started_ == false);
   started_ = true;
   WaitForRequest();
+  if (reader_.get() == nullptr) {
+    // Do any initialization required for the index reader now, before
+    // we get any queries.
+    reader_.reset(new NGramIndexReader(server_->db_path_, server_->threads_));
+  }
   io_service_.run();
 }
 
@@ -128,10 +133,6 @@ void IndexReaderConnection::Search(std::size_t size) {
   RPCResponse response;
   response.set_request_num(request.request_num());
   SearchQueryResponse *resp;
-
-  if (reader_.get() == nullptr) {
-    reader_.reset(new NGramIndexReader(server_->db_path_, server_->threads_));
-  }
 
   if (request.has_search_query()) {
     const SearchQueryRequest &search_query = request.search_query();

@@ -290,6 +290,7 @@ void NGramIndexReader::FindSmall(const std::string &query,
     }
     std::vector<NGram> ngrams{NGram(ngram)};
     FindNGrams(query, ngrams, results);
+    LOG(INFO) << "after ngram " << ngrams[0] << ", results->size() = " << results->size() << "\n";
     if (results->IsFull()) {
       break;
     }
@@ -319,7 +320,7 @@ void NGramIndexReader::FindNGrams(const std::string &query,
   while (free_workers_.size() < parallelism_) {
     free_workers_.push_back(response_queue_.pop());
   }
-  LOG(INFO) << "done with FindNGrams() after " << timer.elapsed_us() << " us\n";
+  //LOG(INFO) << "done with FindNGrams() after " << timer.elapsed_us() << " us\n";
 }
 
 }  // namespace codesearch
