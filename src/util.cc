@@ -46,6 +46,9 @@ bool IsValidUtf8(const std::string &src, bool allow_null) {
   int n = 0;
   for (const char &i : src) {
     int c = static_cast<int>(i) & 0xFF;
+    if (c == 0 && !allow_null) {
+      return false;
+    }
     if (n) {
       if ((c & 0xC0) != 0x80) {
         return false;
@@ -66,7 +69,7 @@ bool IsValidUtf8(const std::string &src, bool allow_null) {
     } else if ((c & 0xFE) == 0xFC) {
       n = 5;  // 1111110b
     } else {
-      return allow_null || c != 0 ? true : false;
+      return false;
     }
   }
   return n == 0;
