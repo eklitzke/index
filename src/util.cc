@@ -42,7 +42,7 @@ SSTableHeader ReadHeader(std::istream *is) {
   return hdr;
 }
 
-bool IsValidUtf8(const std::string &src) {
+bool IsValidUtf8(const std::string &src, bool allow_null) {
   int n = 0;
   for (const char &i : src) {
     int c = static_cast<int>(i) & 0xFF;
@@ -54,19 +54,19 @@ bool IsValidUtf8(const std::string &src) {
       continue;
     }
     if (c < 0x80) {
-      n = 0; // 0bbbbbbb
+      n = 0;  // 0bbbbbbb
     } else if ((c & 0xE0) == 0xC0) {
-      n = 1; // 110bbbbb
+      n = 1;  // 110bbbbb
     } else if ((c & 0xF0) == 0xE0) {
-      n = 2; // 1110bbbb
+      n = 2;  // 1110bbbb
     } else if ((c & 0xF8) == 0xF0) {
-      n = 3; // 11110bbb
+      n = 3;  // 11110bbb
     } else if ((c & 0xFC) == 0xF8) {
-      n = 4; // 111110bb
+      n = 4;  // 111110bb
     } else if ((c & 0xFE) == 0xFC) {
-      n = 5; // 1111110b
+      n = 5;  // 1111110b
     } else {
-      return false;
+      return allow_null || c != 0 ? true : false;
     }
   }
   return n == 0;

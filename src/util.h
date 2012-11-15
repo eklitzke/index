@@ -124,7 +124,11 @@ inline std::string PrintBinaryString(const std::string &str) {
 
 // Returns true if src is valid UTF-8, false otherwise (and empty
 // strings are considered valid).
-bool IsValidUtf8(const std::string &src);
+//
+// The parameter allow_null controls whether or not NULL bytes are allowed in
+// the input string; NULL characters are allowed in standard UTF-8, but not in
+// some modified UTF-8 variants.
+bool IsValidUtf8(const std::string &src, bool allow_null=false);
 
 // A standard timer class.
 class Timer {
