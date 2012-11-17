@@ -7,9 +7,8 @@
 #include "./index_writer.h"
 #include "./integer_index_writer.h"
 #include "./ngram.h"
+#include "./thread_util.h"
 
-#include <condition_variable>
-#include <mutex>
 #include <string>
 
 namespace codesearch {
@@ -55,15 +54,12 @@ class NGramIndexWriter {
   std::size_t num_vals_;
 
   const std::string index_directory_;
-  const std::size_t max_threads_;
-  std::size_t threads_running_;
-  std::condition_variable cond_;
 
   IntWait files_wait_;
   IntWait positions_wait_;
   IntWait ngrams_wait_;
 
-  std::mutex threads_running_mut_;
+  FunctionThreadPool pool_;
 
   // a map of file id to starting line in the file
   FileStartLines file_start_lines_;
@@ -80,12 +76,6 @@ class NGramIndexWriter {
 
   // Rotate the index writer, if the index is large enough
   void MaybeRotate(bool force = false);
-
-  // Used to notify the condition variable
-  void Notify();
-
-  // Wait for all threads to finish
-  void Wait();
 };
 }
 

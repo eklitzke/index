@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
        po::value<std::vector<std::string > >(),
        "(positional) source directories")
       ("threads,t", po::value<std::size_t>()->default_value(
-          std::thread::hardware_concurrency()))
+          std::thread::hardware_concurrency() + 1))
       ;
 
   // all positional arguments are source dirs

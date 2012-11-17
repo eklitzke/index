@@ -51,8 +51,7 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
      file_count_(0),
      num_vals_(0),
      index_directory_(index_directory),
-     max_threads_(max_threads),
-     threads_running_(0) {
+     pool_(max_threads) {
   assert(ngram_size == NGram::ngram_size);
   index_writer_.SetKeyType(IndexConfig_KeyType_STRING);
 }
@@ -69,15 +68,8 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
 void NGramIndexWriter::AddFile(const std::string &canonical_name,
                                const std::string &dir_name,
                                const std::string &file_name) {
-  {
-    std::unique_lock<std::mutex> lock(threads_running_mut_);
-    cond_.wait(lock,
-               [=]{return threads_running_ < max_threads_;});
-    threads_running_++;
-  }
-  std::thread t(&NGramIndexWriter::AddFileThread, this,
-                file_count_++, canonical_name, dir_name, file_name);
-  t.detach();
+  pool_.Send(std::bind(&NGramIndexWriter::AddFileThread, this,
+                       file_count_++, canonical_name, dir_name, file_name));
 }
 
 void NGramIndexWriter::AddFileThread(std::size_t file_count,
@@ -173,7 +165,6 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
     }
     MaybeRotate();
   }
-  Notify();
 }
 
 void NGramIndexWriter::Add(const NGram &ngram,
@@ -221,21 +212,8 @@ void NGramIndexWriter::MaybeRotate(bool force) {
   }
 }
 
-// Notify the condition variable thata thread has finished.
-void NGramIndexWriter::Notify() {
-  std::lock_guard<std::mutex> guard(threads_running_mut_);
-  threads_running_--;
-  cond_.notify_one();
-}
-
-// Wait for all worker threads to terminate.
-void NGramIndexWriter::Wait() {
-  std::unique_lock<std::mutex> lock(threads_running_mut_);
-  cond_.wait(lock, [=]{return threads_running_ == 0;});
-}
-
 NGramIndexWriter::~NGramIndexWriter() {
-  Wait();
+  pool_.Wait();
   if (num_vals_ || !lists_.empty()) {
     MaybeRotate(true);
   }
