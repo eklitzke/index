@@ -12,24 +12,6 @@
 #include <string>
 
 namespace codesearch {
-// This is a helper class for waiting for an integer to reach some
-// value, and then acquiring a lock; releasing the lock increments the
-// internal counter. This is used to help enforce an ordering of how
-// files/positions/ngrams are written out in the index writer.
-class IntWait {
- public:
-  explicit IntWait(std::size_t start = 0) :val_(start) {}
-  IntWait(const IntWait &other) = delete;
-  IntWait& operator=(const IntWait &other) = delete;
-
-  void Acquire(std::size_t val);
-  void Release(std::size_t val);
- private:
-  std::mutex mut_;
-  std::size_t val_;
-  std::condition_variable cond_;
-};
-
 class NGramIndexWriter {
  public:
   NGramIndexWriter(const std::string &index_directory,

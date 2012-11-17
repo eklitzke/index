@@ -4,11 +4,65 @@
 #ifndef SRC_THREAD_UTIL_H_
 #define SRC_THRAD_UTIL_H_
 
+#include <cassert>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
 
 namespace codesearch {
+// This is a helper class for waiting for an integer to reach some
+// value, and then acquiring a lock; releasing the lock increments the
+// internal counter. This is used to help enforce an ordering of how
+// files/positions/ngrams are written out in the index writer.
+class IntWait {
+ public:
+  explicit IntWait(std::size_t start = 0) :val_(start) {}
+  IntWait(const IntWait &other) = delete;
+  IntWait& operator=(const IntWait &other) = delete;
+
+  class WaitHandle {
+   public:
+    WaitHandle(codesearch::IntWait *wait, std::size_t val)
+        :wait_(wait), val_(val), need_release_(true) {
+      wait_->Acquire(val);
+    }
+    WaitHandle(WaitHandle &&other)
+        :wait_(other.wait_), val_(other.val_), need_release_(true) {
+      assert(other.need_release_ == true);
+      other.need_release_ = false;
+    }
+    WaitHandle(const WaitHandle &other) = delete;
+    WaitHandle& operator=(const WaitHandle &other) = delete;
+
+    ~WaitHandle() { if (need_release_) { wait_->Release(val_); } }
+   private:
+    codesearch::IntWait *wait_;
+    std::size_t val_;
+    bool need_release_;
+  };
+
+  // Get a handle to the IntWait, for a given val.
+  WaitHandle Handle(std::size_t val) {
+    return std::move(WaitHandle(this, val));
+  }
+
+ private:
+  std::mutex mut_;
+  std::size_t val_;
+  std::condition_variable cond_;
+
+  void Acquire(std::size_t val) {
+    std::unique_lock<std::mutex> guard(mut_);
+    cond_.wait(guard, [&]() { return val_ == val; });
+  }
+
+  void Release(std::size_t val) {
+    std::lock_guard<std::mutex> guard(mut_);
+    assert(val_ == val);
+    val_++;
+    cond_.notify_all();
+  }
+};
 
 class FunctionThreadPool {
   enum class WorkState {

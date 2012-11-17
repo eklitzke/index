@@ -10,35 +10,7 @@
 #include <set>
 #include <thread>
 
-namespace {
-class WaitHandle {
- public:
-  WaitHandle(codesearch::IntWait *wait, std::size_t val)
-      :wait_(wait), val_(val) {
-    wait_->Acquire(val); }
-  WaitHandle(const WaitHandle &other) = delete;
-  WaitHandle& operator=(const WaitHandle &other) = delete;
-
-  ~WaitHandle() { wait_->Release(val_); }
- private:
-  codesearch::IntWait *wait_;
-  std::size_t val_;
-};
-}
-
 namespace codesearch {
-void IntWait::Acquire(std::size_t val) {
-  std::unique_lock<std::mutex> guard(mut_);
-  cond_.wait(guard, [&]() { return val_ == val; });
-}
-
-void IntWait::Release(std::size_t val) {
-  std::lock_guard<std::mutex> guard(mut_);
-  assert(val_ == val);
-  val_++;
-  cond_.notify_all();
-}
-
 NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
                                    std::size_t ngram_size,
                                    std::size_t shard_size,
@@ -84,7 +56,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
 
   std::uint64_t file_id;
   {
-    WaitHandle hdl(&files_wait_, file_count);
+    IntWait::WaitHandle hdl = files_wait_.Handle(file_count);
     file_id = files_index_.Add(file_val);
   }
 
@@ -95,7 +67,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
     std::ifstream ifs(canonical_name.c_str(), std::ifstream::in);
     std::string line;
     std::size_t linenum = 0;
-    WaitHandle hdl(&positions_wait_, file_count);
+    IntWait::WaitHandle hdl = positions_wait_.Handle(file_count);
     while (ifs.good()) {
       std::streampos file_offset = ifs.tellg();
       std::getline(ifs, line);
@@ -159,7 +131,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
   }
 
   {
-    WaitHandle hdl(&ngrams_wait_, file_count);
+    IntWait::WaitHandle hdl = ngrams_wait_.Handle(file_count);
     for (const auto &it : ngrams_map) {
       Add(it.first, it.second);
     }
