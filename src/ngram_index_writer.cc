@@ -10,7 +10,35 @@
 #include <set>
 #include <thread>
 
+namespace {
+class WaitHandle {
+ public:
+  WaitHandle(codesearch::IntWait *wait, std::size_t val)
+      :wait_(wait), val_(val) {
+    wait_->Acquire(val); }
+  WaitHandle(const WaitHandle &other) = delete;
+  WaitHandle& operator=(const WaitHandle &other) = delete;
+
+  ~WaitHandle() { wait_->Release(val_); }
+ private:
+  codesearch::IntWait *wait_;
+  std::size_t val_;
+};
+}
+
 namespace codesearch {
+void IntWait::Acquire(std::size_t val) {
+  std::unique_lock<std::mutex> guard(mut_);
+  cond_.wait(guard, [&]() { return val_ == val; });
+}
+
+void IntWait::Release(std::size_t val) {
+  std::lock_guard<std::mutex> guard(mut_);
+  assert(val_ == val);
+  val_++;
+  cond_.notify_all();
+}
+
 NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
                                    std::size_t ngram_size,
                                    std::size_t shard_size,
@@ -19,8 +47,12 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
         index_directory, "ngrams", sizeof(std::uint64_t), shard_size, false),
      files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines"),
-     ngram_size_(ngram_size), num_vals_(0), index_directory_(index_directory),
-     max_threads_(max_threads), threads_running_(0) {
+     ngram_size_(ngram_size),
+     file_count_(0),
+     num_vals_(0),
+     index_directory_(index_directory),
+     max_threads_(max_threads),
+     threads_running_(0) {
   assert(ngram_size == NGram::ngram_size);
   index_writer_.SetKeyType(IndexConfig_KeyType_STRING);
 }
@@ -44,11 +76,12 @@ void NGramIndexWriter::AddFile(const std::string &canonical_name,
     threads_running_++;
   }
   std::thread t(&NGramIndexWriter::AddFileThread, this,
-                canonical_name, dir_name, file_name);
+                file_count_++, canonical_name, dir_name, file_name);
   t.detach();
 }
 
-void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
+void NGramIndexWriter::AddFileThread(std::size_t file_count,
+                                     const std::string &canonical_name,
                                      const std::string &dir_name,
                                      const std::string &file_name) {
   // Add the file to the files database
@@ -57,7 +90,11 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
   file_val.set_filename(file_name);
   file_val.set_lang(FileLanguage(canonical_name));
 
-  std::uint64_t file_id = files_index_.Add(file_val);
+  std::uint64_t file_id;
+  {
+    WaitHandle hdl(&files_wait_, file_count);
+    file_id = files_index_.Add(file_val);
+  }
 
   // Collect all of the lines
   std::map<uint64_t, std::string> positions_map;
@@ -66,6 +103,7 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
     std::ifstream ifs(canonical_name.c_str(), std::ifstream::in);
     std::string line;
     std::size_t linenum = 0;
+    WaitHandle hdl(&positions_wait_, file_count);
     while (ifs.good()) {
       std::streampos file_offset = ifs.tellg();
       std::getline(ifs, line);
@@ -129,15 +167,7 @@ void NGramIndexWriter::AddFileThread(const std::string &canonical_name,
   }
 
   {
-    // Atomically add the contents of this file to the ngrams posting
-    // list, and then check if we need to rotate the file. The minimum
-    // condition that we need to for a consistent ngrams index (in the
-    // sense that we don't return false negatives in searches) is that
-    // each line in a file is wholly contained in a single ngrams
-    // index. The logic here ensures instead that each file is wholly
-    // contained in a single ngrams index. This is a stronger
-    // condition, and perhaps could be broken up later.
-    std::lock_guard<std::mutex> guard(ngrams_mut_);
+    WaitHandle hdl(&ngrams_wait_, file_count);
     for (const auto &it : ngrams_map) {
       Add(it.first, it.second);
     }

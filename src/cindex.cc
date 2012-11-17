@@ -48,8 +48,8 @@ int main(int argc, char **argv) {
       ("src-dir,s",
        po::value<std::vector<std::string > >(),
        "(positional) source directories")
-      ("threads,t", po::value<std::size_t>()->default_value(1))
-          //std::thread::hardware_concurrency()))
+      ("threads,t", po::value<std::size_t>()->default_value(
+          std::thread::hardware_concurrency()))
       ;
 
   // all positional arguments are source dirs
