@@ -172,7 +172,8 @@ void SSTableWriter::WriteMergeContents(std::ifstream *is,
     if (is->eof()) {
       break;
     }
-    assert(!is->fail() && !os->fail());
+    assert(!is->fail());
+    assert(!os->fail());
   }
 }
 }  // namespace codesearch
