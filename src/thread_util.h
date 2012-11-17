@@ -2,7 +2,7 @@
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
 
 #ifndef SRC_THREAD_UTIL_H_
-#define SRC_THRAD_UTIL_H_
+#define SRC_THREAD_UTIL_H_
 
 #include <cassert>
 #include <condition_variable>
@@ -154,9 +154,7 @@ class FunctionThreadPool {
     }
   }
 
-  ~FunctionThreadPool() {
-    Wait();
-  }
+  ~FunctionThreadPool() { Wait(); }
 
  private:
   std::mutex mut_;
@@ -168,4 +166,4 @@ class FunctionThreadPool {
 
 };
 }  // namespace codesearch
-#endif  // SRC_UTIL_H_
+#endif  // SRC_THREAD_UTIL_H_
