@@ -125,14 +125,6 @@ class FunctionThreadPool {
     }
   }
 
- private:
-  void Notify(Worker *worker) {
-    std::lock_guard<std::mutex> guard(mut_);
-    pool_.emplace_back(worker);
-    cond_.notify_all();
-  }
-
- public:
   void Send(std::function<void()> func) {
     std::unique_lock<std::mutex> lock(mut_);
     cond_.wait(lock, [&]() { return !pool_.empty(); });
@@ -166,6 +158,11 @@ class FunctionThreadPool {
   std::vector<Worker *> pool_;
   std::map<Worker *, std::thread> threads_;
 
+  void Notify(Worker *worker) {
+    std::lock_guard<std::mutex> guard(mut_);
+    pool_.emplace_back(worker);
+    cond_.notify_all();
+  }
 };
 }  // namespace codesearch
 #endif  // SRC_THREAD_UTIL_H_
