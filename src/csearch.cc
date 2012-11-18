@@ -111,7 +111,13 @@ int main(int argc, char **argv) {
   std::string query = vm["query"].as<std::string>();
   reader.Find(query, &results);
   if (!vm.count("no-print")) {
+    bool need_newline = false;
     for (const auto &sr_ctx : results.contextual_results()) {
+      if (need_newline) {
+        std::cout << "\n";
+      } else {
+        need_newline = true;
+      }
       if (colorize) {
         Colorize(std::cout, Color::GREEN, sr_ctx.filename());
         std::cout << '\n';
@@ -141,7 +147,6 @@ int main(int argc, char **argv) {
         first_line = false;
         last_line = line.line_num();
       }
-      std::cout << "\n";
     }
   } else {
     std::cout << results.contextual_results().size() <<
