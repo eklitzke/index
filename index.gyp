@@ -5,25 +5,25 @@
             'src/config.cc',
             'src/context.cc',
             'src/mmap.cc',
-        ],
+            ],
         'reader_sources': [
             'src/file_util.cc',
             'src/integer_index_reader.cc',
             'src/ngram_index_reader.cc',
             'src/ngram_table_reader.cc',
             'src/search_results.cc',
-        ],
+            ],
         'writer_sources': [
             'src/file_util.cc',
             'src/index_writer.cc',
             'src/ngram_counter.cc',
             'src/ngram_index_writer.cc',
             'src/sstable_writer.cc',
-        ],
+            ],
         'rpc_sources': [
             'src/rpcserver.cc',
-        ],
-    },
+            ],
+        },
     'target_defaults': {
         'cflags': ['-pedantic',
                    '-Wall',
@@ -40,7 +40,7 @@
             #'ENABLE_SLOW_ASSERTS',
             'USE_MADV_RANDOM',
             'USE_THREADS',
-        ],
+            ],
         'libraries': [
             '-pthread',
             '/usr/lib64/libtcmalloc.so.4',  # disable if using valgrind/massif
@@ -50,12 +50,12 @@
             '-lboost_program_options',
             '-lglog',
             '-lprotobuf',
-        ],
+            ],
         'sources': [
             'src/index.pb.cc',
             'src/util.cc',
-        ],
-    },
+            ],
+        },
     'targets': [
         {
             'type': 'executable',
@@ -64,8 +64,16 @@
                 'src/index.pb.cc',
                 'src/util.cc',
                 'src/inspect_shard.cc',
-            ],
-        },
+                ],
+            },
+        {
+            'type': 'executable',
+            'target_name': 'inspect_config',
+            'sources': [
+                'src/index.pb.cc',
+                'src/inspect_config.cc',
+                ],
+            },
         {
             'type': 'executable',
             'target_name': 'fsck_sst',
@@ -73,8 +81,8 @@
                 'src/index.pb.cc',
                 'src/util.cc',
                 'src/fsck_sst.cc'
-            ],
-        },
+                ],
+            },
         {
             'type': 'executable',
             'target_name': 'print_ngram_counts',
@@ -82,16 +90,16 @@
                 'src/index.pb.cc',
                 'src/util.cc',
                 'src/print_ngram_counts.cc',
-            ],
-        },
+                ],
+            },
         {
             'type': 'executable',
             'target_name': 'bench',
             'sources': [
                 'src/config.cc',
                 'src/bench.cc',
-            ],
-        },
+                ],
+            },
         {
             'type': 'executable',
             'target_name': 'cindex',
@@ -99,8 +107,8 @@
                 '<@(common_sources)',
                 '<@(writer_sources)',
                 'src/cindex.cc',
-            ],
-        },
+                ],
+            },
         {
             'type': 'executable',
             'target_name': 'csearch',
@@ -108,8 +116,8 @@
                 '<@(common_sources)',
                 '<@(reader_sources)',
                 'src/csearch.cc',
-            ],
-        },
+                ],
+            },
         {
             'type': 'executable',
             'target_name': 'rpcserver',
@@ -118,7 +126,7 @@
                 '<@(reader_sources)',
                 '<@(rpc_sources)',
                 'src/crpcserver.cc',
-            ],
-        },
-    ],
-}
+                ],
+            },
+        ],
+    }
