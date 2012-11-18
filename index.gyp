@@ -5,6 +5,7 @@
             'src/config.cc',
             'src/context.cc',
             'src/mmap.cc',
+            'src/util.cc',
             ],
         'reader_sources': [
             'src/file_util.cc',
@@ -53,10 +54,25 @@
             ],
         'sources': [
             'src/index.pb.cc',
-            'src/util.cc',
             ],
         },
     'targets': [
+        {
+            'type': 'executable',
+            'target_name': 'inspect_config',
+            'sources': [
+                'src/index.pb.cc',
+                'src/inspect_config.cc',
+                ],
+            },
+        {
+            'type': 'executable',
+            'target_name': 'inspect_metaconfig',
+            'sources': [
+                'src/index.pb.cc',
+                'src/inspect_metaconfig.cc',
+                ],
+            },
         {
             'type': 'executable',
             'target_name': 'inspect_shard',
@@ -64,14 +80,6 @@
                 'src/index.pb.cc',
                 'src/util.cc',
                 'src/inspect_shard.cc',
-                ],
-            },
-        {
-            'type': 'executable',
-            'target_name': 'inspect_config',
-            'sources': [
-                'src/index.pb.cc',
-                'src/inspect_config.cc',
                 ],
             },
         {
