@@ -6,106 +6,83 @@
 #include "./mmap.h"
 #include "./util.h"
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
-#include <set>
 #include <sstream>
 #include <vector>
 
 namespace {
-std::map<std::string, std::string> file_types_;
-
-std::vector<std::string> bad_dirs_;
-std::set<std::string> bad_exts_;
-
-struct Init_ {
-  Init_() {
-    file_types_.insert(std::make_pair("C", "c++"));
-    file_types_.insert(std::make_pair("LICENSE", "text"));
-    file_types_.insert(std::make_pair("Makefile", "make"));
-    file_types_.insert(std::make_pair("NOTICE", "text"));
-    file_types_.insert(std::make_pair("README", "text"));
-    file_types_.insert(std::make_pair("S", "asm"));
-    file_types_.insert(std::make_pair("ada", "ada"));
-    file_types_.insert(std::make_pair("am", "make"));
-    file_types_.insert(std::make_pair("asm", "asm"));
-    file_types_.insert(std::make_pair("bash", "shell"));
-    file_types_.insert(std::make_pair("bat", "shell"));
-    file_types_.insert(std::make_pair("c", "c"));
-    file_types_.insert(std::make_pair("cc", "c++"));
-    file_types_.insert(std::make_pair("clj", "clojure"));
-    file_types_.insert(std::make_pair("conf", "text"));
-    file_types_.insert(std::make_pair("cpp", "c++"));
-    file_types_.insert(std::make_pair("cs", "csharp"));
-    file_types_.insert(std::make_pair("css", "css"));
-    file_types_.insert(std::make_pair("el", "elisp"));
-    file_types_.insert(std::make_pair("gitignore", "text"));
-    file_types_.insert(std::make_pair("go", "go"));
-    file_types_.insert(std::make_pair("h", "c"));
-    file_types_.insert(std::make_pair("hh", "c++"));
-    file_types_.insert(std::make_pair("hpp", "c++"));
-    file_types_.insert(std::make_pair("hs", "haskell"));
-    file_types_.insert(std::make_pair("htm", "html"));
-    file_types_.insert(std::make_pair("html", "html"));
-    file_types_.insert(std::make_pair("in", "make"));
-    file_types_.insert(std::make_pair("ipp", "c++"));
-    file_types_.insert(std::make_pair("java", "java"));
-    file_types_.insert(std::make_pair("js", "javascript"));
-    file_types_.insert(std::make_pair("json", "javascript"));
-    file_types_.insert(std::make_pair("lua", "lua"));
-    file_types_.insert(std::make_pair("m", "obj-c"));
-    file_types_.insert(std::make_pair("m4", "m4"));
-    file_types_.insert(std::make_pair("man", "man"));
-    file_types_.insert(std::make_pair("md", "text"));
-    file_types_.insert(std::make_pair("mk", "make"));
-    file_types_.insert(std::make_pair("ml", "ml"));
-    file_types_.insert(std::make_pair("mm", "obj-c"));
-    file_types_.insert(std::make_pair("php", "php"));
-    file_types_.insert(std::make_pair("pl", "perl"));
-    file_types_.insert(std::make_pair("pm", "perl"));
-    file_types_.insert(std::make_pair("proto", "protobuf"));
-    file_types_.insert(std::make_pair("py", "python"));
-    file_types_.insert(std::make_pair("rb", "ruby"));
-    file_types_.insert(std::make_pair("s", "asm"));
-    file_types_.insert(std::make_pair("sh", "shell"));
-    file_types_.insert(std::make_pair("sql", "sql"));
-    file_types_.insert(std::make_pair("tex", "tex"));
-    file_types_.insert(std::make_pair("txt", "text"));
-    file_types_.insert(std::make_pair("vb", "vb"));
-    file_types_.insert(std::make_pair("vbs", "vb"));
-    file_types_.insert(std::make_pair("xhtml", "html"));
-    file_types_.insert(std::make_pair("xml", "xml"));
-    file_types_.insert(std::make_pair("xsd", "xml"));
-    file_types_.insert(std::make_pair("yaml", "yaml"));
-    file_types_.insert(std::make_pair("yml", "yaml"));
-
-    // If any part of the file path contains one of these directory
-    // names, we will not index the file.
-    bad_dirs_.push_back(".git");
-    bad_dirs_.push_back(".hg");
-    bad_dirs_.push_back(".repo");
-    bad_dirs_.push_back(".svn");
-
-    // These are files that we never, ever want to index. Some of
-    // these are here just because we know they're always binary and
-    // it doesn't make sense to read a bunch of data and apply our
-    // UTF-8 heuristics; others, like pdf, are here because the
-    // heuristics sometimes mark them as text even though they are
-    // binary.
-    bad_exts_.insert("a");
-    bad_exts_.insert("jpg");
-    bad_exts_.insert("jpeg");
-    bad_exts_.insert("mo");
-    bad_exts_.insert("o");
-    bad_exts_.insert("pdf");  // looks like text sometimes
-    bad_exts_.insert("png");
-    bad_exts_.insert("so");
-    bad_exts_.insert("swp");
-  }
+const std::map<std::string, std::string> file_types_{
+  {"C", "c++"},
+  {"LICENSE", "text"},
+  {"Makefile", "make"},
+  {"NOTICE", "text"},
+  {"README", "text"},
+  {"S", "asm"},
+  {"ada", "ada"},
+  {"am", "make"},
+  {"asm", "asm"},
+  {"bash", "shell"},
+  {"bat", "shell"},
+  {"c", "c"},
+  {"cc", "c++"},
+  {"clj", "clojure"},
+  {"conf", "text"},
+  {"cpp", "c++"},
+  {"cs", "csharp"},
+  {"css", "css"},
+  {"el", "elisp"},
+  {"gitignore", "text"},
+  {"go", "go"},
+  {"h", "c"},
+  {"hh", "c++"},
+  {"hpp", "c++"},
+  {"hs", "haskell"},
+  {"htm", "html"},
+  {"html", "html"},
+  {"in", "make"},
+  {"ipp", "c++"},
+  {"java", "java"},
+  {"js", "javascript"},
+  {"json", "javascript"},
+  {"lua", "lua"},
+  {"m", "obj-c"},
+  {"m4", "m4"},
+  {"man", "man"},
+  {"md", "text"},
+  {"mk", "make"},
+  {"ml", "ml"},
+  {"mm", "obj-c"},
+  {"php", "php"},
+  {"pl", "perl"},
+  {"pm", "perl"},
+  {"proto", "protobuf"},
+  {"py", "python"},
+  {"rb", "ruby"},
+  {"s", "asm"},
+  {"sh", "shell"},
+  {"sql", "sql"},
+  {"tex", "tex"},
+  {"txt", "text"},
+  {"vb", "vb"},
+  {"vbs", "vb"},
+  {"xhtml", "html"},
+  {"xml", "xml"},
+  {"xsd", "xml"},
+  {"yaml", "yaml"},
+  {"yml", "yaml"},
 };
 
-// initialize the compilation unit
-Init_ init_;
+const std::vector<std::string> bad_dirs_{".git", ".hg", ".repo", ".svn"};
+
+// These are files that we never, ever want to index. Some of these
+// are here just because we know they're always binary and it doesn't
+// make sense to read a bunch of data and apply our UTF-8 heuristics;
+// others, like pdf, are here because the heuristics sometimes mark
+// them as text even though they are binary.
+const std::vector<std::string> bad_exts_{
+  "a", "jpeg", "jpg", "mo", "o", "pdf", "png", "so", "swp"};
 
 // Get the extension of a file. For instance,
 //  foo.png   -> png
@@ -160,7 +137,8 @@ std::string GetLineForwards(const char *buf, std::size_t buf_size,
 
   std::string line;
   std::size_t newpos;
-  const char *newbuf = c_memchr(buf + *position, '\n', buf_size - *position - 1);
+  const char *newbuf = c_memchr(
+      buf + *position, '\n', buf_size - *position - 1);
   if (newbuf == nullptr) {
     newpos = buf_size;
     line = std::string(buf + *position, buf_size - *position);
@@ -197,8 +175,8 @@ bool ShouldIndex(const std::string &filename, std::size_t read_size) {
   }
 
   // Detect bad file extensions, like .pdf
-  std::string extension = GetExtension(filename);
-  if (bad_exts_.find(extension) != bad_exts_.end()) {
+  const std::string extension = GetExtension(filename);
+  if (std::binary_search(bad_exts_.cbegin(), bad_exts_.cend(), extension)) {
     return false;
   }
 
