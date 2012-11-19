@@ -62,5 +62,4 @@ std::uint64_t NGramCounter::TotalCount() {
 std::uint64_t NGramCounter::TotalNGrams() {
   return counts_.size();
 }
-
 }

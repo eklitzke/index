@@ -4,7 +4,7 @@
 #ifndef SRC_NGRAM_COUNTER_H_
 #define SRC_NGRAM_COUNTER_H_
 
-#include <map>
+#include <unordered_map>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -33,7 +33,7 @@ class NGramCounter {
 
  private:
   std::mutex mutex_;
-  std::map<NGram, std::uint64_t> counts_;
+  std::unordered_map<NGram, std::uint64_t> counts_;
 
   NGramCounter() {}
 };

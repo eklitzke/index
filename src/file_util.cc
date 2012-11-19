@@ -10,10 +10,11 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
 namespace {
-const std::map<std::string, std::string> file_types_{
+const std::unordered_map<std::string, std::string> file_types_{
   {"C", "c++"},
   {"LICENSE", "text"},
   {"Makefile", "make"},

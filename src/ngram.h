@@ -141,6 +141,7 @@ class NGram {
     return std::string(size - ngram_size, '\0') +
         std::string(data_.buf, ngram_size);
   }
+  inline std::uint32_t raw_num() const { return data_.num; }
   inline std::uint32_t num() const { return be32toh(data_.num); }
 
  private:
@@ -161,6 +162,13 @@ inline ostream& operator<<(ostream &os, const codesearch::NGram &ngram) {
   os << codesearch::PrintBinaryString(ngram.string());
   return os;
 }
+
+// Hashing an NGram is the same as hashing a std::uint32_t
+template <> struct hash<codesearch::NGram> {
+  size_t operator()(const codesearch::NGram &ngram) const {
+    return hash<std::uint32_t>()(ngram.raw_num());
+  }
+};
 }  // namespace std
 
 #endif  // SRC_NGRAM_H_
