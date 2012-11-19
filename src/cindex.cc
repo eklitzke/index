@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
       ("help,h", "produce help message")
-      ("replace,r", "replace the directory contents")
+      ("preserve,p", "preserve the directory contents")
       ("ngram-size", po::value<std::size_t>()->default_value(3), "ngram size")
       ("db-path", po::value<std::string>()->default_value(
           codesearch::default_index_directory))
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   std::string db_path_str = vm["db-path"].as<std::string>();
   boost::filesystem::path db_path(db_path_str);
   if (boost::filesystem::exists(db_path)) {
-    if (vm.count("replace")) {
+    if (!vm.count("preserve")) {
       // Delete all of the subdirectories and files contained within
       // the index directory.
       for (boost::filesystem::directory_iterator end, it(db_path);
@@ -79,8 +79,7 @@ int main(int argc, char **argv) {
         boost::filesystem::remove_all(it->path());
       }
     } else {
-      std::cerr << "database at " << db_path << " already exists, use "
-          "-r/--replace if you wish to replace it" << std::endl;
+      std::cerr << "database at " << db_path << " already exists\n";
       return 1;
     }
   } else {
