@@ -61,7 +61,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
   }
 
   // Collect all of the lines
-  std::map<uint64_t, std::string> positions_map;
+  std::unordered_map<uint64_t, std::string> positions_map;
   {
     bool first_line = true;
     std::ifstream ifs(canonical_name.c_str(), std::ifstream::in);
@@ -105,7 +105,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
 
   // We have all of the lines (in memory!) -- generate a map of type
   // ngram -> [position_id]
-  std::map<NGram, std::vector<std::uint64_t> > ngrams_map;
+  std::unordered_map<NGram, std::vector<std::uint64_t> > ngrams_map;
   for (const auto &item : positions_map) {
     const uint64_t position_id = item.first;
     const std::string &line = item.second;
@@ -117,8 +117,8 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
       NGram ngram = NGram(line.substr(i, ngram_size_));
       auto pos = seen_ngrams.lower_bound(ngram);
       if (pos == seen_ngrams.end() || *pos != ngram) {
-        const auto &map_item = ngrams_map.lower_bound(ngram);
-        if (map_item == ngrams_map.end() || map_item->first != ngram) {
+        const auto &map_item = ngrams_map.find(ngram);
+        if (map_item == ngrams_map.end()) {
           std::vector<std::uint64_t> positions;
           positions.push_back(position_id);
           ngrams_map.insert(map_item, std::make_pair(ngram, positions));
@@ -154,7 +154,7 @@ void NGramIndexWriter::Add(const NGram &ngram,
 std::size_t NGramIndexWriter::EstimateSize() {
   return (2 * sizeof(std::uint64_t) +                 // the SST header
           2 * sizeof(std::uint64_t) * lists_.size() + // the index
-          sizeof(std::uint64_t) * num_vals_ / 8);         // guess for data
+          sizeof(std::uint64_t) * num_vals_ / 6);     // guess for data
 }
 
 void NGramIndexWriter::MaybeRotate(bool force) {
