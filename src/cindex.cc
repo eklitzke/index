@@ -29,8 +29,8 @@ struct FileTuple {
   std::string fname;
 
   bool operator<(const FileTuple &other) const {
-    return std::make_tuple(canonical, dir, fname) <
-      std::make_tuple(other.canonical, other.dir, other.fname);
+    return std::tie(canonical, dir, fname) <
+      std::tie(other.canonical, other.dir, other.fname);
   }
 };
 }
