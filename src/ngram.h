@@ -134,9 +134,7 @@ class NGram {
   // Accessors
   inline const char* data() const { return data_.buf; }
   inline const char* c_str() const { return data_.buf; }
-  inline std::string string() const {
-    return std::string(data_.buf, ngram_size);
-  }
+  inline std::string string() const { return { data_.buf, ngram_size}; }
   inline std::string padded_string(std::size_t size = 8) const {
     return std::string(size - ngram_size, '\0') +
         std::string(data_.buf, ngram_size);

@@ -59,7 +59,7 @@ std::pair<std::size_t, void*> DoMmap(const std::string &name) {
 #ifdef USE_MADV_RANDOM
   assert(madvise(addr, size, MADV_RANDOM) == 0);
 #endif
-  return std::make_pair(size, addr);
+  return {size, addr};
 }
 }
 
