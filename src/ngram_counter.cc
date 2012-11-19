@@ -37,7 +37,7 @@ void NGramCounter::UpdateCount(const NGram &ngram, std::uint64_t count) {
 NGramCounts NGramCounter::ReverseSortedCounts() {
   std::vector<ReverseCount> reverse_counts;
   for (const auto &p : counts_) {
-    reverse_counts.push_back(ReverseCount(p.first, p.second));
+    reverse_counts.emplace_back(p.first, p.second);
   }
   std::sort(reverse_counts.begin(), reverse_counts.end());
 

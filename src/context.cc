@@ -144,9 +144,9 @@ void Context::SortNGrams(std::vector<NGram> *ngrams) {
   for (const auto &ngram : *ngrams) {
     auto it = ngram_counts_.lower_bound(ngram);
     if (it == ngram_counts_.end()) {
-      frequencies.push_back(NGramFrequency(ngram, 0));
+      frequencies.emplace_back(ngram, 0);
     } else {
-      frequencies.push_back(NGramFrequency(ngram, it->second));
+      frequencies.emplace_back(ngram, it->second);
     }
   }
   std::sort(frequencies.begin(), frequencies.end());

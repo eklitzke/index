@@ -1,5 +1,10 @@
 // -*- C++ -*-
 // Copyright 2012, Evan Klitzke <evan@eklitzke.org>
+//
+// A FrozenMap implements the interface of std::map, but internally
+// uses a sorted std::vector rather than a B-tree. This makes
+// searching faster, and uses less memory, at the cost of being
+// immutable.
 
 #ifndef SRC_FROZEN_MAP_H_
 #define SRC_FROZEN_MAP_H_
@@ -11,21 +16,30 @@
 #include <boost/iterator/iterator_facade.hpp>
 
 namespace codesearch {
+
+// A helper class to build a sorted list, from unsorted values.
 template <typename K, typename V>
 class FrozenMapBuilder {
  public:
-  FrozenMapBuilder() {}
+  FrozenMapBuilder() :is_sorted_(true) {}
 
   void insert(const K &key, const V &val) {
-    vec_.push_back(std::make_pair(key, val));
+    if (is_sorted_ && !vec_.empty() && key < vec_.back().first) {
+      is_sorted_ = false;
+    }
+    vec_.emplace_back(key, val);
   }
 
   const std::vector<std::pair<K, V> >& vector () {
-    std::sort(vec_.begin(), vec_.end());
+    if (!is_sorted_) {
+      std::sort(vec_.begin(), vec_.end());
+      is_sorted_ = true;
+    }
     return vec_;
   }
 
  private:
+  bool is_sorted_;
   std::vector<std::pair<K, V> > vec_;
 };
 

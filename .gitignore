@@ -5,6 +5,7 @@
 *.pb.h
 *.prof
 *.py[co]
+*.sw[nop]
 *_pb2.py
 build/
 gmon.out

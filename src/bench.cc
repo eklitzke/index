@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
                                       vm["limit"].as<std::size_t>(),
                                       vm["port"].as<int>());
     std::thread thr(&QueryThread::Run, qt);
-    threads.push_back(std::make_pair(qt, std::move(thr)));
+    threads.emplace_back(qt, std::move(thr));
   }
 
   std::vector<TimingData> timings;

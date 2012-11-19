@@ -225,7 +225,7 @@ NGramIndexReader::NGramIndexReader(const std::string &index_directory,
   IndexConfig index_config;
   index_config.ParseFromIstream(&config);
   for (std::size_t i = 0; i < index_config.num_shards(); i++) {
-    shards_.push_back(NGramTableReader(index_directory, i));
+    shards_.emplace_back(index_directory, i);
   }
 
   for (std::size_t i = 0; i < parallelism_; i++) {

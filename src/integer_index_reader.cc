@@ -21,7 +21,7 @@ IntegerIndexReader::IntegerIndexReader(const std::string &index_directory,
   for (std::size_t i = 0; i < index_config.num_shards(); i++) {
     std::string shard_name = (index_directory + "/" + name + "/shard_" +
                               boost::lexical_cast<std::string>(i) + ".sst");
-    shards_.push_back(SSTableReader<std::uint64_t>(shard_name));
+    shards_.emplace_back(shard_name);
   }
 }
 

@@ -7,7 +7,7 @@
 int main(int argc, char *argv[]) {
   std::vector<std::pair<int, int> > pairs;
   for (int i = 0; i < 100; i++) {
-    pairs.push_back(std::make_pair(i, i + 1));
+    pairs.emplace_back(i, i + 1);
   }
   FrozenMap<int, int> frozen(pairs);
 

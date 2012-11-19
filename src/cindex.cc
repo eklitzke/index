@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
       std::string fname = filepath.substr(dir.size(), std::string::npos);
       fname = fname.substr(fname.find_first_not_of('/'), std::string::npos);
       if (codesearch::ShouldIndex(filepath)) {
-        to_index.push_back(FileTuple(canonical, dir, fname));
+        to_index.emplace_back(canonical, dir, fname);
       } else {
         std::cout << "skipping " << fname << "\n";
       }
