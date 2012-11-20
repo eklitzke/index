@@ -80,7 +80,7 @@ Context* Context::Acquire(const std::string &db_path,
     return it->second;
   }
   Context *ctx = new Context(db_path, ngram_size, vestibule_path, create);
-  contexts.insert(it, std::make_pair(db_path, ctx));
+  contexts.insert(it, {db_path, ctx});
   return ctx;
 }
 

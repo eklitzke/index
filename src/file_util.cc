@@ -237,8 +237,7 @@ std::map<std::size_t, std::string> GetFileContext(const std::string &name,
   if (pos != 0) {
     for (std::size_t i = 0; i < context; i++) {
       std::string line = GetLineBackwards(mmap_addr, &pos);
-      return_map.insert(return_map.begin(),
-                        std::make_pair(line_number - i - 1, line));
+      return_map.insert(return_map.begin(), {line_number - i - 1, line});
       if (pos == 0) {
         break;
       }
@@ -249,8 +248,7 @@ std::map<std::size_t, std::string> GetFileContext(const std::string &name,
   if (pos < map_size - 1) {
     for (std::size_t i = 0; i < context + 1; i++) {
       std::string line = GetLineForwards(mmap_addr, map_size, &pos);
-      return_map.insert(return_map.begin(),
-                        std::make_pair(line_number + i, line));
+      return_map.insert(return_map.begin(), {line_number + i, line});
       if (pos >= map_size) {
         break;
       }

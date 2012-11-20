@@ -91,7 +91,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
       // makes it possible to reconstruct file contents just from the
       // lines index.
       std::uint64_t line_id = lines_index_.Add(val);
-      positions_map.insert(std::make_pair(line_id, line));
+      positions_map.insert({line_id, line});
 
       // Note the first line in the file
       if (first_line) {
@@ -121,7 +121,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
         if (map_item == ngrams_map.end()) {
           std::vector<std::uint64_t> positions;
           positions.push_back(position_id);
-          ngrams_map.insert(map_item, std::make_pair(ngram, positions));
+          ngrams_map.insert(map_item, {ngram, positions});
         } else {
           map_item->second.push_back(position_id);
         }
@@ -146,7 +146,7 @@ void NGramIndexWriter::Add(const NGram &ngram,
     std::vector<std::uint64_t> &ngram_vals = it->second;
     ngram_vals.insert(ngram_vals.end(), vals.begin(), vals.end());
   } else {
-    lists_.insert(it, std::make_pair(ngram, vals));
+    lists_.insert(it, {ngram, vals});
   }
   num_vals_ += vals.size();
 }

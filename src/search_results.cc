@@ -53,10 +53,8 @@ std::vector<SearchResultContext> SearchResults::contextual_results() {
         auto pos = context_lines.lower_bound(context_kv.first);
         if (pos == context_lines.end() || pos->first != context_kv.first) {
           // this line num / line is not in the context_lines map
-          context_lines.insert(
-              pos, std::make_pair(context_kv.first,
-                                  std::make_pair(
-                                      is_matched, context_kv.second)));
+          context_lines.insert(pos, {context_kv.first,
+              {is_matched, context_kv.second}});
         } else {
           // the line num is in the map; just update is_matched field
           pos->second.first = is_matched;

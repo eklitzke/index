@@ -80,8 +80,8 @@ std::pair<std::size_t, const char*> GetMmapForFile(const std::string &name) {
   if (it == mapping_.end() || it->first != name) {
     auto pair = DoMmap(name);
     const char *caddr = reinterpret_cast<const char *>(pair.second);
-    std::pair<std::size_t, const char *> p = std::make_pair(pair.first, caddr);
-    mapping_.insert(it, std::make_pair(name, p));
+    std::pair<std::size_t, const char *> p = {pair.first, caddr};
+    mapping_.insert(it, {name, p});
     return p;
   }
   return it->second;

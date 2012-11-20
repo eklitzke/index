@@ -51,7 +51,7 @@ class BoundedMap {
       auto pos = map_.find(key);
 #endif
       if (pos == map_.end() || pos->first != key) {
-        map_.insert(pos, std::make_pair(key, std::vector<V>{val}));
+        map_.insert(pos, {key, std::vector<V>{val}});
       } else if (pos->second.size() < max_vals_) {
         pos->second.push_back(val);
       } else {
@@ -66,7 +66,7 @@ class BoundedMap {
 #endif
       if (pos == map_.end() || pos->first != key) {
         assert(key < max_key_);
-        map_.insert(pos, std::make_pair(key, std::vector<V> {val}));
+        map_.insert(pos, {key, std::vector<V> {val}});
 #ifdef USE_ORDERED_MAP
         map_.erase(--map_.rbegin().base());
 #else
