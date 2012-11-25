@@ -17,7 +17,6 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
                                    std::size_t max_threads)
     :index_writer_(
         index_directory, "ngrams", sizeof(std::uint64_t), shard_size, false),
-     files_index_(index_directory, "files"),
      lines_index_(index_directory, "lines"),
      ngram_size_(ngram_size),
      file_count_(0),
@@ -28,62 +27,45 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
   index_writer_.SetKeyType(IndexConfig_KeyType_STRING);
 }
 
-// Add a file, dispatching to AddFileThread to add the file in its own
-// thread. The way this works it there's a condition variable that's
-// checking if too many threads are running, and if too many are
-// running this method blocks until the condition is false.
-//
-// Because this launches a new thread for each file (and doesn't
-// re-use threads for multiple files) the indexer can potentially do a
-// lot of extra work creating short-lived threads. A future
-// optimization can be to re-use threads in a thread pool.
-void NGramIndexWriter::AddFile(const std::string &canonical_name,
-                               const std::string &dir_name,
-                               const std::string &file_name) {
-  pool_.Send(std::bind(&NGramIndexWriter::AddFileThread, this,
-                       file_count_++, canonical_name, dir_name, file_name));
+// Add a file, dispatching to AddDocumentThread to add the document in
+// its own thread. The way this works it there's a condition variable
+// that's checking if too many threads are running, and if too many
+// are running this method blocks until the condition is false.
+void NGramIndexWriter::AddDocument(std::uint64_t document_id,
+                                   std::istream *input,
+                                   bool delete_input) {
+  pool_.Send(std::bind(&NGramIndexWriter::AddDocumentThread, this,
+                       document_id, input, delete_input));
 }
 
-void NGramIndexWriter::AddFileThread(std::size_t file_count,
-                                     const std::string &canonical_name,
-                                     const std::string &dir_name,
-                                     const std::string &file_name) {
-  // Add the file to the files database
-  FileValue file_val;
-  file_val.set_directory(dir_name);
-  file_val.set_filename(file_name);
-  file_val.set_lang(FileLanguage(canonical_name));
-
-  std::uint64_t file_id;
-  {
-    IntWait::WaitHandle hdl = files_wait_.Handle(file_count);
-    file_id = files_index_.Add(file_val);
-  }
-
+void NGramIndexWriter::AddDocumentThread(std::uint64_t document_id,
+                                         std::istream *input,
+                                         bool delete_input) {
   // Collect all of the lines
   std::unordered_map<uint64_t, std::string> positions_map;
   {
     bool first_line = true;
-    std::ifstream ifs(canonical_name.c_str(), std::ifstream::in);
     std::string line;
     std::size_t linenum = 0;
-    IntWait::WaitHandle hdl = positions_wait_.Handle(file_count);
-    while (ifs.good()) {
-      std::streampos file_offset = ifs.tellg();
-      std::getline(ifs, line);
+    IntWait::WaitHandle hdl = positions_wait_.Handle(document_id);
+    while (input->good()) {
+      std::streampos document_offset = input->tellg();
+      std::getline(*input, line);
       if (!IsValidUtf8(line)) {
         // Skip non-utf-8 lines. Anecdotally, these are usually in
         // files that are mostly 7-bit ascii and have one or two lines
         // with weird characters, so it mostly makes sense to index
         // the whole file except for the non-utf-8 lines.
-        std::cout << "skipping invalid utf-8 line in " << canonical_name <<
-            std::endl;
+#if 0
+        std::cout << "skipping invalid utf-8 line in " << canonical_name
+                  << std::endl;
+#endif
         continue;
       }
       PositionValue val;
-      val.set_file_id(file_id);
-      val.set_file_offset(file_offset);
-      val.set_file_line(++linenum);
+      val.set_document_id(document_id);
+      val.set_document_offset(document_offset);
+      val.set_document_line(++linenum);
       val.set_line(line);
 
       // N.B. we write *all* valid UTF-8 lines to the index, even
@@ -96,10 +78,13 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
       // Note the first line in the file
       if (first_line) {
         first_line = false;
-        FileStartLine *start_line  = file_start_lines_.add_start_lines();
-        start_line->set_file_id(file_id);
+        DocumentStartLine *start_line = document_start_lines_.add_start_lines();
+        start_line->set_document_id(document_id);
         start_line->set_first_line(line_id);
       }
+    }
+    if (delete_input) {
+      delete input;
     }
   }
 
@@ -131,7 +116,7 @@ void NGramIndexWriter::AddFileThread(std::size_t file_count,
   }
 
   {
-    IntWait::WaitHandle hdl = ngrams_wait_.Handle(file_count);
+    IntWait::WaitHandle hdl = ngrams_wait_.Handle(document_id);
     for (const auto &it : ngrams_map) {
       Add(it.first, it.second);
     }
@@ -189,8 +174,8 @@ NGramIndexWriter::~NGramIndexWriter() {
   if (num_vals_ || !lists_.empty()) {
     MaybeRotate(true);
   }
-  std::ofstream ofs(index_directory_ + "/file_start_lines",
+  std::ofstream ofs(index_directory_ + "/start_lines",
                     std::ofstream::binary | std::ofstream::out);
-  file_start_lines_.SerializeToOstream(&ofs);
+  document_start_lines_.SerializeToOstream(&ofs);
 }
 }

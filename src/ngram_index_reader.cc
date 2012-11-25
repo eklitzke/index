@@ -159,32 +159,32 @@ std::size_t NGramReaderWorker::TrimCandidates(
   const bool use_offsets = !offsets.empty();
 
   std::size_t lines_added = 0;
-  std::uint64_t max_file_id = UINT64_MAX;
+  std::uint64_t max_document_id = UINT64_MAX;
   PositionValue pos;
   for (const auto &candidate : candidates) {
-    std::uint64_t file_id;
+    std::uint64_t document_id;
     if (use_offsets) {
       auto it = offsets.lower_bound(candidate);
       if (it == offsets.end()) {
         it--;
-        file_id = it->second;
+        document_id = it->second;
       } else if (it->first == candidate) {
-        file_id = it->second;
+        document_id = it->second;
       } else {
-        file_id = it->second - 1;
+        document_id = it->second - 1;
       }
-      if (file_id >= max_file_id) {
+      if (document_id >= max_document_id) {
         continue;
       }
       assert(index_reader_->lines_index_.Find(candidate, &pos));
-      assert(file_id == pos.file_id());
+      assert(document_id == pos.document_id());
     } else {
       assert(index_reader_->lines_index_.Find(candidate, &pos));
 
       // Check that it's going to be possible to insert with this file
       // id -- no mutexes need to be accessed for this check!
-      file_id = pos.file_id();
-      if (file_id >= max_file_id) {
+      document_id = pos.document_id();
+      if (document_id >= max_document_id) {
         continue;
       }
     }
@@ -195,18 +195,18 @@ std::size_t NGramReaderWorker::TrimCandidates(
     }
 
     FileValue fileval;
-    index_reader_->files_index_.Find(file_id, &fileval);
-    FileKey filekey(file_id, fileval.filename());
+    index_reader_->files_index_.Find(document_id, &fileval);
+    FileKey filekey(document_id, fileval.filename());
 
     BoundedMapInsertionResult status = req_->results->insert(
-        filekey, FileResult(pos.file_offset(), pos.file_line()));
+        filekey, FileResult(pos.document_offset(), pos.document_line()));
     if (status == BoundedMapInsertionResult::INSERT_SUCCESSFUL) {
       lines_added++;
     } else if (status == BoundedMapInsertionResult::KEY_TOO_LARGE) {
-      // We failed to insert the file data, because the file_id was
-      // too big. Track this file_id, so we can avoid trying to insert
+      // We failed to insert the file data, because the document_id was
+      // too big. Track this document_id, so we can avoid trying to insert
       // with file ids >= this one in the future.
-      max_file_id = file_id;
+      max_document_id = document_id;
     }
   }
   return lines_added;

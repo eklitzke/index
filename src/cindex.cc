@@ -138,14 +138,24 @@ int main(int argc, char **argv) {
   std::cout << "sorting " << to_index.size() << " files..." << std::endl;
   std::sort(to_index.begin(), to_index.end());
   {
-    std::size_t filenum = 1;
+    codesearch::IntegerIndexWriter files_index(db_path_str, "files");
     codesearch::NGramIndexWriter ngram_writer(
         db_path_str, ngram_size, shard_size, num_threads);
     for (const FileTuple &tuple : to_index) {
-      int pct = 100 * filenum / to_index.size();
-      std::cout << "indexing " << filenum++ << "/" << to_index.size() <<
-          " (" << pct << "%) " << tuple.fname << std::endl;
-      ngram_writer.AddFile(tuple.canonical, tuple.dir, tuple.fname);
+      codesearch::FileValue file_val;
+      file_val.set_directory(tuple.dir);
+      file_val.set_filename(tuple.fname);
+      file_val.set_lang(codesearch::FileLanguage(tuple.canonical));
+      std::uint64_t file_id = files_index.Add(file_val);
+
+      std::uint64_t logical_file = file_id + 1;
+      int pct = 100 * logical_file / to_index.size();
+      std::cout << "indexing " << logical_file << "/" << to_index.size()
+                << " (" << pct << "%) " << tuple.fname << std::endl;
+
+      std::ifstream *file_input = new std::ifstream(tuple.canonical.c_str(),
+                                                    std::ifstream::in);
+      ngram_writer.AddDocument(file_id, file_input, true);
     }
     std::cout << "finishing database..." << std::endl;
   }

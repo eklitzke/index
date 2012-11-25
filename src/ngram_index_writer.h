@@ -9,6 +9,7 @@
 #include "./ngram.h"
 #include "./thread_util.h"
 
+#include <memory>
 #include <string>
 
 namespace codesearch {
@@ -19,15 +20,14 @@ class NGramIndexWriter {
                    std::size_t shard_size = 16 << 20,
                    std::size_t max_threads = 1);
 
-  void AddFile(const std::string &canonical_name,
-               const std::string &dir_name,
-               const std::string &file_name);
+  void AddDocument(std::uint64_t document_id,
+                   std::istream *input,
+                   bool delete_input = false);
 
   ~NGramIndexWriter();
 
  private:
   IndexWriter index_writer_;
-  IntegerIndexWriter files_index_;
   IntegerIndexWriter lines_index_;
 
   std::map<NGram, std::vector<std::uint64_t> > lists_;
@@ -37,19 +37,17 @@ class NGramIndexWriter {
 
   const std::string index_directory_;
 
-  IntWait files_wait_;
   IntWait positions_wait_;
   IntWait ngrams_wait_;
 
   FunctionThreadPool pool_;
 
   // a map of file id to starting line in the file
-  FileStartLines file_start_lines_;
+  DocumentStartLines document_start_lines_;
 
-  void AddFileThread(std::size_t file_count,
-                     const std::string &canonical_name,
-                     const std::string &dir_name,
-                     const std::string &file_name);
+  void AddDocumentThread(std::uint64_t document_id,
+                         std::istream *input,
+                         bool delete_input);
 
   void Add(const NGram &ngram, const std::vector<std::uint64_t> &vals);
 

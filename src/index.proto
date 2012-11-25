@@ -128,19 +128,19 @@ message NGramCounts {
 }
 
 message PositionValue {
-  required uint64 file_id = 1;
-  required uint64 file_offset = 2;
-  required uint64 file_line = 3;
+  required uint64 document_id = 1;
+  required uint64 document_offset = 2;
+  required uint64 document_line = 3;
   required string line = 4;
 }
 
-message FileStartLine {
-  required uint64 file_id = 1;
+message DocumentStartLine {
+  required uint64 document_id = 1;
   required uint64 first_line = 2;
 }
 
-message FileStartLines {
-  repeated FileStartLine start_lines = 1;
+message DocumentStartLines {
+  repeated DocumentStartLine start_lines = 1;
 }
 
 message SearchResult {

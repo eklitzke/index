@@ -195,15 +195,15 @@ void Context::InitializeSortedNGrams() {
 
 void Context::InitializeFileOffsets() {
   Timer initialization_timer;
-  std::ifstream ifs(index_directory_ + "/file_start_lines",
+  std::ifstream ifs(index_directory_ + "/start_lines",
                     std::ifstream::binary | std::ifstream::in);
   assert(file_offsets_.empty());
-  FileStartLines lines;
+  DocumentStartLines lines;
   lines.ParseFromIstream(&ifs);
 
   FrozenMapBuilder<std::uint32_t, std::uint32_t> offsets;
   for (const auto &start_line : lines.start_lines()) {
-    offsets.insert(start_line.first_line(), start_line.file_id());
+    offsets.insert(start_line.first_line(), start_line.document_id());
   }
   file_offsets_ = offsets;
   LOG(INFO) << "initialized file offsets map in " <<
