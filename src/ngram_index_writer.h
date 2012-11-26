@@ -23,7 +23,7 @@ class NGramIndexWriter {
 
   void AddDocument(std::uint64_t document_id,
                    std::istream *input,
-                   bool delete_input = false);
+                   bool delete_input = true);
 
   ~NGramIndexWriter();
 

@@ -138,9 +138,17 @@ int main(int argc, char **argv) {
   std::cout << "sorting " << to_index.size() << " files..." << std::endl;
   std::sort(to_index.begin(), to_index.end());
   {
-    codesearch::IntegerIndexWriter files_index(db_path_str + "/files");
-    codesearch::NGramIndexWriter ngram_writer(
-        db_path_str + "/files.ngrams", ngram_size, shard_size, num_threads);
+    codesearch::IntegerIndexWriter files_index(db_path_str + "/file_ids");
+    codesearch::NGramIndexWriter files_ngram_writer(
+        db_path_str + "/file_contents.ngrams",
+        ngram_size,
+        shard_size,
+        num_threads);
+    codesearch::NGramIndexWriter filenames_ngram_writer(
+        db_path_str + "/file_names.ngrams",
+        ngram_size,
+        shard_size,
+        num_threads);
     for (const FileTuple &tuple : to_index) {
       codesearch::FileValue file_val;
       file_val.set_directory(tuple.dir);
@@ -153,9 +161,14 @@ int main(int argc, char **argv) {
       std::cout << "indexing " << logical_file << "/" << to_index.size()
                 << " (" << pct << "%) " << tuple.fname << std::endl;
 
+      // Index the contents of the file
       std::ifstream *file_input = new std::ifstream(tuple.canonical.c_str(),
                                                     std::ifstream::in);
-      ngram_writer.AddDocument(file_id, file_input, true);
+      files_ngram_writer.AddDocument(file_id, file_input);
+
+      // Index the name of the file
+      std::stringstream *filename_input = new std::stringstream(tuple.fname);
+      filenames_ngram_writer.AddDocument(file_id, filename_input);
     }
     std::cout << "finishing database..." << std::endl;
   }
