@@ -15,16 +15,20 @@ NGramIndexWriter::NGramIndexWriter(const std::string &index_directory,
                                    std::size_t ngram_size,
                                    std::size_t shard_size,
                                    std::size_t max_threads)
-    :index_writer_(
-        index_directory, "ngrams", sizeof(std::uint64_t), shard_size, false),
-     lines_index_(index_directory, "lines"),
+    :index_directory_(index_directory),
+     index_writer_(
+        index_directory_ + "/ngrams", sizeof(std::uint64_t), shard_size, false),
+     lines_index_(index_directory_ + "/lines"),
      ngram_size_(ngram_size),
      file_count_(0),
      num_vals_(0),
-     index_directory_(index_directory),
      pool_(max_threads) {
   assert(ngram_size == NGram::ngram_size);
   index_writer_.SetKeyType(IndexConfig_KeyType_STRING);
+  if (!boost::filesystem::is_directory(index_directory_)) {
+    boost::filesystem::create_directories(index_directory_);
+  }
+
 }
 
 // Add a file, dispatching to AddDocumentThread to add the document in
@@ -144,7 +148,6 @@ std::size_t NGramIndexWriter::EstimateSize() {
 
 void NGramIndexWriter::MaybeRotate(bool force) {
   if (force || EstimateSize() >= index_writer_.shard_size()) {
-    NGramCounter *counter = NGramCounter::Instance();
     for (auto &it : lists_) {
       NGramValue ngram_val;
       std::size_t val_count = 0;
@@ -160,7 +163,7 @@ void NGramIndexWriter::MaybeRotate(bool force) {
         last_val = v;
         val_count++;
       }
-      counter->UpdateCount(it.first, val_count);
+      counter_.UpdateCount(it.first, val_count);
       index_writer_.Add(it.first.string(), ngram_val);
     }
     index_writer_.Rotate();
@@ -177,5 +180,14 @@ NGramIndexWriter::~NGramIndexWriter() {
   std::ofstream ofs(index_directory_ + "/start_lines",
                     std::ofstream::binary | std::ofstream::out);
   document_start_lines_.SerializeToOstream(&ofs);
+
+  std::ofstream ngram_counts(index_directory_ + "/ngram_counts",
+                             std::ofstream::binary | std::ofstream::trunc |
+                             std::ofstream::out);
+  assert(ngram_counts.good());
+  codesearch::NGramCounts counts = counter_.ReverseSortedCounts();
+  counts.set_total_count(counter_.TotalCount());
+  counts.set_total_ngrams(counter_.TotalNGrams());
+  counts.SerializeToOstream(&ngram_counts);
 }
 }

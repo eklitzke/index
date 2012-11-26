@@ -15,22 +15,21 @@
 
 namespace codesearch {
 IndexWriter::IndexWriter(const std::string &index_directory,
-                         const std::string &name,
                          std::size_t key_size,
                          std::size_t shard_size,
                          bool auto_rotate)
     :index_directory_(index_directory),
-     name_(name),
      key_size_(key_size),
      shard_size_(shard_size),
      auto_rotate_(auto_rotate),
      shard_num_(0),
      key_type_(IndexConfig_KeyType_NUMERIC),
      state_(IndexConfig_DatabaseState_EMPTY),
-  sstable_(nullptr) {
-  boost::filesystem::path p(GetPathName(""));
-  assert(!boost::filesystem::is_directory(p));
-  boost::filesystem::create_directories(p);
+     sstable_(nullptr) {
+  boost::filesystem::path index_path(index_directory_);
+  if (!boost::filesystem::is_directory(index_path)) {
+    boost::filesystem::create_directories(index_path);
+  }
 
   WriteStatus(IndexConfig_DatabaseState_EMPTY);
 }
@@ -44,11 +43,7 @@ IndexWriter::~IndexWriter() {
 }
 
 std::string IndexWriter::GetPathName(const std::string &name) {
-  if (!name.empty()) {
-    return index_directory_ + "/" + name_ + "/" + name;
-  } else {
-    return index_directory_ + "/" + name_;
-  }
+  return index_directory_ + "/" + name;
 }
 
 void IndexWriter::EnsureSSTable() {
@@ -85,6 +80,7 @@ void IndexWriter::WriteStatus(IndexConfig_DatabaseState new_state) {
                     std::ofstream::binary |
                     std::ofstream::out |
                     std::ofstream::trunc);
+  assert(out.good());
   assert(config.SerializeToOstream(&out));
   out.close();
 }

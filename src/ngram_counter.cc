@@ -5,8 +5,6 @@
 #include <algorithm>
 
 namespace {
-codesearch::NGramCounter *counter_ = nullptr;
-
 struct ReverseCount {
   codesearch::NGram ngram;
   std::uint64_t count;
@@ -21,13 +19,6 @@ struct ReverseCount {
 }
 
 namespace codesearch {
-
-NGramCounter* NGramCounter::Instance() {
-  if (counter_ == nullptr) {
-    counter_ = new NGramCounter;
-  }
-  return counter_;
-}
 
 void NGramCounter::UpdateCount(const NGram &ngram, std::uint64_t count) {
   std::lock_guard<std::mutex> guard(mutex_);

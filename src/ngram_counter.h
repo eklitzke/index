@@ -15,8 +15,6 @@
 namespace codesearch {
 class NGramCounter {
  public:
-  static NGramCounter* Instance();
-
   // Update the count for an NGram
   void UpdateCount(const NGram &ngram, std::uint64_t count);
 
@@ -34,8 +32,6 @@ class NGramCounter {
  private:
   std::mutex mutex_;
   std::unordered_map<NGram, std::uint64_t> counts_;
-
-  NGramCounter() {}
 };
 }
 

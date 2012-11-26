@@ -7,6 +7,7 @@
 #include "./index_writer.h"
 #include "./integer_index_writer.h"
 #include "./ngram.h"
+#include "./ngram_counter.h"
 #include "./thread_util.h"
 
 #include <memory>
@@ -27,6 +28,8 @@ class NGramIndexWriter {
   ~NGramIndexWriter();
 
  private:
+  const std::string index_directory_;
+
   IndexWriter index_writer_;
   IntegerIndexWriter lines_index_;
 
@@ -35,8 +38,6 @@ class NGramIndexWriter {
   std::size_t file_count_;
   std::size_t num_vals_;
 
-  const std::string index_directory_;
-
   IntWait positions_wait_;
   IntWait ngrams_wait_;
 
@@ -44,6 +45,8 @@ class NGramIndexWriter {
 
   // a map of file id to starting line in the file
   DocumentStartLines document_start_lines_;
+
+  NGramCounter counter_;
 
   void AddDocumentThread(std::uint64_t document_id,
                          std::istream *input,

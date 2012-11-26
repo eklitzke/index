@@ -138,9 +138,9 @@ int main(int argc, char **argv) {
   std::cout << "sorting " << to_index.size() << " files..." << std::endl;
   std::sort(to_index.begin(), to_index.end());
   {
-    codesearch::IntegerIndexWriter files_index(db_path_str, "files");
+    codesearch::IntegerIndexWriter files_index(db_path_str + "/files");
     codesearch::NGramIndexWriter ngram_writer(
-        db_path_str, ngram_size, shard_size, num_threads);
+        db_path_str + "/files.ngrams", ngram_size, shard_size, num_threads);
     for (const FileTuple &tuple : to_index) {
       codesearch::FileValue file_val;
       file_val.set_directory(tuple.dir);
@@ -159,15 +159,6 @@ int main(int argc, char **argv) {
     }
     std::cout << "finishing database..." << std::endl;
   }
-  std::cout << "writing counts..." << std::endl;
-  std::ofstream ngram_counts(db_path_str + "/ngram_counts",
-                std::ofstream::binary | std::ofstream::trunc |
-                std::ofstream::out);
-  codesearch::NGramCounter *counter = codesearch::NGramCounter::Instance();
-  codesearch::NGramCounts counts = counter->ReverseSortedCounts();
-  counts.set_total_count(counter->TotalCount());
-  counts.set_total_ngrams(counter->TotalNGrams());
-  counts.SerializeToOstream(&ngram_counts);
   std::cout << "done indexing" << std::endl;
   return 0;
 }
